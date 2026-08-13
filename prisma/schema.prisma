@@ -1,0 +1,145 @@
+// Notely — esquema de datos (Fase 0)
+// Enfoque híbrido: páginas = documento JSON de bloques; bases de datos del usuario = filas reales.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  passwordHash String?
+  role         String       @default("member") // member | admin (nivel sistema)
+  createdAt    DateTime     @default(now())
+  memberships  Member[]
+  sessions     Session[]
+  ownedSpaces  Workspace[]  @relation("owner")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String?
+  ownerId   String
+  owner     User     @relation("owner", fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+  members   Member[]
+  pages     Page[]
+}
+
+model Member {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String    @default("editor") // owner | editor | viewer
+
+  @@unique([workspaceId, userId])
+}
+
+model Page {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      Page?     @relation("tree", fields: [parentId], references: [id])
+  children    Page[]    @relation("tree")
+  title       String    @default("")
+  icon        String?
+  order       String    // índice fraccional
+  type        String    @default("doc") // doc | database
+  content     Json?     // documento de bloques (BlockNote) si type=doc
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  collection  Collection?
+  charts      Chart[]
+  versions    Version[]
+
+  @@index([workspaceId, parentId])
+}
+
+// ---- Bases de datos del usuario ----
+model Collection {
+  id      String   @id @default(cuid())
+  pageId  String   @unique
+  page    Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name    String
+  fields  Field[]
+  records Record[]
+  views   View[]
+}
+
+model Field {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  name         String
+  type         String // text,number,currency,select,multiselect,date,checkbox,url,relation,rollup,formula
+  order        String
+  config       Json       @default("{}") // opciones de select, formato, etc.
+}
+
+model Record {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  cells        Json       @default("{}") // { fieldId: value }
+  order        String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([collectionId])
+}
+
+model View {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  name         String
+  type         String // table | kanban | calendar | gallery | list
+  config       Json       @default("{}") // filtros, orden, agrupación, columnas
+}
+
+model Chart {
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name   String
+  spec   Json // fuente(collection/view) + agregación + tipo + estilo
+}
+
+model Version {
+  id        String   @id @default(cuid())
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  snapshot  Json
+  authorId  String?
+  createdAt DateTime @default(now())
+}
+
+// Token de servicio para automatización (Dobby / crons)
+model ApiToken {
+  id        String   @id @default(cuid())
+  name      String
+  tokenHash String   @unique
+  scopes    String   @default("*")
+  createdAt DateTime @default(now())
+  lastUsed  DateTime?
+}

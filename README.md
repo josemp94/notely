@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Notely
 
-## Getting Started
+Clon de Notion **self-hosted a medida**: notas por bloques + bases de datos con vistas + **gráficas reales interactivas**. Gratis, en el NAS, y operable por API (para que el asistente lo mantenga solo).
 
-First, run the development server:
+## Stack
+- **Next.js 15** (App Router) + **TypeScript**
+- **tRPC** (API tipada) + **Prisma** + **PostgreSQL**
+- **BlockNote** (editor de bloques tipo Notion)
+- **Apache ECharts** (gráficas interactivas)
+- **Tailwind CSS** + **Auth.js**
+- Marca: `#ff5c28` · Bricolage Grotesque / Hanken Grotesk / IBM Plex Mono
 
+## Roadmap
+- **Fase 0** — Andamiaje: stack, esquema, branding, despliegue. ← *en curso*
+- **Fase 1** — Editor de bloques + páginas
+- **Fase 2** — Bases de datos + vistas (tabla/kanban)
+- **Fase 3** — Gráficas / dashboards
+- **Fase 4** — Multiusuario / familia
+- **Fase 5** — Pulido + migración de datos
+
+Planteamiento completo: `PLANTEAMIENTO.md`.
+
+## Desarrollo
 ```bash
+npm install
+cp .env.example .env   # configurar DATABASE_URL
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Dev DB local (Postgres): `postgresql://notely:notely@localhost:5432/notely`
