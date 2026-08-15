@@ -17,12 +17,27 @@ services:
       retries: 12
     restart: unless-stopped
 
-  app:
-    build: .
-    container_name: notely-app
+  migrate:
+    build:
+      context: .
+      target: build
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed"
+    environment:
+      DATABASE_URL: "postgresql://notely:notely@db:5432/notely"
     depends_on:
       db:
         condition: service_healthy
+    restart: "no"
+
+  app:
+    build: .
+    container_name: notely-app
+    command: ["node", "server.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: "postgresql://notely:notely@db:5432/notely"
       AUTH_SECRET: "dev-secret-cambiar-en-prod"
