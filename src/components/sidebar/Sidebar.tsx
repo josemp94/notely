@@ -24,6 +24,12 @@ export function Sidebar() {
       router.push(`/p/${page.id}`);
     },
   });
+  const createDb = trpc.db.create.useMutation({
+    onSuccess: async (page) => {
+      await utils.pages.tree.invalidate();
+      router.push(`/p/${page.id}`);
+    },
+  });
 
   const byParent = new Map<string | null, Node[]>();
   for (const p of pages ?? []) {
@@ -38,13 +44,22 @@ export function Sidebar() {
         <Link href="/" className="font-display text-lg font-bold">
           Note<span className="text-brand">ly</span>
         </Link>
-        <button
-          onClick={() => create.mutate({ parentId: null })}
-          className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
-          title="Nueva página"
-        >
-          + Nueva
-        </button>
+        <div className="flex items-center gap-1 text-sm">
+          <button
+            onClick={() => create.mutate({ parentId: null })}
+            className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+            title="Nueva página"
+          >
+            + Página
+          </button>
+          <button
+            onClick={() => createDb.mutate({ parentId: null })}
+            className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+            title="Nueva base de datos"
+          >
+            + BD
+          </button>
+        </div>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 pb-6">
         <Tree nodes={byParent.get(null) ?? []} byParent={byParent} depth={0} />

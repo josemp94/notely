@@ -1,0 +1,84 @@
+"use client";
+
+type Option = { id: string; label: string; color?: string };
+export type FieldLite = { id: string; name: string; type: string; config: unknown };
+
+const COLORS: Record<string, string> = {
+  gray: "#e5e0d8",
+  orange: "#ffd9c9",
+  green: "#c9efd8",
+  red: "#ffd2cd",
+  blue: "#cfe0ff",
+  yellow: "#fbeec2",
+};
+
+export function optionsOf(field: FieldLite): Option[] {
+  const cfg = field.config as { options?: Option[] } | null;
+  return cfg?.options ?? [];
+}
+
+export function Cell({
+  field,
+  value,
+  onCommit,
+}: {
+  field: FieldLite;
+  value: unknown;
+  onCommit: (v: unknown) => void;
+}) {
+  if (field.type === "checkbox") {
+    return (
+      <input
+        type="checkbox"
+        checked={Boolean(value)}
+        onChange={(e) => onCommit(e.target.checked)}
+        className="size-4 accent-[var(--color-brand,#ff5c28)]"
+      />
+    );
+  }
+
+  if (field.type === "select") {
+    const opts = optionsOf(field);
+    const current = opts.find((o) => o.id === value);
+    return (
+      <select
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) => onCommit(e.target.value || null)}
+        className="w-full rounded bg-transparent px-1 py-0.5 text-sm outline-none"
+        style={current ? { background: COLORS[current.color ?? "gray"] } : undefined}
+      >
+        <option value="">—</option>
+        {opts.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (field.type === "date") {
+    return (
+      <input
+        type="date"
+        defaultValue={typeof value === "string" ? value : ""}
+        onBlur={(e) => onCommit(e.target.value || null)}
+        className="w-full bg-transparent px-1 py-0.5 text-sm outline-none"
+      />
+    );
+  }
+
+  // text / number (no controlado; commit al salir)
+  return (
+    <input
+      type={field.type === "number" ? "number" : "text"}
+      defaultValue={value == null ? "" : String(value)}
+      onBlur={(e) => {
+        const raw = e.target.value;
+        if (field.type === "number") onCommit(raw === "" ? null : Number(raw));
+        else onCommit(raw === "" ? null : raw);
+      }}
+      className="w-full bg-transparent px-1 py-0.5 text-sm outline-none"
+    />
+  );
+}
