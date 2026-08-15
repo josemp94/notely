@@ -30,4 +30,4 @@ COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 EXPOSE 3000
-CMD ["sh","-c","./node_modules/.bin/prisma migrate deploy && node prisma/seed.mjs || true; node server.js"]
+CMD ["sh","-c","node node_modules/prisma/build/index.js migrate deploy && (node prisma/seed.mjs || true); node server.js"]
