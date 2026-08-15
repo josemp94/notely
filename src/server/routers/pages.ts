@@ -94,6 +94,39 @@ export const pagesRouter = router({
       });
       return { archived: ids.length };
     }),
+
+  /** Listar la papelera (páginas archivadas). */
+  trash: workspaceProcedure.query(async ({ ctx }) => {
+    return ctx.db.page.findMany({
+      where: { workspaceId: ctx.workspace.id, archivedAt: { not: null } },
+      select: { id: true, title: true, icon: true, archivedAt: true },
+      orderBy: { archivedAt: "desc" },
+    });
+  }),
+
+  /** Restaurar de la papelera (con subárbol). */
+  restore: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertOwned(ctx, input.id);
+      const ids = await descendantIds(ctx, input.id);
+      await ctx.db.page.updateMany({
+        where: { id: { in: ids } },
+        data: { archivedAt: null },
+      });
+      return { restored: ids.length };
+    }),
+
+  /** Borrar definitivamente (con subárbol). */
+  remove: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertOwned(ctx, input.id);
+      const ids = await descendantIds(ctx, input.id);
+      // Borra hijos antes que padres para respetar la relación de árbol.
+      await ctx.db.page.deleteMany({ where: { id: { in: ids } } });
+      return { removed: ids.length };
+    }),
 });
 
 async function assertOwned(
