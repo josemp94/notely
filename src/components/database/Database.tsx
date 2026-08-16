@@ -5,6 +5,7 @@ import { trpc } from "@/trpc/react";
 import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
 import { ChartView } from "./ChartView";
+import { CalendarView } from "./CalendarView";
 
 export function Database({ pageId, title }: { pageId: string; title: string }) {
   const { data: col, isLoading } = trpc.db.get.useQuery({ pageId });
@@ -33,7 +34,7 @@ export function Database({ pageId, title }: { pageId: string; title: string }) {
                 : "text-[var(--muted)] hover:text-[var(--foreground)]"
             }`}
           >
-            {v.type === "kanban" ? "▦ " : "▤ "}
+            {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : "▤ "}
             {v.name}
           </button>
         ))}
@@ -50,6 +51,14 @@ export function Database({ pageId, title }: { pageId: string; title: string }) {
         />
       ) : active?.type === "chart" ? (
         <ChartView pageId={pageId} view={active} fields={fields} />
+      ) : active?.type === "calendar" ? (
+        <CalendarView
+          pageId={pageId}
+          collectionId={col.id}
+          fields={fields}
+          records={records}
+          view={active}
+        />
       ) : (
         <TableView
           pageId={pageId}

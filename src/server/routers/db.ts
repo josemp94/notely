@@ -69,6 +69,15 @@ export const dbRouter = router({
           config: { options: estadoOpts },
         },
       });
+      const fecha = await ctx.db.field.create({
+        data: {
+          collectionId: collection.id,
+          name: "Fecha",
+          type: "date",
+          order: rankAtEnd(estado.order),
+          config: {},
+        },
+      });
       // Vistas
       await ctx.db.view.create({
         data: { collectionId: collection.id, name: "Tabla", type: "table", config: {} },
@@ -87,6 +96,14 @@ export const dbRouter = router({
           name: "Gráfica",
           type: "chart",
           config: { chartType: "bar", xFieldId: estado.id, yFieldId: null, agg: "count" },
+        },
+      });
+      await ctx.db.view.create({
+        data: {
+          collectionId: collection.id,
+          name: "Calendario",
+          type: "calendar",
+          config: { dateFieldId: fecha.id },
         },
       });
       // Filas de ejemplo
