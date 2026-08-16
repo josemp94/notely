@@ -59,6 +59,7 @@ export function DbToolbar({
     },
   });
   const renameView = trpc.db.renameView.useMutation({ onSuccess: refresh });
+  const setViewType = trpc.db.setViewType.useMutation({ onSuccess: async () => { await refresh(); setOpen(null); } });
   const deleteView = trpc.db.deleteView.useMutation({
     onSuccess: async () => {
       await refresh();
@@ -237,11 +238,26 @@ export function DbToolbar({
             >
               ✏️ Renombrar vista
             </button>
+            <div className="my-1 border-t border-[var(--border)] pt-1">
+              <div className="px-2 pb-1 text-[11px] font-medium text-[var(--muted)]">Mostrar como</div>
+              <div className="flex flex-wrap gap-1 px-1">
+                {VIEW_TYPES.map((vt) => (
+                  <button
+                    key={vt.type}
+                    onClick={() => setViewType.mutate({ id: view.id, type: vt.type })}
+                    className={`rounded-md px-2 py-1 text-xs hover:bg-brand-50 ${view.type === vt.type ? "bg-brand-50 text-brand" : ""}`}
+                    title={vt.label}
+                  >
+                    {vt.icon} {vt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               onClick={() => {
                 if (window.confirm(`¿Borrar la vista "${view.name}"?`)) deleteView.mutate({ id: view.id });
               }}
-              className="block w-full rounded-md px-2 py-1.5 text-left text-sm text-red-500 hover:bg-[var(--border)]/40"
+              className="mt-1 block w-full rounded-md px-2 py-1.5 text-left text-sm text-red-500 hover:bg-[var(--border)]/40"
             >
               🗑 Borrar vista
             </button>

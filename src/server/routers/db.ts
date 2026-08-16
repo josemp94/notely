@@ -70,7 +70,7 @@ export const dbRouter = router({
           config: { options: estadoOpts },
         },
       });
-      const fecha = await ctx.db.field.create({
+      await ctx.db.field.create({
         data: {
           collectionId: collection.id,
           name: "Fecha",
@@ -79,41 +79,9 @@ export const dbRouter = router({
           config: {},
         },
       });
-      // Vistas
+      // Vista inicial: solo Tabla (como Notion). El resto se añaden con "+ Vista".
       await ctx.db.view.create({
         data: { collectionId: collection.id, name: "Tabla", type: "table", config: {} },
-      });
-      await ctx.db.view.create({
-        data: {
-          collectionId: collection.id,
-          name: "Kanban",
-          type: "kanban",
-          config: { groupByFieldId: estado.id },
-        },
-      });
-      await ctx.db.view.create({
-        data: {
-          collectionId: collection.id,
-          name: "Gráfica",
-          type: "chart",
-          config: { chartType: "bar", xFieldId: estado.id, yFieldId: null, agg: "count" },
-        },
-      });
-      await ctx.db.view.create({
-        data: {
-          collectionId: collection.id,
-          name: "Calendario",
-          type: "calendar",
-          config: { dateFieldId: fecha.id },
-        },
-      });
-      await ctx.db.view.create({
-        data: {
-          collectionId: collection.id,
-          name: "Galería",
-          type: "gallery",
-          config: {},
-        },
       });
       // Filas de ejemplo
       let ord: string | null = null;
@@ -139,7 +107,7 @@ export const dbRouter = router({
         where: { pageId: input.pageId },
         include: {
           fields: { orderBy: { order: "asc" } },
-          views: { orderBy: { name: "asc" } },
+          views: { orderBy: { id: "asc" } },
           records: { orderBy: { order: "asc" } },
         },
       });
@@ -299,6 +267,31 @@ export const dbRouter = router({
       if (count <= 1) throw new TRPCError({ code: "BAD_REQUEST", message: "No puedes borrar la última vista." });
       await ctx.db.view.delete({ where: { id: input.id } });
       return { ok: true };
+    }),
+
+  /** Cambiar el tipo de una vista ("Mostrar como"), recalculando su config por defecto. */
+  setViewType: workspaceProcedure
+    .input(z.object({ id: z.string(), type: z.enum(["table", "kanban", "calendar", "gallery", "chart"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const v = await ctx.db.view.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+        select: { id: true, collectionId: true, config: true },
+      });
+      if (!v) throw new TRPCError({ code: "NOT_FOUND" });
+      const fields = await ctx.db.field.findMany({
+        where: { collectionId: v.collectionId },
+        orderBy: { order: "asc" },
+      });
+      const firstOf = (t: string) => fields.find((f) => f.type === t)?.id ?? null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const prev = (v.config as any) ?? {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let config: any = { filters: prev.filters, sorts: prev.sorts };
+      if (input.type === "kanban") config.groupByFieldId = prev.groupByFieldId ?? firstOf("select");
+      else if (input.type === "calendar") config.dateFieldId = prev.dateFieldId ?? firstOf("date");
+      else if (input.type === "chart")
+        config = { ...config, chartType: prev.chartType ?? "bar", xFieldId: prev.xFieldId ?? firstOf("select"), yFieldId: prev.yFieldId ?? null, agg: prev.agg ?? "count" };
+      return ctx.db.view.update({ where: { id: input.id }, data: { type: input.type, config } });
     }),
 
   /** Lista todas las bases de datos del workspace (para elegir destino de una relación). */
