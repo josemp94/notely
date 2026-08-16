@@ -81,6 +81,14 @@ export const dbRouter = router({
           config: { groupByFieldId: estado.id },
         },
       });
+      await ctx.db.view.create({
+        data: {
+          collectionId: collection.id,
+          name: "Gráfica",
+          type: "chart",
+          config: { chartType: "bar", xFieldId: estado.id, yFieldId: null, agg: "count" },
+        },
+      });
       // Filas de ejemplo
       let ord: string | null = null;
       for (const [i, name] of ["Primera tarea", "Segunda tarea"].entries()) {
@@ -217,5 +225,70 @@ export const dbRouter = router({
       });
       if (!v) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.view.update({ where: { id: input.id }, data: { config: input.config } });
+    }),
+
+  /** Datos agregados para una vista de gráfica (se calcula en el servidor). */
+  chartData: workspaceProcedure
+    .input(z.object({ pageId: z.string(), viewId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertPage(ctx, input.pageId);
+      const col = await ctx.db.collection.findUnique({
+        where: { pageId: input.pageId },
+        include: { fields: true, records: true, views: true },
+      });
+      if (!col) throw new TRPCError({ code: "NOT_FOUND" });
+      const view = col.views.find((v) => v.id === input.viewId);
+      const cfg = (view?.config ?? {}) as {
+        chartType?: string;
+        xFieldId?: string;
+        yFieldId?: string | null;
+        agg?: string;
+      };
+      const xField = col.fields.find((f) => f.id === cfg.xFieldId);
+      const yField = cfg.yFieldId ? col.fields.find((f) => f.id === cfg.yFieldId) : null;
+      const agg = cfg.agg ?? "count";
+
+      // Etiqueta del valor del eje X según el tipo de campo.
+      const xLabel = (val: unknown): string => {
+        if (val === null || val === undefined || val === "") return "Sin valor";
+        if (xField?.type === "select") {
+          const opts = ((xField.config as { options?: { id: string; label: string }[] }).options) ?? [];
+          return opts.find((o) => o.id === val)?.label ?? String(val);
+        }
+        if (xField?.type === "date") return String(val).slice(0, 7); // agrupa por mes YYYY-MM
+        if (xField?.type === "checkbox") return val ? "Sí" : "No";
+        return String(val);
+      };
+
+      const groups = new Map<string, number[]>();
+      for (const r of col.records) {
+        const cells = (r.cells ?? {}) as Record<string, unknown>;
+        const label = xLabel(xField ? cells[xField.id] : undefined);
+        let y = 1;
+        if (yField) {
+          const n = Number(cells[yField.id]);
+          y = Number.isFinite(n) ? n : 0;
+        }
+        const arr = groups.get(label) ?? [];
+        arr.push(y);
+        groups.set(label, arr);
+      }
+
+      const categories = [...groups.keys()].sort();
+      const values = categories.map((c) => {
+        const arr = groups.get(c)!;
+        if (agg === "count") return arr.length;
+        const sum = arr.reduce((a, b) => a + b, 0);
+        if (agg === "avg") return arr.length ? Math.round((sum / arr.length) * 100) / 100 : 0;
+        return Math.round(sum * 100) / 100; // sum
+      });
+
+      return {
+        chartType: cfg.chartType ?? "bar",
+        categories,
+        values,
+        xName: xField?.name ?? "",
+        yName: agg === "count" ? "Registros" : yField?.name ?? "",
+      };
     }),
 });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/trpc/react";
 import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
+import { ChartView } from "./ChartView";
 
 export function Database({ pageId, title }: { pageId: string; title: string }) {
   const { data: col, isLoading } = trpc.db.get.useQuery({ pageId });
@@ -47,6 +48,8 @@ export function Database({ pageId, title }: { pageId: string; title: string }) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           groupByFieldId={(active.config as any)?.groupByFieldId}
         />
+      ) : active?.type === "chart" ? (
+        <ChartView pageId={pageId} view={active} fields={fields} />
       ) : (
         <TableView pageId={pageId} collectionId={col.id} fields={fields} records={records} />
       )}
