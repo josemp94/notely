@@ -20,8 +20,8 @@ export function Database({ pageId, title }: { pageId: string; title: string }) {
   const fields = col.fields;
 
   return (
-    <div className="px-8 py-8">
-      <h1 className="font-display mb-4 text-3xl font-extrabold">🗃️ {title}</h1>
+    <div className="px-3 py-5 md:px-8">
+      <h1 className="font-display mb-4 text-2xl font-extrabold md:text-3xl">🗃️ {title}</h1>
       <div className="mb-4 flex gap-1 border-b border-[var(--border)]">
         {col.views.map((v) => (
           <button

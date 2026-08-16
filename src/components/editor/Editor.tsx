@@ -39,7 +39,6 @@ export function Editor({
 
   const editor = useCreateBlockNote({ initialContent: initial });
 
-  // Autosave con debounce de 800 ms.
   function scheduleSave() {
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -65,7 +64,7 @@ export function Editor({
   }, []);
 
   return (
-    <div className="mx-auto max-w-3xl px-12 py-16">
+    <div className="mx-auto max-w-3xl px-4 py-8 md:px-12 md:py-16">
       <div className="mb-2 flex items-center gap-2 font-mono text-xs text-[var(--muted)]">
         {saveState === "saving" ? "Guardando…" : "Guardado ✓"}
       </div>
@@ -73,7 +72,7 @@ export function Editor({
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder="Sin título"
-        className="font-display mb-4 w-full bg-transparent text-4xl font-extrabold outline-none placeholder:text-[var(--border)]"
+        className="font-display mb-4 w-full bg-transparent text-3xl font-extrabold outline-none placeholder:text-[var(--border)] md:text-4xl"
       />
       <BlockNoteView editor={editor} onChange={scheduleSave} />
     </div>
