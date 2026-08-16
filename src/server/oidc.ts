@@ -119,3 +119,12 @@ export async function resolveUser(cfg: OidcConfig, tokens: TokenResponse): Promi
   const name = (claims.name ?? preferred ?? null) as string | null;
   return { sub, email, name };
 }
+
+/** Base pública de la app para redirecciones propias (evita url.origin = 0.0.0.0:3000 tras un proxy inverso). */
+export function appBaseUrl(fallbackOrigin: string): string {
+  const r = process.env.OIDC_REDIRECT_URI;
+  if (r) {
+    try { return new URL(r).origin; } catch {}
+  }
+  return process.env.APP_ORIGIN || fallbackOrigin;
+}
