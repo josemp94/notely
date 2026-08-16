@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { generateKeyBetween } from "fractional-indexing";
-import { router, publicProcedure } from "../trpc";
+import { router, publicProcedure, workspaceProcedure } from "../trpc";
 import {
   hashPassword,
   verifyPassword,
@@ -86,4 +86,29 @@ export const authRouter = router({
     ctx.resHeaders?.append("Set-Cookie", sessionCookie("", 0));
     return { ok: true };
   }),
+
+  updateProfile: workspaceProcedure
+    .input(z.object({ name: z.string().trim().max(120) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.user.update({ where: { id: ctx.user.id }, data: { name: input.name || null } });
+      return { ok: true };
+    }),
+
+  changePassword: workspaceProcedure
+    .input(z.object({ current: z.string().optional(), next: z.string().min(6, "Mínimo 6 caracteres") }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({ where: { id: ctx.user.id } });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      // Si ya tiene contraseña, exige la actual correcta. Si no (cuenta OIDC), permite fijar una.
+      if (user.passwordHash) {
+        if (!verifyPassword(input.current ?? "", user.passwordHash)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "La contraseña actual no es correcta." });
+        }
+      }
+      await ctx.db.user.update({
+        where: { id: user.id },
+        data: { passwordHash: hashPassword(input.next) },
+      });
+      return { ok: true };
+    }),
 });

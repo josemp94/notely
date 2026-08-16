@@ -84,9 +84,9 @@ function AccountFooter() {
   });
   return (
     <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] px-4 py-3">
-      <span className="truncate text-xs text-[var(--muted)]" title={me?.email ?? ""}>
-        {me?.name || me?.email || "Cuenta"}
-      </span>
+      <Link href="/settings" className="min-w-0 flex-1 truncate text-xs text-[var(--muted)] hover:text-brand" title={me?.email ?? ""}>
+        ⚙ {me?.name || me?.email || "Cuenta"}
+      </Link>
       <button
         onClick={() => logout.mutate()}
         className="shrink-0 rounded px-2 py-1 text-xs text-[var(--muted)] hover:text-brand"
