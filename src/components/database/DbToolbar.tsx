@@ -7,12 +7,14 @@ import { opsFor, type DbField, type Filter, type Sort } from "@/lib/viewData";
 
 type View = { id: string; name: string; type: string; config: any };
 
-const VIEW_TYPES: { type: "table" | "kanban" | "calendar" | "gallery" | "chart"; label: string; icon: string }[] = [
+const VIEW_TYPES: { type: "table" | "kanban" | "calendar" | "gallery" | "chart" | "list" | "form"; label: string; icon: string }[] = [
   { type: "table", label: "Tabla", icon: "▤" },
   { type: "kanban", label: "Kanban", icon: "▦" },
-  { type: "calendar", label: "Calendario", icon: "🗓" },
+  { type: "list", label: "Lista", icon: "☰" },
   { type: "gallery", label: "Galería", icon: "🖼" },
+  { type: "calendar", label: "Calendario", icon: "🗓" },
   { type: "chart", label: "Gráfica", icon: "▧" },
+  { type: "form", label: "Formulario", icon: "📝" },
 ];
 
 function Popover({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {

@@ -223,7 +223,7 @@ export const dbRouter = router({
 
   /** Crear una vista nueva en la colección. */
   addView: workspaceProcedure
-    .input(z.object({ collectionId: z.string(), type: z.enum(["table", "kanban", "calendar", "gallery", "chart"]), name: z.string().optional() }))
+    .input(z.object({ collectionId: z.string(), type: z.enum(["table", "kanban", "calendar", "gallery", "chart", "list", "form"]), name: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertCollection(ctx, input.collectionId);
       const fields = await ctx.db.field.findMany({
@@ -271,7 +271,7 @@ export const dbRouter = router({
 
   /** Cambiar el tipo de una vista ("Mostrar como"), recalculando su config por defecto. */
   setViewType: workspaceProcedure
-    .input(z.object({ id: z.string(), type: z.enum(["table", "kanban", "calendar", "gallery", "chart"]) }))
+    .input(z.object({ id: z.string(), type: z.enum(["table", "kanban", "calendar", "gallery", "chart", "list", "form"]) }))
     .mutation(async ({ ctx, input }) => {
       const v = await ctx.db.view.findFirst({
         where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },

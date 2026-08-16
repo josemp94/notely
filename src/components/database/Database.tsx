@@ -10,6 +10,8 @@ import { KanbanView } from "./KanbanView";
 import { ChartView } from "./ChartView";
 import { CalendarView } from "./CalendarView";
 import { GalleryView } from "./GalleryView";
+import { ListView } from "./ListView";
+import { FormView } from "./FormView";
 
 export function Database({
   pageId,
@@ -89,7 +91,7 @@ export function Database({
                   : "text-[var(--muted)] hover:text-[var(--foreground)]"
               }`}
             >
-              {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : v.type === "gallery" ? "🖼 " : "▤ "}
+              {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : v.type === "gallery" ? "🖼 " : v.type === "list" ? "☰ " : v.type === "form" ? "📝 " : "▤ "}
               {v.name}
             </button>
           ))}
@@ -128,6 +130,10 @@ export function Database({
         />
       ) : active?.type === "gallery" ? (
         <GalleryView pageId={pageId} collectionId={col.id} fields={fields} records={asAny(viewRecords)} />
+      ) : active?.type === "list" ? (
+        <ListView pageId={pageId} collectionId={col.id} fields={asAny(fields)} records={asAny(viewRecords)} />
+      ) : active?.type === "form" ? (
+        <FormView pageId={pageId} collectionId={col.id} fields={asAny(fields)} />
       ) : (
         <TableView pageId={pageId} collectionId={col.id} fields={fields} records={asAny(viewRecords)} view={active} />
       )}
