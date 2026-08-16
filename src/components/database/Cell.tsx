@@ -28,7 +28,7 @@ export function Cell({
   onCommit: (v: unknown) => void;
   rollupValue?: string | number;
 }) {
-  if (field.type === "rollup") {
+  if (field.type === "rollup" || field.type === "formula") {
     const v = rollupValue;
     return (
       <span className="block px-1 py-0.5 text-sm text-[var(--muted)]">

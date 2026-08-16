@@ -180,7 +180,7 @@ export function TableView({
                       value={r.cells?.[f.id]}
                       onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
                     />
-                  ) : f.type === "rollup" ? (
+                  ) : f.type === "rollup" || f.type === "formula" ? (
                     <Cell field={f} value={null} rollupValue={computed?.rollups?.[r.id]?.[f.id]} onCommit={() => {}} />
                   ) : (
                     <Cell

@@ -12,6 +12,7 @@ export const FIELD_LABELS: Record<string, string> = {
   date: "Fecha",
   relation: "Relación",
   rollup: "Rollup",
+  formula: "Fórmula",
 };
 
 const TYPES = ["text", "number", "select", "checkbox", "date"] as const;
@@ -35,15 +36,19 @@ export function AddFieldButton({
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"root" | "relation" | "rollup">("root");
+  const [view, setView] = useState<"root" | "relation" | "rollup" | "formula">("root");
   const [relField, setRelField] = useState<FieldLite | null>(null);
   const [agg, setAgg] = useState<string | null>(null);
+  const [expr, setExpr] = useState("");
+  const [fname, setFname] = useState("Fórmula");
 
   const reset = () => {
     setOpen(false);
     setView("root");
     setRelField(null);
     setAgg(null);
+    setExpr("");
+    setFname("Fórmula");
   };
   const done = () => {
     reset();
@@ -53,6 +58,7 @@ export function AddFieldButton({
   const addField = trpc.db.addField.useMutation({ onSuccess: done });
   const addRelation = trpc.db.addRelation.useMutation({ onSuccess: done });
   const addRollup = trpc.db.addRollup.useMutation({ onSuccess: done });
+  const addFormula = trpc.db.addFormula.useMutation({ onSuccess: done });
   const { data: databases } = trpc.db.listDatabases.useQuery(undefined, { enabled: open });
 
   const relationFields = fields.filter((f) => f.type === "relation");
@@ -99,7 +105,56 @@ export function AddFieldButton({
               >
                 Σ Rollup →
               </button>
+              <button
+                onClick={() => setView("formula")}
+                className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+              >
+                ƒ Fórmula →
+              </button>
             </>
+          )}
+
+          {view === "formula" && (
+            <div className="w-64 p-1">
+              <button onClick={() => setView("root")} className="mb-1 block text-left text-xs text-[var(--muted)] hover:text-brand">
+                ‹ Nueva fórmula
+              </button>
+              <input
+                value={fname}
+                onChange={(e) => setFname(e.target.value)}
+                placeholder="Nombre"
+                className="mb-1 w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none"
+              />
+              <textarea
+                value={expr}
+                onChange={(e) => setExpr(e.target.value)}
+                placeholder={'if(prop("Estado") == "Hecho", 1, 0)'}
+                rows={3}
+                className="w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 font-mono text-xs outline-none"
+              />
+              <div className="mt-1 max-h-16 overflow-y-auto text-[11px] text-[var(--muted)]">
+                Campos:{" "}
+                {fields
+                  .filter((f) => f.type !== "formula")
+                  .map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setExpr((x) => `${x}prop("${f.name}")`)}
+                      className="mr-1 rounded bg-[var(--border)]/40 px-1 hover:text-brand"
+                    >
+                      {f.name}
+                    </button>
+                  ))}
+              </div>
+              <div className="mt-1 text-[10px] text-[var(--muted)]">Funciones: if, round, min, max, abs, concat, contains, upper, lower, and, or, not</div>
+              <button
+                onClick={() => addFormula.mutate({ collectionId, name: fname || "Fórmula", expression: expr })}
+                disabled={!expr.trim()}
+                className="mt-2 w-full rounded bg-brand px-2 py-1 text-sm text-white disabled:opacity-40"
+              >
+                Crear fórmula
+              </button>
+            </div>
           )}
 
           {view === "relation" && (

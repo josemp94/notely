@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { Prisma } from "@prisma/client";
 import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd } from "@/lib/fractional";
+import { evalFormula } from "../formula";
 
 // Tipos de campo soportados en Fase 2
 export const FIELD_TYPES = ["text", "number", "select", "checkbox", "date"] as const;
@@ -348,7 +349,28 @@ export const dbRouter = router({
       });
     }),
 
-  /** Resuelve etiquetas de relaciones y valores de rollups (se calcula en el servidor). */
+  /** Crea un campo de fórmula (expresión calculada estilo Notion). */
+  addFormula: workspaceProcedure
+    .input(z.object({ collectionId: z.string(), name: z.string().default("Fórmula"), expression: z.string().default("") }))
+    .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const last = await ctx.db.field.findFirst({
+        where: { collectionId: input.collectionId },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
+      return ctx.db.field.create({
+        data: {
+          collectionId: input.collectionId,
+          name: input.name,
+          type: "formula",
+          order: rankAtEnd(last?.order ?? null),
+          config: { expression: input.expression },
+        },
+      });
+    }),
+
+  /** Resuelve etiquetas de relaciones, valores de rollups y fórmulas (se calcula en el servidor). */
   computed: workspaceProcedure
     .input(z.object({ pageId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -361,6 +383,20 @@ export const dbRouter = router({
 
       const relationFields = col.fields.filter((f) => f.type === "relation");
       const rollupFields = col.fields.filter((f) => f.type === "rollup");
+      const formulaFields = col.fields.filter((f) => f.type === "formula");
+
+      // Valor escalar de un campo para el contexto de fórmulas.
+      const scalarOf = (field: (typeof col.fields)[number], cellVal: unknown): number | string | boolean | null => {
+        if (cellVal === undefined || cellVal === null || cellVal === "") return null;
+        if (field.type === "select") {
+          const opts = ((field.config as { options?: { id: string; label: string }[] }).options) ?? [];
+          return opts.find((o) => o.id === cellVal)?.label ?? String(cellVal);
+        }
+        if (field.type === "checkbox") return Boolean(cellVal);
+        if (field.type === "number") return Number(cellVal);
+        if (field.type === "relation") return Array.isArray(cellVal) ? cellVal.length : 0;
+        return typeof cellVal === "string" ? cellVal : String(cellVal);
+      };
 
       // Cargar las colecciones destino referenciadas por las relaciones.
       const targetColIds = [
@@ -443,6 +479,20 @@ export const dbRouter = router({
             }
           }
           (rollups[rec.id] ??= {})[rup.id] = out;
+        }
+        // fórmulas (pueden referenciar otros campos y rollups por nombre)
+        if (formulaFields.length) {
+          const cellsRec = (rec.cells ?? {}) as Record<string, unknown>;
+          const ctxByName: Record<string, number | string | boolean | null> = {};
+          for (const f of col.fields) {
+            if (f.type === "rollup") ctxByName[f.name] = rollups[rec.id]?.[f.id] ?? null;
+            else if (f.type !== "formula") ctxByName[f.name] = scalarOf(f, cellsRec[f.id]);
+          }
+          for (const ff of formulaFields) {
+            const expr = (ff.config as { expression?: string })?.expression ?? "";
+            const v = evalFormula(expr, ctxByName);
+            (rollups[rec.id] ??= {})[ff.id] = v === null ? "" : (v as string | number);
+          }
         }
       }
 
