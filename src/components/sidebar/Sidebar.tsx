@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { trpc } from "@/trpc/react";
@@ -169,6 +170,8 @@ function ShareDialog({ onClose, onChange }: { onClose: () => void; onChange: () 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"editor" | "viewer">("editor");
   const [err, setErr] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const refresh = async () => {
     await utils.workspace.members.invalidate();
@@ -185,45 +188,53 @@ function ShareDialog({ onClose, onChange }: { onClose: () => void; onChange: () 
   const setRoleM = trpc.workspace.setRole.useMutation({ onSuccess: refresh });
   const unshare = trpc.workspace.unshare.useMutation({ onSuccess: refresh });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 shadow-xl"
+        className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-1 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold">Compartir espacio</h2>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand">
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
             ✕
           </button>
         </div>
+        <p className="mb-4 text-xs text-[var(--muted)]">
+          La persona debe haber entrado antes una vez con su cuenta del NAS.
+        </p>
 
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-1 flex flex-col gap-2 sm:flex-row">
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="email de la persona (cuenta del NAS)"
-            className="flex-1 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-brand"
+            onKeyDown={(e) => e.key === "Enter" && email.trim() && share.mutate({ email: email.trim(), role })}
+            placeholder="email de la persona"
+            className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-brand"
           />
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as "editor" | "viewer")}
-            className="rounded-lg border border-[var(--border)] bg-transparent px-2 py-2 text-sm"
-          >
-            <option value="editor">Editor</option>
-            <option value="viewer">Solo lectura</option>
-          </select>
-          <button
-            onClick={() => share.mutate({ email: email.trim(), role })}
-            disabled={!email.trim() || share.isPending}
-            className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            Añadir
-          </button>
+          <div className="flex gap-2">
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as "editor" | "viewer")}
+              className="rounded-lg border border-[var(--border)] bg-transparent px-2 py-2 text-sm"
+            >
+              <option value="editor">Editor</option>
+              <option value="viewer">Solo lectura</option>
+            </select>
+            <button
+              onClick={() => share.mutate({ email: email.trim(), role })}
+              disabled={!email.trim() || share.isPending}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              Añadir
+            </button>
+          </div>
         </div>
-        {err && <p className="mb-3 text-xs text-red-500">{err}</p>}
+        {err && <p className="mb-2 text-xs text-red-500">{err}</p>}
 
-        <ul className="space-y-1">
+        <ul className="mt-3 space-y-1">
           {(data?.members ?? []).map((m) => {
             const isOwner = m.userId === data?.ownerId;
             return (
@@ -255,7 +266,8 @@ function ShareDialog({ onClose, onChange }: { onClose: () => void; onChange: () 
           })}
         </ul>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -316,6 +328,7 @@ function TreeItem({
   const router = useRouter();
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(true);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const children = byParent.get(node.id) ?? [];
   const active = pathname === `/p/${node.id}`;
 
@@ -361,18 +374,88 @@ function TreeItem({
               +
             </button>
             <button
-              onClick={() => archive.mutate({ id: node.id })}
+              onClick={(e) => {
+                const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setMenu({ x: r.left, y: r.bottom });
+              }}
               className="rounded px-1 text-[var(--muted)] hover:text-brand"
-              title="Enviar a la papelera"
+              title="Más acciones"
             >
               ⋯
             </button>
           </div>
         )}
       </div>
+
+      {menu && (
+        <RowMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              label: "➕ Añadir subpágina",
+              onClick: () => addSub.mutate({ parentId: node.id }),
+            },
+            {
+              label: "🗑 Enviar a la papelera",
+              danger: true,
+              onClick: () => archive.mutate({ id: node.id }),
+            },
+          ]}
+        />
+      )}
+
       {open && children.length > 0 && (
         <Tree nodes={children} byParent={byParent} depth={depth + 1} canEdit={canEdit} />
       )}
     </li>
+  );
+}
+
+function RowMenu({
+  x,
+  y,
+  items,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  items: { label: string; onClick: () => void; danger?: boolean }[];
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as globalThis.Node)) onClose();
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [onClose]);
+  if (!mounted) return null;
+  return createPortal(
+    <div
+      ref={ref}
+      className="fixed z-[100] min-w-44 rounded-lg border border-[var(--border)] bg-[var(--background)] p-1 shadow-xl"
+      style={{ left: x, top: y + 4 }}
+    >
+      {items.map((it) => (
+        <button
+          key={it.label}
+          onClick={() => {
+            it.onClick();
+            onClose();
+          }}
+          className={`block w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40 ${
+            it.danger ? "text-red-500" : ""
+          }`}
+        >
+          {it.label}
+        </button>
+      ))}
+    </div>,
+    document.body,
   );
 }

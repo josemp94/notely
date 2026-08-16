@@ -113,10 +113,15 @@ export async function resolveUser(cfg: OidcConfig, tokens: TokenResponse): Promi
   if (!claims.sub && tokens.id_token) {
     claims = decodeJwt(tokens.id_token) ?? {};
   }
-  const sub = String(claims.sub ?? claims.user_id ?? claims.uid ?? "");
-  const preferred = (claims.preferred_username ?? claims.username ?? claims.name) as string | undefined;
-  const email = String(claims.email ?? (preferred ? `${preferred}@sso.local` : `${sub}@sso.local`)).toLowerCase();
-  const name = (claims.name ?? preferred ?? null) as string | null;
+  // DSM manda "" (cadena vacía) para claims ausentes; ?? no lo captura → tratar "" como indefinido.
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const sub = str(claims.sub) ?? str(claims.user_id) ?? str(claims.uid) ?? "";
+  const preferred = str(claims.preferred_username) ?? str(claims.username) ?? str(claims.name);
+  const emailClaim = str(claims.email);
+  const email = (
+    emailClaim ?? (preferred ? `${preferred}@sso.local` : sub ? `${sub}@sso.local` : "")
+  ).toLowerCase();
+  const name = str(claims.name) ?? preferred ?? null;
   return { sub, email, name };
 }
 

@@ -99,7 +99,7 @@ export const pagesRouter = router({
   trash: workspaceProcedure.query(async ({ ctx }) => {
     return ctx.db.page.findMany({
       where: { workspaceId: ctx.workspace.id, archivedAt: { not: null } },
-      select: { id: true, title: true, icon: true, archivedAt: true },
+      select: { id: true, title: true, icon: true, parentId: true, archivedAt: true },
       orderBy: { archivedAt: "desc" },
     });
   }),
