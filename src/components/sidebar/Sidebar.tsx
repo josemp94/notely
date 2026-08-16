@@ -70,7 +70,31 @@ export function Sidebar() {
       >
         🗑 Papelera
       </Link>
+      <AccountFooter />
     </aside>
+  );
+}
+
+function AccountFooter() {
+  const { data: me } = trpc.auth.me.useQuery();
+  const logout = trpc.auth.logout.useMutation({
+    onSuccess: () => {
+      window.location.href = "/login";
+    },
+  });
+  return (
+    <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] px-4 py-3">
+      <span className="truncate text-xs text-[var(--muted)]" title={me?.email ?? ""}>
+        {me?.name || me?.email || "Cuenta"}
+      </span>
+      <button
+        onClick={() => logout.mutate()}
+        className="shrink-0 rounded px-2 py-1 text-xs text-[var(--muted)] hover:text-brand"
+        title="Cerrar sesión"
+      >
+        Salir
+      </button>
+    </div>
   );
 }
 

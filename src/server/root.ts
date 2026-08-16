@@ -1,8 +1,10 @@
 import { router, workspaceProcedure } from "./trpc";
 import { pagesRouter } from "./routers/pages";
 import { dbRouter } from "./routers/db";
+import { authRouter } from "./routers/auth";
 
 export const appRouter = router({
+  auth: authRouter,
   pages: pagesRouter,
   db: dbRouter,
   me: workspaceProcedure.query(({ ctx }) => ({

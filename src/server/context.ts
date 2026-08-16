@@ -1,11 +1,13 @@
 import { db } from "@/lib/db";
+import { getSessionUser, parseCookie, SESSION_COOKIE } from "./auth";
 
 /**
- * Contexto de tRPC. En Fase 1 (mono-usuario, sin login todavía) resolvemos
- * el usuario y workspace sembrados. La autenticación real (Auth.js) llega en Fase 1b.
+ * Contexto de tRPC. La sesión se resuelve desde la cookie de sesión (Fase 4: auth real).
+ * `resHeaders` permite a los procedimientos de auth fijar/limpiar la cookie.
  */
-export async function createContext() {
-  const user = await db.user.findFirst({ orderBy: { createdAt: "asc" } });
+export async function createContext(opts?: { req?: Request; resHeaders?: Headers }) {
+  const token = parseCookie(opts?.req?.headers.get("cookie") ?? null, SESSION_COOKIE);
+  const user = await getSessionUser(token);
   const workspace = user
     ? await db.workspace.findFirst({
         where: { ownerId: user.id },
@@ -13,7 +15,7 @@ export async function createContext() {
       })
     : null;
 
-  return { db, user, workspace };
+  return { db, user, workspace, sessionToken: token, resHeaders: opts?.resHeaders };
 }
 
 export type Context = Awaited<ReturnType<typeof createContext>>;

@@ -1,7 +1,17 @@
 import { PrismaClient } from "@prisma/client";
 import { generateKeyBetween } from "fractional-indexing";
+import crypto from "crypto";
 
 const db = new PrismaClient();
+
+function hashPassword(pw) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(pw, salt, 64).toString("hex");
+  return `scrypt$${salt}$${hash}`;
+}
+
+// Contraseña inicial para la cuenta sembrada de Jose (cámbiala luego).
+const SEED_PASSWORD = process.env.SEED_PASSWORD || "notely-jose";
 
 async function main() {
   const user = await db.user.upsert({
@@ -9,6 +19,15 @@ async function main() {
     update: {},
     create: { email: "jose@notely.local", name: "Jose", role: "admin" },
   });
+
+  // Fija la contraseña inicial solo si aún no tiene (no pisa cambios posteriores).
+  if (!user.passwordHash) {
+    await db.user.update({
+      where: { id: user.id },
+      data: { passwordHash: hashPassword(SEED_PASSWORD) },
+    });
+    console.log("Contraseña inicial fijada para jose@notely.local");
+  }
 
   let workspace = await db.workspace.findFirst({ where: { ownerId: user.id } });
   if (!workspace) {
