@@ -2,10 +2,21 @@ import { z } from "zod";
 import { router, publicProcedure, workspaceProcedure } from "../trpc";
 import { destroySession, sessionCookie } from "../auth";
 
-// Notely es SSO-only. El alta de usuarios ocurre en el callback OIDC (/api/auth/oidc/callback).
+// Notiono es SSO-only. El alta de usuarios ocurre en el callback OIDC (/api/auth/oidc/callback).
 export const authRouter = router({
   me: publicProcedure.query(({ ctx }) =>
-    ctx.user ? { id: ctx.user.id, email: ctx.user.email, name: ctx.user.name, role: ctx.user.role } : null,
+    ctx.user
+      ? {
+          id: ctx.user.id,
+          email: ctx.user.email,
+          name: ctx.user.name,
+          role: ctx.user.role,
+          wsRole: ctx.role, // owner | editor | viewer en el espacio activo
+          workspace: ctx.workspace
+            ? { id: ctx.workspace.id, name: ctx.workspace.name, icon: ctx.workspace.icon }
+            : null,
+        }
+      : null,
   ),
 
   logout: publicProcedure.mutation(async ({ ctx }) => {

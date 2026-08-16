@@ -1,21 +1,43 @@
 import { db } from "@/lib/db";
 import { getSessionUser, parseCookie, SESSION_COOKIE } from "./auth";
 
+export const WS_COOKIE = "notiono_ws";
+
 /**
- * Contexto de tRPC. La sesión se resuelve desde la cookie de sesión (Fase 4: auth real).
- * `resHeaders` permite a los procedimientos de auth fijar/limpiar la cookie.
+ * Contexto de tRPC. Sesión desde cookie; espacio activo = propio o compartido
+ * (via Member). La cookie `notiono_ws` fija cuál es el activo al cambiar de espacio.
  */
 export async function createContext(opts?: { req?: Request; resHeaders?: Headers }) {
-  const token = parseCookie(opts?.req?.headers.get("cookie") ?? null, SESSION_COOKIE);
+  const cookie = opts?.req?.headers.get("cookie") ?? null;
+  const token = parseCookie(cookie, SESSION_COOKIE);
   const user = await getSessionUser(token);
-  const workspace = user
-    ? await db.workspace.findFirst({
-        where: { ownerId: user.id },
-        orderBy: { createdAt: "asc" },
-      })
-    : null;
 
-  return { db, user, workspace, sessionToken: token, resHeaders: opts?.resHeaders };
+  let workspace = null;
+  let role: "owner" | "editor" | "viewer" | null = null;
+
+  if (user) {
+    const accessible = { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }] };
+    const wsId = parseCookie(cookie, WS_COOKIE);
+    if (wsId) {
+      workspace = await db.workspace.findFirst({ where: { id: wsId, ...accessible } });
+    }
+    if (!workspace) {
+      workspace = await db.workspace.findFirst({ where: accessible, orderBy: { createdAt: "asc" } });
+    }
+    if (workspace) {
+      if (workspace.ownerId === user.id) {
+        role = "owner";
+      } else {
+        const m = await db.member.findUnique({
+          where: { workspaceId_userId: { workspaceId: workspace.id, userId: user.id } },
+          select: { role: true },
+        });
+        role = (m?.role as "editor" | "viewer") ?? "viewer";
+      }
+    }
+  }
+
+  return { db, user, workspace, role, sessionToken: token, resHeaders: opts?.resHeaders };
 }
 
 export type Context = Awaited<ReturnType<typeof createContext>>;

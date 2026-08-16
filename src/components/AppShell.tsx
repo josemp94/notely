@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ☰
           </button>
           <span className="font-display font-bold">
-            Note<span className="text-brand">ly</span>
+            No<span className="text-brand">tio</span>no
           </span>
         </div>
 
