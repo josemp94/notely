@@ -69,6 +69,20 @@ export default function LoginPage() {
           {busy ? "…" : mode === "login" ? "Entrar" : "Crear cuenta"}
         </button>
 
+        {process.env.NEXT_PUBLIC_OIDC_ENABLED === "1" && (
+          <>
+            <div className="my-4 flex items-center gap-2 text-[10px] uppercase text-[var(--muted)]">
+              <span className="h-px flex-1 bg-[var(--border)]" />o<span className="h-px flex-1 bg-[var(--border)]" />
+            </div>
+            <a
+              href="/api/auth/oidc/start"
+              className="block w-full rounded-lg border border-[var(--border)] px-3 py-2 text-center text-sm font-medium hover:border-brand hover:text-brand"
+            >
+              Entrar con {process.env.NEXT_PUBLIC_OIDC_NAME || "Synology"}
+            </a>
+          </>
+        )}
+
         <button
           type="button"
           onClick={() => {
