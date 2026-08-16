@@ -4,6 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/trpc/react";
 import { Cell, type FieldLite } from "./Cell";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
+import { RecordPanel } from "./RecordPanel";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
@@ -28,12 +29,14 @@ export function TableView({
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
 
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [openRec, setOpenRec] = useState<Rec | null>(null);
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-y border-[var(--border)] text-left text-[var(--muted)]">
+            <th className="w-8" />
             {fields.map((f) => (
               <th key={f.id} className="group min-w-40 px-2 py-1 font-medium">
                 <span className="flex items-center gap-1">
@@ -73,6 +76,15 @@ export function TableView({
         <tbody>
           {records.map((r) => (
             <tr key={r.id} className="group border-b border-[var(--border)] hover:bg-[var(--border)]/20">
+              <td className="px-1 py-1 text-center">
+                <button
+                  onClick={() => setOpenRec(r)}
+                  className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
+                  title="Abrir ficha"
+                >
+                  ⤢
+                </button>
+              </td>
               {fields.map((f) => (
                 <td key={f.id} className="px-2 py-1">
                   <Cell
@@ -103,6 +115,19 @@ export function TableView({
       >
         + Nueva fila
       </button>
+
+      {openRec &&
+        (() => {
+          const fresh = records.find((r) => r.id === openRec.id) ?? openRec;
+          return (
+            <RecordPanel
+              pageId={pageId}
+              record={fresh}
+              fields={fields}
+              onClose={() => setOpenRec(null)}
+            />
+          );
+        })()}
     </div>
   );
 }
