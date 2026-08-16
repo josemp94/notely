@@ -106,6 +106,14 @@ export const dbRouter = router({
           config: { dateFieldId: fecha.id },
         },
       });
+      await ctx.db.view.create({
+        data: {
+          collectionId: collection.id,
+          name: "Galería",
+          type: "gallery",
+          config: {},
+        },
+      });
       // Filas de ejemplo
       let ord: string | null = null;
       for (const [i, name] of ["Primera tarea", "Segunda tarea"].entries()) {

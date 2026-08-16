@@ -6,6 +6,7 @@ import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
 import { ChartView } from "./ChartView";
 import { CalendarView } from "./CalendarView";
+import { GalleryView } from "./GalleryView";
 
 export function Database({ pageId, title }: { pageId: string; title: string }) {
   const { data: col, isLoading } = trpc.db.get.useQuery({ pageId });
@@ -34,7 +35,7 @@ export function Database({ pageId, title }: { pageId: string; title: string }) {
                 : "text-[var(--muted)] hover:text-[var(--foreground)]"
             }`}
           >
-            {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : "▤ "}
+            {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : v.type === "gallery" ? "🖼 " : "▤ "}
             {v.name}
           </button>
         ))}
@@ -58,6 +59,13 @@ export function Database({ pageId, title }: { pageId: string; title: string }) {
           fields={fields}
           records={records}
           view={active}
+        />
+      ) : active?.type === "gallery" ? (
+        <GalleryView
+          pageId={pageId}
+          collectionId={col.id}
+          fields={fields}
+          records={records}
         />
       ) : (
         <TableView
