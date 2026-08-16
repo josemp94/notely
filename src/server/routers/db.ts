@@ -52,47 +52,20 @@ export const dbRouter = router({
       const collection = await ctx.db.collection.create({
         data: { pageId: page.id, name: input.title },
       });
-      // Campos por defecto
-      const nombre = await ctx.db.field.create({
+      // Campo único inicial: "Nombre" (como Notion). El resto se añaden con "+".
+      await ctx.db.field.create({
         data: { collectionId: collection.id, name: "Nombre", type: "text", order: rankAtEnd(null), config: {} },
       });
-      const estadoOpts = [
-        { id: "opt_todo", label: "Por hacer", color: "gray" },
-        { id: "opt_doing", label: "En curso", color: "orange" },
-        { id: "opt_done", label: "Hecho", color: "green" },
-      ];
-      const estado = await ctx.db.field.create({
-        data: {
-          collectionId: collection.id,
-          name: "Estado",
-          type: "select",
-          order: rankAtEnd(nombre.order),
-          config: { options: estadoOpts },
-        },
-      });
-      await ctx.db.field.create({
-        data: {
-          collectionId: collection.id,
-          name: "Fecha",
-          type: "date",
-          order: rankAtEnd(estado.order),
-          config: {},
-        },
-      });
-      // Vista inicial: solo Tabla (como Notion). El resto se añaden con "+ Vista".
+      // Vista inicial: solo Tabla. El resto se añaden con "+ Vista".
       await ctx.db.view.create({
         data: { collectionId: collection.id, name: "Tabla", type: "table", config: {} },
       });
-      // Filas de ejemplo
+      // Filas vacías iniciales (como Notion).
       let ord: string | null = null;
-      for (const [i, name] of ["Primera tarea", "Segunda tarea"].entries()) {
+      for (let i = 0; i < 3; i++) {
         ord = rankAtEnd(ord);
         await ctx.db.record.create({
-          data: {
-            collectionId: collection.id,
-            order: ord,
-            cells: { [nombre.id]: name, [estado.id]: i === 0 ? "opt_todo" : "opt_doing" },
-          },
+          data: { collectionId: collection.id, order: ord, cells: {} },
         });
       }
       return page;
