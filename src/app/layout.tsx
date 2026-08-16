@@ -19,7 +19,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Notely",
+  title: "Notiono",
   description: "Tu espacio: notas, bases de datos y gráficas reales. Self-hosted.",
 };
 

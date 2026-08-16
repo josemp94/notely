@@ -42,6 +42,11 @@ services:
       DATABASE_URL: "postgresql://notely:notely@db:5432/notely"
       AUTH_SECRET: "dev-secret-cambiar-en-prod"
       NODE_ENV: "production"
+      OIDC_ISSUER: "https://monrealperez.com/sso/webman/sso"
+      OIDC_CLIENT_ID: "aaffef367517843c60a650c711c87010"
+      OIDC_CLIENT_SECRET: "2ZAb6KOLZ9A6LnpbGqCMCsc2SEBnUJtl"
+      OIDC_REDIRECT_URI: "https://notiono.monrealperez.com/api/auth/oidc/callback"
+      OIDC_PROVIDER_NAME: "Synology"
     ports:
       - "3000:3000"
     healthcheck:

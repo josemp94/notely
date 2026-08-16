@@ -17,7 +17,7 @@ export async function ensureWorkspace(db: DB, user: { id: string; name: string |
         icon: "🏠",
         order: generateKeyBetween(null, null),
         content: [
-          { type: "heading", props: { level: 1 }, content: "Bienvenido a Notely 🧡" },
+          { type: "heading", props: { level: 1 }, content: "Bienvenido a Notiono 🧡" },
           { type: "paragraph", content: "Este es tu espacio. Escribe, organiza y crea bases de datos." },
           { type: "paragraph", content: 'Pulsa "+ Página" o "+ BD" en la barra lateral para empezar.' },
         ],
