@@ -51,7 +51,13 @@ export function Database({ pageId, title }: { pageId: string; title: string }) {
       ) : active?.type === "chart" ? (
         <ChartView pageId={pageId} view={active} fields={fields} />
       ) : (
-        <TableView pageId={pageId} collectionId={col.id} fields={fields} records={records} />
+        <TableView
+          pageId={pageId}
+          collectionId={col.id}
+          fields={fields}
+          records={records}
+          view={active}
+        />
       )}
     </div>
   );
