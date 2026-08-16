@@ -10,6 +10,7 @@ import {
   sessionCookie,
   SESSION_MAX_AGE,
 } from "../auth";
+import { getOidcConfig } from "../oidc";
 
 type DB = typeof import("@/lib/db").db;
 
@@ -46,30 +47,17 @@ export const authRouter = router({
     ctx.user ? { id: ctx.user.id, email: ctx.user.email, name: ctx.user.name } : null,
   ),
 
-  signup: publicProcedure
-    .input(
-      z.object({
-        email: z.string().email(),
-        password: z.string().min(6, "Mínimo 6 caracteres"),
-        name: z.string().trim().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const email = input.email.toLowerCase().trim();
-      const exists = await ctx.db.user.findUnique({ where: { email } });
-      if (exists) throw new TRPCError({ code: "CONFLICT", message: "Ese email ya está registrado." });
-      const user = await ctx.db.user.create({
-        data: { email, name: input.name || null, passwordHash: hashPassword(input.password), role: "member" },
-      });
-      await ensureWorkspace(ctx.db, user);
-      const token = await createSession(user.id);
-      setSessionCookie(ctx, token);
-      return { id: user.id, email: user.email, name: user.name };
-    }),
+  /** Indica al cliente si el login local (respaldo) está disponible. Solo si NO hay SSO configurado. */
+  localLoginAllowed: publicProcedure.query(() => getOidcConfig() === null),
 
   login: publicProcedure
     .input(z.object({ email: z.string().email(), password: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Política: solo cuentas SSO. El login local es un respaldo que se desactiva
+      // en cuanto el SSO está configurado.
+      if (getOidcConfig() !== null) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Inicia sesión con Synology." });
+      }
       const email = input.email.toLowerCase().trim();
       const user = await ctx.db.user.findUnique({ where: { email } });
       if (!user || !verifyPassword(input.password, user.passwordHash)) {
