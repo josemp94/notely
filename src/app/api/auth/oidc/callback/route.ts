@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
 
     let user = await db.user.findUnique({ where: { email: info.email } });
     if (!user) {
-      user = await db.user.create({ data: { email: info.email, name: info.name, role: "member" } });
+      const isFirst = (await db.user.count()) === 0;
+      user = await db.user.create({
+        data: { email: info.email, name: info.name, role: isFirst ? "admin" : "member" },
+      });
     }
     await ensureWorkspace(db, user);
 

@@ -1,24 +1,7 @@
 import crypto from "crypto";
 import { db } from "@/lib/db";
 
-const KEYLEN = 64;
-
-/** Hash de contraseña con scrypt nativo (formato scrypt$salt$hash). */
-export function hashPassword(pw: string): string {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.scryptSync(pw, salt, KEYLEN).toString("hex");
-  return `scrypt$${salt}$${hash}`;
-}
-
-export function verifyPassword(pw: string, stored: string | null | undefined): boolean {
-  if (!stored) return false;
-  const [algo, salt, hash] = stored.split("$");
-  if (algo !== "scrypt" || !salt || !hash) return false;
-  const test = crypto.scryptSync(pw, salt, KEYLEN).toString("hex");
-  const a = Buffer.from(hash, "hex");
-  const b = Buffer.from(test, "hex");
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
+// Notely es SSO-only: no hay contraseñas. Este módulo solo maneja sesiones (cookie).
 
 export const SESSION_COOKIE = "notely_session";
 const SESSION_DAYS = 30;
