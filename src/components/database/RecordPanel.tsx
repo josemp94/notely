@@ -2,6 +2,7 @@
 
 import { trpc } from "@/trpc/react";
 import { Cell, type FieldLite } from "./Cell";
+import { RelationCell } from "./RelationCell";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
@@ -18,6 +19,7 @@ export function RecordPanel({
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
+  const { data: computed } = trpc.db.computed.useQuery({ pageId });
   const updateCell = trpc.db.updateCell.useMutation({ onSuccess: invalidate });
   const deleteRecord = trpc.db.deleteRecord.useMutation({
     onSuccess: async () => {
@@ -53,13 +55,22 @@ export function RecordPanel({
             <div key={f.id} className="grid grid-cols-[120px_1fr] items-center gap-3">
               <span className="truncate text-sm text-[var(--muted)]">{f.name}</span>
               <div className="rounded border border-[var(--border)] px-1">
-                <Cell
-                  field={f}
-                  value={record.cells?.[f.id]}
-                  onCommit={(value) =>
-                    updateCell.mutate({ recordId: record.id, fieldId: f.id, value })
-                  }
-                />
+                {f.type === "relation" ? (
+                  <RelationCell
+                    field={f}
+                    value={record.cells?.[f.id]}
+                    onCommit={(value) => updateCell.mutate({ recordId: record.id, fieldId: f.id, value })}
+                  />
+                ) : (
+                  <Cell
+                    field={f}
+                    value={record.cells?.[f.id]}
+                    rollupValue={computed?.rollups?.[record.id]?.[f.id]}
+                    onCommit={(value) =>
+                      updateCell.mutate({ recordId: record.id, fieldId: f.id, value })
+                    }
+                  />
+                )}
               </div>
             </div>
           ))}

@@ -21,11 +21,31 @@ export function Cell({
   field,
   value,
   onCommit,
+  rollupValue,
 }: {
   field: FieldLite;
   value: unknown;
   onCommit: (v: unknown) => void;
+  rollupValue?: string | number;
 }) {
+  if (field.type === "rollup") {
+    const v = rollupValue;
+    return (
+      <span className="block px-1 py-0.5 text-sm text-[var(--muted)]">
+        {v === undefined || v === null || v === "" ? "—" : String(v)}
+      </span>
+    );
+  }
+
+  if (field.type === "relation") {
+    const n = Array.isArray(value) ? value.length : 0;
+    return (
+      <span className="block px-1 py-0.5 text-sm text-[var(--muted)]">
+        {n ? `${n} vinculado${n > 1 ? "s" : ""}` : "—"}
+      </span>
+    );
+  }
+
   if (field.type === "checkbox") {
     return (
       <input

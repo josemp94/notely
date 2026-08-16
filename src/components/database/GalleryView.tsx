@@ -14,6 +14,11 @@ function displayValue(field: FieldLite, value: unknown): string {
     return optionsOf(field).find((o) => o.id === value)?.label ?? String(value);
   }
   if (field.type === "checkbox") return value ? "Sí" : "No";
+  if (field.type === "relation") {
+    const n = Array.isArray(value) ? value.length : 0;
+    return n ? `${n} vinculado${n > 1 ? "s" : ""}` : "";
+  }
+  if (field.type === "rollup") return ""; // calculado; no vive en la celda
   return String(value);
 }
 

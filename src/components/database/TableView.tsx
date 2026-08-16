@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { trpc } from "@/trpc/react";
 import { Cell, optionsOf, type FieldLite } from "./Cell";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
+import { RelationCell } from "./RelationCell";
 import { RecordPanel } from "./RecordPanel";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
@@ -57,6 +58,7 @@ export function TableView({
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
+  const { data: computed } = trpc.db.computed.useQuery({ pageId });
 
   const [editingField, setEditingField] = useState<string | null>(null);
   const [openRec, setOpenRec] = useState<Rec | null>(null);
@@ -154,7 +156,7 @@ export function TableView({
               </th>
             ))}
             <th className="px-2 py-1">
-              <AddFieldButton collectionId={collectionId} onDone={invalidate} />
+              <AddFieldButton collectionId={collectionId} fields={fields} onDone={invalidate} />
             </th>
           </tr>
         </thead>
@@ -172,11 +174,21 @@ export function TableView({
               </td>
               {fields.map((f) => (
                 <td key={f.id} className="px-2 py-1">
-                  <Cell
-                    field={f}
-                    value={r.cells?.[f.id]}
-                    onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
-                  />
+                  {f.type === "relation" ? (
+                    <RelationCell
+                      field={f}
+                      value={r.cells?.[f.id]}
+                      onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
+                    />
+                  ) : f.type === "rollup" ? (
+                    <Cell field={f} value={null} rollupValue={computed?.rollups?.[r.id]?.[f.id]} onCommit={() => {}} />
+                  ) : (
+                    <Cell
+                      field={f}
+                      value={r.cells?.[f.id]}
+                      onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
+                    />
+                  )}
                 </td>
               ))}
               <td className="px-2 py-1">

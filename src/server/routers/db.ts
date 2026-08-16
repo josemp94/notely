@@ -252,6 +252,203 @@ export const dbRouter = router({
       return ctx.db.view.update({ where: { id: input.id }, data: { config: input.config } });
     }),
 
+  /** Lista todas las bases de datos del workspace (para elegir destino de una relación). */
+  listDatabases: workspaceProcedure.query(async ({ ctx }) => {
+    const cols = await ctx.db.collection.findMany({
+      where: { page: { workspaceId: ctx.workspace.id, type: "database", archivedAt: null } },
+      select: {
+        id: true,
+        page: { select: { id: true, title: true, icon: true } },
+        fields: { orderBy: { order: "asc" }, select: { id: true, name: true, type: true } },
+      },
+    });
+    return cols.map((c) => ({
+      collectionId: c.id,
+      pageId: c.page.id,
+      title: c.page.title,
+      icon: c.page.icon,
+      fields: c.fields,
+    }));
+  }),
+
+  /** Registros de una colección como opciones {id,title} para el selector de relación. */
+  relationOptions: workspaceProcedure
+    .input(z.object({ collectionId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const col = await ctx.db.collection.findUnique({
+        where: { id: input.collectionId },
+        include: { fields: { orderBy: { order: "asc" } }, records: { orderBy: { order: "asc" } } },
+      });
+      if (!col) throw new TRPCError({ code: "NOT_FOUND" });
+      const titleField = col.fields.find((f) => f.type === "text") ?? col.fields[0];
+      return col.records.map((r) => {
+        const cells = (r.cells ?? {}) as Record<string, unknown>;
+        const t = titleField ? cells[titleField.id] : "";
+        return { id: r.id, title: (typeof t === "string" && t) || "Sin título" };
+      });
+    }),
+
+  /** Crea un campo de relación que apunta a otra base de datos. */
+  addRelation: workspaceProcedure
+    .input(z.object({ collectionId: z.string(), name: z.string().default("Relación"), targetCollectionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const target = await assertCollection(ctx, input.targetCollectionId);
+      const tPage = await ctx.db.collection.findUnique({
+        where: { id: input.targetCollectionId },
+        select: { pageId: true },
+      });
+      const last = await ctx.db.field.findFirst({
+        where: { collectionId: input.collectionId },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
+      return ctx.db.field.create({
+        data: {
+          collectionId: input.collectionId,
+          name: input.name,
+          type: "relation",
+          order: rankAtEnd(last?.order ?? null),
+          config: { targetCollectionId: target.id, targetPageId: tPage?.pageId ?? null },
+        },
+      });
+    }),
+
+  /** Crea un campo rollup que agrega valores de los registros relacionados. */
+  addRollup: workspaceProcedure
+    .input(
+      z.object({
+        collectionId: z.string(),
+        name: z.string().default("Rollup"),
+        relationFieldId: z.string(),
+        targetFieldId: z.string().nullish(),
+        agg: z.enum(["count", "sum", "avg", "min", "max", "values"]).default("count"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const last = await ctx.db.field.findFirst({
+        where: { collectionId: input.collectionId },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
+      return ctx.db.field.create({
+        data: {
+          collectionId: input.collectionId,
+          name: input.name,
+          type: "rollup",
+          order: rankAtEnd(last?.order ?? null),
+          config: {
+            relationFieldId: input.relationFieldId,
+            targetFieldId: input.targetFieldId ?? null,
+            agg: input.agg,
+          },
+        },
+      });
+    }),
+
+  /** Resuelve etiquetas de relaciones y valores de rollups (se calcula en el servidor). */
+  computed: workspaceProcedure
+    .input(z.object({ pageId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertPage(ctx, input.pageId);
+      const col = await ctx.db.collection.findUnique({
+        where: { pageId: input.pageId },
+        include: { fields: true, records: { orderBy: { order: "asc" } } },
+      });
+      if (!col) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const relationFields = col.fields.filter((f) => f.type === "relation");
+      const rollupFields = col.fields.filter((f) => f.type === "rollup");
+
+      // Cargar las colecciones destino referenciadas por las relaciones.
+      const targetColIds = [
+        ...new Set(
+          relationFields
+            .map((f) => (f.config as { targetCollectionId?: string })?.targetCollectionId)
+            .filter((x): x is string => !!x),
+        ),
+      ];
+      const targetCols = await ctx.db.collection.findMany({
+        where: { id: { in: targetColIds }, page: { workspaceId: ctx.workspace.id } },
+        include: { fields: { orderBy: { order: "asc" } }, records: true },
+      });
+      // Índice: colección destino -> (recordId -> {title, cells}), y su titleFieldId.
+      const targetIndex = new Map<
+        string,
+        { titleFieldId: string | null; recs: Map<string, Record<string, unknown>>; titles: Map<string, string> }
+      >();
+      for (const tc of targetCols) {
+        const titleField = tc.fields.find((f) => f.type === "text") ?? tc.fields[0];
+        const recs = new Map<string, Record<string, unknown>>();
+        const titles = new Map<string, string>();
+        for (const r of tc.records) {
+          const cells = (r.cells ?? {}) as Record<string, unknown>;
+          recs.set(r.id, cells);
+          const t = titleField ? cells[titleField.id] : "";
+          titles.set(r.id, (typeof t === "string" && t) || "Sin título");
+        }
+        targetIndex.set(tc.id, { titleFieldId: titleField?.id ?? null, recs, titles });
+      }
+
+      const relIdsOf = (cells: Record<string, unknown>, fieldId: string): string[] => {
+        const v = cells[fieldId];
+        return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+      };
+
+      const relationLabels: Record<string, Record<string, { id: string; title: string }[]>> = {};
+      const rollups: Record<string, Record<string, string | number>> = {};
+
+      for (const rec of col.records) {
+        const cells = (rec.cells ?? {}) as Record<string, unknown>;
+        // etiquetas de relación
+        for (const rf of relationFields) {
+          const tcid = (rf.config as { targetCollectionId?: string })?.targetCollectionId;
+          const idx = tcid ? targetIndex.get(tcid) : undefined;
+          const ids = relIdsOf(cells, rf.id);
+          const labels = ids.map((id) => ({ id, title: idx?.titles.get(id) ?? "—" }));
+          (relationLabels[rec.id] ??= {})[rf.id] = labels;
+        }
+        // rollups
+        for (const rup of rollupFields) {
+          const cfg = (rup.config ?? {}) as { relationFieldId?: string; targetFieldId?: string | null; agg?: string };
+          const relField = relationFields.find((f) => f.id === cfg.relationFieldId);
+          const tcid = relField ? (relField.config as { targetCollectionId?: string })?.targetCollectionId : undefined;
+          const idx = tcid ? targetIndex.get(tcid) : undefined;
+          const ids = relField ? relIdsOf(cells, relField.id) : [];
+          const agg = cfg.agg ?? "count";
+          let out: string | number = 0;
+          if (agg === "count") {
+            out = ids.length;
+          } else if (cfg.targetFieldId && idx) {
+            const tf = targetCols.find((t) => t.id === tcid)?.fields.find((f) => f.id === cfg.targetFieldId);
+            const raw = ids.map((id) => idx.recs.get(id)?.[cfg.targetFieldId!]).filter((v) => v !== undefined && v !== null && v !== "");
+            if (agg === "values") {
+              const toLabel = (v: unknown) => {
+                if (tf?.type === "select") {
+                  const opts = ((tf.config as { options?: { id: string; label: string }[] }).options) ?? [];
+                  return opts.find((o) => o.id === v)?.label ?? String(v);
+                }
+                return String(v);
+              };
+              out = raw.map(toLabel).join(", ");
+            } else {
+              const nums = raw.map((v) => Number(v)).filter((n) => Number.isFinite(n));
+              if (nums.length === 0) out = 0;
+              else if (agg === "sum") out = Math.round(nums.reduce((a, b) => a + b, 0) * 100) / 100;
+              else if (agg === "avg") out = Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 100) / 100;
+              else if (agg === "min") out = Math.min(...nums);
+              else if (agg === "max") out = Math.max(...nums);
+            }
+          }
+          (rollups[rec.id] ??= {})[rup.id] = out;
+        }
+      }
+
+      return { relationLabels, rollups };
+    }),
+
   /** Datos agregados para una vista de gráfica (se calcula en el servidor). */
   chartData: workspaceProcedure
     .input(z.object({ pageId: z.string(), viewId: z.string() }))
