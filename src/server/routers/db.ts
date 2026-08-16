@@ -231,7 +231,7 @@ export const dbRouter = router({
         orderBy: { order: "asc" },
       });
       const firstOf = (t: string) => fields.find((f) => f.type === t)?.id ?? null;
-      const names: Record<string, string> = { table: "Tabla", kanban: "Kanban", calendar: "Calendario", gallery: "Galería", chart: "Gráfica" };
+      const names: Record<string, string> = { table: "Tabla", kanban: "Kanban", calendar: "Calendario", gallery: "Galería", chart: "Gráfica", list: "Lista", form: "Formulario" };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let config: any = {};
       if (input.type === "kanban") config = { groupByFieldId: firstOf("select") };
