@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { trpc } from "@/trpc/react";
 import { PageIcon } from "@/components/PageIcon";
+import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
+import { DbToolbar } from "./DbToolbar";
 import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
 import { ChartView } from "./ChartView";
@@ -42,14 +44,23 @@ export function Database({
     persist(title, next);
   }
 
+  const active = col?.views.find((v) => v.id === activeViewId) ?? col?.views[0];
+  const fields = col?.fields ?? [];
+  const rawRecords = col?.records ?? [];
+  const viewRecords = useMemo(
+    () => applyViewConfig(rawRecords as unknown as DbRecord[], fields as unknown as DbField[], active?.config),
+    [rawRecords, fields, active],
+  );
+
   if (isLoading || !col) {
     return <div className="px-10 py-10 text-[var(--muted)]">Cargando base de datos…</div>;
   }
+  if (!active) {
+    return <div className="px-10 py-10 text-[var(--muted)]">Esta base de datos no tiene vistas.</div>;
+  }
 
-  const active = col.views.find((v) => v.id === activeViewId) ?? col.views[0];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const records = col.records as any;
-  const fields = col.fields;
+  const asAny = (r: unknown) => r as any;
 
   return (
     <div className="px-3 py-5 md:px-8">
@@ -66,21 +77,35 @@ export function Database({
         </div>
       </div>
 
-      <div className="mb-4 flex gap-1 border-b border-[var(--border)]">
-        {col.views.map((v) => (
-          <button
-            key={v.id}
-            onClick={() => setActiveViewId(v.id)}
-            className={`px-3 py-1.5 text-sm ${
-              active?.id === v.id
-                ? "border-b-2 border-brand font-medium text-brand"
-                : "text-[var(--muted)] hover:text-[var(--foreground)]"
-            }`}
-          >
-            {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : v.type === "gallery" ? "🖼 " : "▤ "}
-            {v.name}
-          </button>
-        ))}
+      <div className="mb-4 flex items-end justify-between gap-2 border-b border-[var(--border)]">
+        <div className="flex gap-1 overflow-x-auto">
+          {col.views.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setActiveViewId(v.id)}
+              className={`whitespace-nowrap px-3 py-1.5 text-sm ${
+                active?.id === v.id
+                  ? "border-b-2 border-brand font-medium text-brand"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : v.type === "gallery" ? "🖼 " : "▤ "}
+              {v.name}
+            </button>
+          ))}
+        </div>
+        {canEdit && active && (
+          <div className="pb-1">
+            <DbToolbar
+              pageId={pageId}
+              collectionId={col.id}
+              view={active}
+              fields={fields}
+              onViewCreated={(id) => setActiveViewId(id)}
+              onViewDeleted={() => setActiveViewId(null)}
+            />
+          </div>
+        )}
       </div>
 
       {active?.type === "kanban" ? (
@@ -88,9 +113,8 @@ export function Database({
           pageId={pageId}
           collectionId={col.id}
           fields={fields}
-          records={records}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          groupByFieldId={(active.config as any)?.groupByFieldId}
+          records={asAny(viewRecords)}
+          groupByFieldId={asAny(active.config)?.groupByFieldId}
         />
       ) : active?.type === "chart" ? (
         <ChartView pageId={pageId} view={active} fields={fields} />
@@ -99,24 +123,13 @@ export function Database({
           pageId={pageId}
           collectionId={col.id}
           fields={fields}
-          records={records}
+          records={asAny(viewRecords)}
           view={active}
         />
       ) : active?.type === "gallery" ? (
-        <GalleryView
-          pageId={pageId}
-          collectionId={col.id}
-          fields={fields}
-          records={records}
-        />
+        <GalleryView pageId={pageId} collectionId={col.id} fields={fields} records={asAny(viewRecords)} />
       ) : (
-        <TableView
-          pageId={pageId}
-          collectionId={col.id}
-          fields={fields}
-          records={records}
-          view={active}
-        />
+        <TableView pageId={pageId} collectionId={col.id} fields={fields} records={asAny(viewRecords)} view={active} />
       )}
     </div>
   );

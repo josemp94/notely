@@ -253,6 +253,54 @@ export const dbRouter = router({
       return ctx.db.view.update({ where: { id: input.id }, data: { config: input.config } });
     }),
 
+  /** Crear una vista nueva en la colección. */
+  addView: workspaceProcedure
+    .input(z.object({ collectionId: z.string(), type: z.enum(["table", "kanban", "calendar", "gallery", "chart"]), name: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const fields = await ctx.db.field.findMany({
+        where: { collectionId: input.collectionId },
+        orderBy: { order: "asc" },
+      });
+      const firstOf = (t: string) => fields.find((f) => f.type === t)?.id ?? null;
+      const names: Record<string, string> = { table: "Tabla", kanban: "Kanban", calendar: "Calendario", gallery: "Galería", chart: "Gráfica" };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let config: any = {};
+      if (input.type === "kanban") config = { groupByFieldId: firstOf("select") };
+      else if (input.type === "calendar") config = { dateFieldId: firstOf("date") };
+      else if (input.type === "chart") config = { chartType: "bar", xFieldId: firstOf("select"), yFieldId: null, agg: "count" };
+      return ctx.db.view.create({
+        data: { collectionId: input.collectionId, name: input.name?.trim() || names[input.type], type: input.type, config },
+      });
+    }),
+
+  /** Renombrar una vista. */
+  renameView: workspaceProcedure
+    .input(z.object({ id: z.string(), name: z.string().min(1).max(60) }))
+    .mutation(async ({ ctx, input }) => {
+      const v = await ctx.db.view.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+        select: { id: true },
+      });
+      if (!v) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.view.update({ where: { id: input.id }, data: { name: input.name.trim() } });
+    }),
+
+  /** Borrar una vista (no la última). */
+  deleteView: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const v = await ctx.db.view.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+        select: { id: true, collectionId: true },
+      });
+      if (!v) throw new TRPCError({ code: "NOT_FOUND" });
+      const count = await ctx.db.view.count({ where: { collectionId: v.collectionId } });
+      if (count <= 1) throw new TRPCError({ code: "BAD_REQUEST", message: "No puedes borrar la última vista." });
+      await ctx.db.view.delete({ where: { id: input.id } });
+      return { ok: true };
+    }),
+
   /** Lista todas las bases de datos del workspace (para elegir destino de una relación). */
   listDatabases: workspaceProcedure.query(async ({ ctx }) => {
     const cols = await ctx.db.collection.findMany({
