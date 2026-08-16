@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { trpc } from "@/trpc/react";
+
 type Option = { id: string; label: string; color?: string };
 export type FieldLite = { id: string; name: string; type: string; config: unknown };
 
@@ -72,24 +75,8 @@ export function Cell({
     );
   }
 
-  if (field.type === "select" || field.type === "status") {
-    const opts = optionsOf(field);
-    const current = opts.find((o) => o.id === value);
-    return (
-      <select
-        value={typeof value === "string" ? value : ""}
-        onChange={(e) => onCommit(e.target.value || null)}
-        className="w-full rounded bg-transparent px-1 py-0.5 text-sm outline-none"
-        style={current ? { background: COLORS[current.color ?? "gray"] } : undefined}
-      >
-        <option value="">—</option>
-        {opts.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    );
+  if (field.type === "select" || field.type === "status" || field.type === "multiselect") {
+    return <TagCell field={field} value={value} onCommit={onCommit} />;
   }
 
   if (field.type === "date") {
@@ -137,5 +124,125 @@ export function Cell({
       }}
       className="w-full bg-transparent px-1 py-0.5 text-sm outline-none"
     />
+  );
+}
+
+const OPTION_COLORS = ["gray", "orange", "green", "blue", "red", "yellow"];
+
+function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown; onCommit: (v: unknown) => void }) {
+  const utils = trpc.useUtils();
+  const updateField = trpc.db.updateField.useMutation({ onSuccess: () => utils.db.get.invalidate() });
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const multi = field.type === "multiselect";
+  const opts = optionsOf(field);
+  const selected: string[] = multi
+    ? (Array.isArray(value) ? (value as string[]) : [])
+    : value
+      ? [String(value)]
+      : [];
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as globalThis.Node)) {
+        setOpen(false);
+        setQ("");
+      }
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  const commit = (ids: string[]) => onCommit(multi ? ids : (ids[0] ?? null));
+
+  const toggle = (id: string) => {
+    if (multi) commit(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+    else {
+      commit(selected.includes(id) ? [] : [id]);
+      setOpen(false);
+    }
+  };
+
+  const addOption = () => {
+    const label = q.trim();
+    if (!label) return;
+    const existing = opts.find((o) => o.label.toLowerCase() === label.toLowerCase());
+    if (existing) {
+      toggle(existing.id);
+      setQ("");
+      return;
+    }
+    const id = "opt_" + Math.random().toString(36).slice(2, 9);
+    const color = OPTION_COLORS[opts.length % OPTION_COLORS.length];
+    const cfg = (field.config as { options?: Option[] }) ?? {};
+    updateField.mutate({ id: field.id, config: { ...cfg, options: [...opts, { id, label, color }] } });
+    commit(multi ? [...selected, id] : [id]);
+    setQ("");
+    if (!multi) setOpen(false);
+  };
+
+  const pill = (o: Option) => (
+    <span key={o.id} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs" style={{ background: COLORS[o.color ?? "gray"] }}>
+      {o.label}
+      {multi && (
+        <button onClick={(e) => { e.stopPropagation(); toggle(o.id); }} className="opacity-60 hover:opacity-100">
+          ×
+        </button>
+      )}
+    </span>
+  );
+
+  const shown = q ? opts.filter((o) => o.label.toLowerCase().includes(q.toLowerCase())) : opts;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex min-h-[26px] w-full flex-wrap items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-[var(--border)]/30"
+      >
+        {selected.length ? (
+          selected.map((id) => {
+            const o = opts.find((x) => x.id === id);
+            return o ? pill(o) : null;
+          })
+        ) : (
+          <span className="text-sm text-[var(--muted)]">—</span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 shadow-xl">
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addOption()}
+            placeholder="Buscar o crear…"
+            className="mb-2 w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none focus:border-brand"
+          />
+          <div className="max-h-48 space-y-0.5 overflow-y-auto">
+            {shown.map((o) => (
+              <button
+                key={o.id}
+                onClick={() => toggle(o.id)}
+                className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--border)]/40"
+              >
+                <span className="rounded px-1.5 py-0.5 text-xs" style={{ background: COLORS[o.color ?? "gray"] }}>
+                  {o.label}
+                </span>
+                {selected.includes(o.id) && <span className="ml-auto text-brand">✓</span>}
+              </button>
+            ))}
+            {q && !opts.some((o) => o.label.toLowerCase() === q.toLowerCase()) && (
+              <button onClick={addOption} className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm text-brand hover:bg-brand-50">
+                + Crear «{q}»
+              </button>
+            )}
+            {shown.length === 0 && !q && <p className="px-1 py-1 text-xs text-[var(--muted)]">Sin opciones. Escribe para crear.</p>}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

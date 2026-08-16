@@ -22,7 +22,7 @@ export const FIELD_LABELS: Record<string, string> = {
   formula: "Fórmula",
 };
 
-const TYPES = ["text", "number", "select", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time"] as const;
+const TYPES = ["text", "number", "select", "multiselect", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time"] as const;
 
 const AGGS: [string, string][] = [
   ["count", "Contar"],
@@ -85,7 +85,7 @@ export function AddFieldButton({
         +
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 max-h-72 w-52 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--background)] p-1 shadow-lg">
+        <div className="absolute right-0 z-30 mt-1 max-h-72 w-52 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--background)] p-1 shadow-lg">
           {view === "root" && (
             <>
               {TYPES.map((t) => (
