@@ -9,6 +9,8 @@ export default function PageView() {
   const params = useParams<{ pageId: string }>();
   const pageId = params.pageId;
   const { data: page, isLoading, error } = trpc.pages.get.useQuery({ id: pageId });
+  const { data: me } = trpc.auth.me.useQuery();
+  const canEdit = me?.wsRole !== "viewer";
 
   if (isLoading) {
     return <div className="px-12 py-16 text-[var(--muted)]">Cargando…</div>;
@@ -27,6 +29,8 @@ export default function PageView() {
       pageId={page.id}
       initialTitle={page.title}
       initialContent={page.content}
+      initialIcon={page.icon}
+      canEdit={canEdit}
     />
   );
 }

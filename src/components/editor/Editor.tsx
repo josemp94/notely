@@ -7,6 +7,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import type { PartialBlock } from "@blocknote/core";
 import { trpc } from "@/trpc/react";
+import { PageIcon } from "@/components/PageIcon";
 
 type SaveState = "saved" | "saving" | "idle";
 
@@ -14,13 +15,18 @@ export function Editor({
   pageId,
   initialTitle,
   initialContent,
+  initialIcon,
+  canEdit = true,
 }: {
   pageId: string;
   initialTitle: string;
   initialContent: unknown;
+  initialIcon?: string | null;
+  canEdit?: boolean;
 }) {
   const utils = trpc.useUtils();
   const [title, setTitle] = useState(initialTitle);
+  const [icon, setIcon] = useState<string | null>(initialIcon ?? null);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,6 +46,7 @@ export function Editor({
   const editor = useCreateBlockNote({ initialContent: initial });
 
   function scheduleSave() {
+    if (!canEdit) return;
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
@@ -47,13 +54,24 @@ export function Editor({
     }, 800);
   }
 
+  function persist(nextTitle: string, nextIcon: string | null) {
+    setSaveState("saving");
+    rename.mutate(
+      { id: pageId, title: nextTitle, icon: nextIcon },
+      { onSuccess: () => setSaveState("saved") },
+    );
+  }
+
   function onTitleChange(v: string) {
     setTitle(v);
     setSaveState("saving");
     if (titleTimer.current) clearTimeout(titleTimer.current);
-    titleTimer.current = setTimeout(() => {
-      rename.mutate({ id: pageId, title: v }, { onSuccess: () => setSaveState("saved") });
-    }, 600);
+    titleTimer.current = setTimeout(() => persist(v, icon), 600);
+  }
+
+  function onIconChange(next: string | null) {
+    setIcon(next);
+    persist(title, next);
   }
 
   useEffect(() => {
@@ -64,17 +82,32 @@ export function Editor({
   }, []);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 md:px-12 md:py-16">
-      <div className="mb-2 flex items-center gap-2 font-mono text-xs text-[var(--muted)]">
-        {saveState === "saving" ? "Guardando…" : "Guardado ✓"}
+    <div className="mx-auto max-w-3xl px-4 py-6 md:px-12 md:py-14">
+      <div className="mb-3 flex h-4 items-center gap-2 font-mono text-[11px] text-[var(--muted)]">
+        {canEdit ? (saveState === "saving" ? "Guardando…" : "Guardado ✓") : "Solo lectura"}
       </div>
-      <input
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        placeholder="Sin título"
-        className="font-display mb-4 w-full bg-transparent text-3xl font-extrabold outline-none placeholder:text-[var(--border)] md:text-4xl"
-      />
-      <BlockNoteView editor={editor} onChange={scheduleSave} />
+
+      <div className="group/header">
+        {icon && (
+          <div className="mb-1">
+            <PageIcon icon={icon} onChange={onIconChange} editable={canEdit} />
+          </div>
+        )}
+        {!icon && canEdit && (
+          <div className="mb-1 h-7">
+            <PageIcon icon={null} onChange={onIconChange} editable={canEdit} />
+          </div>
+        )}
+        <input
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          placeholder="Sin título"
+          readOnly={!canEdit}
+          className="font-display mb-3 w-full bg-transparent text-4xl font-extrabold outline-none placeholder:text-[var(--border)] md:text-5xl"
+        />
+      </div>
+
+      <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave} />
     </div>
   );
 }

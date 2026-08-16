@@ -34,3 +34,22 @@ body {
 h1, h2, h3, .font-display {
   font-family: var(--font-display), var(--font-sans), sans-serif;
 }
+
+::selection {
+  background: color-mix(in srgb, var(--color-brand) 22%, transparent);
+}
+
+/* --- Editor BlockNote: tipografía coherente con la marca --- */
+.bn-container {
+  --bn-font-family: var(--font-sans), system-ui, sans-serif;
+}
+.bn-editor {
+  font-size: 16px;
+  padding-inline: 0 !important;
+}
+
+/* Barras de scroll discretas tipo Notion */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
