@@ -20,7 +20,15 @@ export default function PageView() {
   }
 
   if (page.type === "database") {
-    return <Database key={page.id} pageId={page.id} title={page.title || "Base de datos"} />;
+    return (
+      <Database
+        key={page.id}
+        pageId={page.id}
+        initialTitle={page.title || "Base de datos"}
+        initialIcon={page.icon}
+        canEdit={canEdit}
+      />
+    );
   }
 
   return (
