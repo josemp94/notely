@@ -18,7 +18,17 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
-        defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false } },
+        defaultOptions: {
+          queries: {
+            // Refresco en vivo (ligero): al volver a la pestaña y cada ~10s si está visible,
+            // para que los cambios de otros miembros aparezcan sin recargar. No sondea en 2º plano.
+            staleTime: 3_000,
+            refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
+            refetchInterval: 10_000,
+            refetchIntervalInBackground: false,
+          },
+        },
       }),
   );
   const [trpcClient] = useState(() =>
