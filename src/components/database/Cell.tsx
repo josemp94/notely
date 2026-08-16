@@ -88,6 +88,28 @@ export function Cell({
     );
   }
 
+  // url / email / phone: input con tipo adecuado + enlace clicable si hay valor
+  if (field.type === "url" || field.type === "email" || field.type === "phone") {
+    const raw = value == null ? "" : String(value);
+    const href =
+      field.type === "email" ? `mailto:${raw}` : field.type === "phone" ? `tel:${raw}` : /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    return (
+      <div className="flex w-full items-center gap-1">
+        <input
+          type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : "url"}
+          defaultValue={raw}
+          onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
+          className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
+        />
+        {raw && (
+          <a href={href} target="_blank" rel="noreferrer" className="shrink-0 px-1 text-xs text-brand hover:underline" title="Abrir">
+            ↗
+          </a>
+        )}
+      </div>
+    );
+  }
+
   // text / number (no controlado; commit al salir)
   return (
     <input

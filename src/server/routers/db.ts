@@ -6,7 +6,7 @@ import { rankAtEnd } from "@/lib/fractional";
 import { evalFormula } from "../formula";
 
 // Tipos de campo soportados en Fase 2
-export const FIELD_TYPES = ["text", "number", "select", "checkbox", "date"] as const;
+export const FIELD_TYPES = ["text", "number", "select", "checkbox", "date", "url", "email", "phone"] as const;
 
 async function assertPage(ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } }, pageId: string) {
   const p = await ctx.db.page.findFirst({
