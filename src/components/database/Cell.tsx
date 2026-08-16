@@ -22,12 +22,27 @@ export function Cell({
   value,
   onCommit,
   rollupValue,
+  createdAt,
+  updatedAt,
 }: {
   field: FieldLite;
   value: unknown;
   onCommit: (v: unknown) => void;
   rollupValue?: string | number;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }) {
+  // Auto (solo lectura): fecha de creación / última edición
+  if (field.type === "created_time" || field.type === "last_edited_time") {
+    const src = field.type === "created_time" ? createdAt : updatedAt;
+    const d = src ? new Date(src) : null;
+    const txt =
+      d && !isNaN(d.getTime())
+        ? d.toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+        : "—";
+    return <span className="block px-1 py-0.5 text-sm text-[var(--muted)]">{txt}</span>;
+  }
+
   if (field.type === "rollup" || field.type === "formula") {
     const v = rollupValue;
     return (
@@ -57,7 +72,7 @@ export function Cell({
     );
   }
 
-  if (field.type === "select") {
+  if (field.type === "select" || field.type === "status") {
     const opts = optionsOf(field);
     const current = opts.find((o) => o.id === value);
     return (

@@ -6,7 +6,7 @@ import { rankAtEnd } from "@/lib/fractional";
 import { evalFormula } from "../formula";
 
 // Tipos de campo soportados en Fase 2
-export const FIELD_TYPES = ["text", "number", "select", "checkbox", "date", "url", "email", "phone"] as const;
+export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time"] as const;
 
 async function assertPage(ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } }, pageId: string) {
   const p = await ctx.db.page.findFirst({
@@ -103,7 +103,18 @@ export const dbRouter = router({
           name: input.name,
           type: input.type,
           order: rankAtEnd(last?.order ?? null),
-          config: input.type === "select" ? { options: [] } : {},
+          config:
+            input.type === "status"
+              ? {
+                  options: [
+                    { id: "st_todo", label: "Sin empezar", color: "gray", group: "todo" },
+                    { id: "st_doing", label: "En curso", color: "blue", group: "doing" },
+                    { id: "st_done", label: "Hecho", color: "green", group: "done" },
+                  ],
+                }
+              : input.type === "select" || input.type === "multiselect"
+                ? { options: [] }
+                : {},
         },
       });
     }),

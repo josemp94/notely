@@ -8,17 +8,21 @@ export const FIELD_LABELS: Record<string, string> = {
   text: "Texto",
   number: "Número",
   select: "Selección",
+  multiselect: "Selección múltiple",
+  status: "Estado",
   checkbox: "Casilla",
   date: "Fecha",
   url: "URL",
   email: "Correo",
   phone: "Teléfono",
+  created_time: "Fecha de creación",
+  last_edited_time: "Última edición",
   relation: "Relación",
   rollup: "Rollup",
   formula: "Fórmula",
 };
 
-const TYPES = ["text", "number", "select", "checkbox", "date", "url", "email", "phone"] as const;
+const TYPES = ["text", "number", "select", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time"] as const;
 
 const AGGS: [string, string][] = [
   ["count", "Contar"],
