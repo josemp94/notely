@@ -304,6 +304,36 @@ export function DbToolbar({
                 ))}
               </div>
             </div>
+            {(view.type === "kanban" || view.type === "gallery") && (
+              <div className="my-1 border-t border-[var(--border)] pt-1">
+                <div className="px-2 pb-1 text-[11px] font-medium text-[var(--muted)]">Tarjetas</div>
+                <label className="flex items-center justify-between gap-2 px-2 py-1 text-sm">
+                  <span>Tamaño de tarjeta</span>
+                  <select
+                    value={view.config?.cardSize ?? "medium"}
+                    onChange={(e) => saveConfig({ cardSize: e.target.value })}
+                    className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+                  >
+                    <option value="small">Pequeño</option>
+                    <option value="medium">Mediano</option>
+                    <option value="large">Grande</option>
+                  </select>
+                </label>
+                <label className="flex items-center justify-between gap-2 px-2 py-1 text-sm">
+                  <span>Vista previa</span>
+                  <select
+                    value={view.config?.cardPreview ?? "none"}
+                    onChange={(e) => saveConfig({ cardPreview: e.target.value })}
+                    className="max-w-[140px] rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+                  >
+                    <option value="none">Ninguna</option>
+                    {fields.map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
             <button
               onClick={() => {
                 if (window.confirm(`¿Borrar la vista "${view.name}"?`)) deleteView.mutate({ id: view.id });

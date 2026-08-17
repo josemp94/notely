@@ -15,18 +15,28 @@ const COLORS: Record<string, string> = {
   yellow: "#fdf6e3",
 };
 
+const SIZES: Record<string, { col: string; card: string }> = {
+  small: { col: "w-52", card: "px-2 py-1.5 text-xs" },
+  medium: { col: "w-64", card: "px-3 py-2 text-sm" },
+  large: { col: "w-80", card: "px-4 py-3 text-base" },
+};
+
 export function KanbanView({
   pageId,
   collectionId,
   fields,
   records,
   groupByFieldId,
+  cardSize,
+  cardPreview,
 }: {
   pageId: string;
   collectionId: string;
   fields: FieldLite[];
   records: Rec[];
   groupByFieldId?: string;
+  cardSize?: string;
+  cardPreview?: string;
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
@@ -38,6 +48,8 @@ export function KanbanView({
     fields.find((f) => f.id === groupByFieldId && f.type === "select") ??
     fields.find((f) => f.type === "select");
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
+  const size = SIZES[cardSize ?? "medium"] ?? SIZES.medium;
+  const previewField = cardPreview && cardPreview !== "none" ? fields.find((f) => f.id === cardPreview) : undefined;
 
   if (!groupField) {
     return (
@@ -73,7 +85,7 @@ export function KanbanView({
             key={col.id || "none"}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => drop(col.id)}
-            className="w-64 shrink-0 rounded-lg p-2"
+            className={`${size.col} shrink-0 rounded-lg p-2`}
             style={{ background: COLORS[col.color] ?? "#f1ede7" }}
           >
             <div className="mb-2 flex items-center justify-between px-1 text-sm font-medium">
@@ -81,16 +93,24 @@ export function KanbanView({
               <span className="text-[var(--muted)]">{cards.length}</span>
             </div>
             <div className="flex flex-col gap-2">
-              {cards.map((r) => (
-                <div
-                  key={r.id}
-                  draggable
-                  onDragStart={() => setDragId(r.id)}
-                  className="cursor-grab rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm shadow-sm active:cursor-grabbing"
-                >
-                  {cardTitle(r)}
-                </div>
-              ))}
+              {cards.map((r) => {
+                const preview = previewField ? String(r.cells?.[previewField.id] ?? "") : "";
+                return (
+                  <div
+                    key={r.id}
+                    draggable
+                    onDragStart={() => setDragId(r.id)}
+                    className={`cursor-grab rounded-md border border-[var(--border)] bg-[var(--background)] ${size.card} shadow-sm active:cursor-grabbing`}
+                  >
+                    {cardTitle(r)}
+                    {preview && (
+                      <div className="mt-1 line-clamp-3 break-words rounded bg-[var(--border)]/30 px-2 py-1 text-[0.9em] text-[var(--muted)]">
+                        {preview}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <button
               onClick={() =>

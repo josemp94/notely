@@ -120,6 +120,8 @@ export function Database({
           fields={asAny(visibleFields)}
           records={asAny(viewRecords)}
           groupByFieldId={asAny(active.config)?.groupByFieldId}
+          cardSize={asAny(active.config)?.cardSize}
+          cardPreview={asAny(active.config)?.cardPreview}
         />
       ) : active?.type === "chart" ? (
         <ChartView pageId={pageId} view={active} fields={fields} />
@@ -134,7 +136,14 @@ export function Database({
       ) : active?.type === "timeline" ? (
         <TimelineView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} view={active} />
       ) : active?.type === "gallery" ? (
-        <GalleryView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} />
+        <GalleryView
+          pageId={pageId}
+          collectionId={col.id}
+          fields={asAny(visibleFields)}
+          records={asAny(viewRecords)}
+          cardSize={asAny(active.config)?.cardSize}
+          cardPreview={asAny(active.config)?.cardPreview}
+        />
       ) : active?.type === "list" ? (
         <ListView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} />
       ) : active?.type === "form" ? (
