@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/Sidebar";
+import { SearchPalette } from "@/components/SearchPalette";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh">
+      <SearchPalette />
       {/* Fondo oscuro al abrir el panel en móvil */}
       {open && (
         <div

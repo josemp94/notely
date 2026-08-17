@@ -28,6 +28,24 @@ export const pagesRouter = router({
     return pages.map((p) => ({ ...p, hasChildren: childCount.has(p.id) }));
   }),
 
+  /** Búsqueda por título para la paleta de comandos (Ctrl+K). */
+  search: workspaceProcedure
+    .input(z.object({ query: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const q = input.query.trim();
+      if (!q) return [];
+      return ctx.db.page.findMany({
+        where: {
+          workspaceId: ctx.workspace.id,
+          archivedAt: null,
+          title: { contains: q, mode: "insensitive" },
+        },
+        select: { id: true, title: true, icon: true, type: true },
+        orderBy: { updatedAt: "desc" },
+        take: 20,
+      });
+    }),
+
   /** Contenido de una página. */
   get: workspaceProcedure
     .input(z.object({ id: z.string() }))

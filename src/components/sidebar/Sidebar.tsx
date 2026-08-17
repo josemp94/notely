@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { trpc } from "@/trpc/react";
+import { openSearchPalette } from "@/components/SearchPalette";
 
 type Node = {
   id: string;
@@ -71,6 +72,14 @@ export function Sidebar() {
       </div>
 
       <WorkspaceBar me={me} />
+
+      <button
+        onClick={openSearchPalette}
+        className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
+      >
+        🔍 Buscar
+        <span className="ml-auto font-mono text-[10px] text-[var(--muted)]">Ctrl K</span>
+      </button>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-6">
         <Tree nodes={byParent.get(null) ?? []} byParent={byParent} depth={0} canEdit={canEdit} />
