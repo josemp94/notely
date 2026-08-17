@@ -101,6 +101,7 @@ model Record {
   collectionId String
   collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   cells        Json       @default("{}") // { fieldId: value }
+  content      Json?      // cuerpo de bloques (BlockNote) de la fila (fila = página)
   order        String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt

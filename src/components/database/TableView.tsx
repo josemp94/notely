@@ -162,7 +162,7 @@ export function TableView({
       {openRec &&
         (() => {
           const fresh = records.find((r) => r.id === openRec.id) ?? openRec;
-          return <RecordPanel pageId={pageId} record={fresh} fields={fields} onClose={() => setOpenRec(null)} />;
+          return <RecordPanel pageId={pageId} collectionId={collectionId} record={fresh} fields={fields} onClose={() => setOpenRec(null)} />;
         })()}
     </div>
   );

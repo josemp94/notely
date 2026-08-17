@@ -194,6 +194,22 @@ export const dbRouter = router({
       return { ok: true };
     }),
 
+  /** Cuerpo de bloques de una fila (cada fila es una página, como en Notion). */
+  updateRecordContent: workspaceProcedure
+    .input(z.object({ id: z.string(), content: z.any() }))
+    .mutation(async ({ ctx, input }) => {
+      const rec = await ctx.db.record.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+        select: { id: true },
+      });
+      if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.record.update({
+        where: { id: input.id },
+        data: { content: input.content as Prisma.InputJsonValue },
+        select: { id: true },
+      });
+    }),
+
   updateView: workspaceProcedure
     .input(z.object({ id: z.string(), config: z.any() }))
     .mutation(async ({ ctx, input }) => {
