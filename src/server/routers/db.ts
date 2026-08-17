@@ -6,7 +6,7 @@ import { rankAtEnd } from "@/lib/fractional";
 import { evalFormula } from "../formula";
 
 // Tipos de campo soportados en Fase 2
-export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time"] as const;
+export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
 
 async function assertPage(ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } }, pageId: string) {
   const p = await ctx.db.page.findFirst({
@@ -65,7 +65,7 @@ export const dbRouter = router({
       for (let i = 0; i < 3; i++) {
         ord = rankAtEnd(ord);
         await ctx.db.record.create({
-          data: { collectionId: collection.id, order: ord, cells: {} },
+          data: { collectionId: collection.id, order: ord, seq: i + 1, cells: {} },
         });
       }
       return page;
@@ -157,10 +157,15 @@ export const dbRouter = router({
         orderBy: { order: "desc" },
         select: { order: true },
       });
+      const maxSeq = await ctx.db.record.aggregate({
+        where: { collectionId: input.collectionId },
+        _max: { seq: true },
+      });
       return ctx.db.record.create({
         data: {
           collectionId: input.collectionId,
           order: rankAtEnd(last?.order ?? null),
+          seq: (maxSeq._max.seq ?? 0) + 1,
           cells: input.cells ?? {},
         },
       });

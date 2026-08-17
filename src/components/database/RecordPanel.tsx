@@ -11,7 +11,15 @@ import { Cell, type FieldLite } from "./Cell";
 import { RelationCell } from "./RelationCell";
 import { AddFieldButton } from "./shared";
 
-type Rec = { id: string; cells: Record<string, unknown>; order: string; content?: unknown };
+type Rec = {
+  id: string;
+  cells: Record<string, unknown>;
+  order: string;
+  content?: unknown;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  seq?: number;
+};
 
 export function RecordPanel({
   pageId,
@@ -97,6 +105,9 @@ export function RecordPanel({
                       field={f}
                       value={record.cells?.[f.id]}
                       rollupValue={computed?.rollups?.[record.id]?.[f.id]}
+                      createdAt={record.createdAt}
+                      updatedAt={record.updatedAt}
+                      seq={record.seq}
                       onCommit={(value) => updateCell.mutate({ recordId: record.id, fieldId: f.id, value })}
                     />
                   )}

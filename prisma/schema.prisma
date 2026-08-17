@@ -102,6 +102,7 @@ model Record {
   collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   cells        Json       @default("{}") // { fieldId: value }
   content      Json?      // cuerpo de bloques (BlockNote) de la fila (fila = página)
+  seq          Int?       // ID incremental por colección (tipo de campo "id")
   order        String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt

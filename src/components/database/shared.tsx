@@ -17,12 +17,13 @@ export const FIELD_LABELS: Record<string, string> = {
   phone: "Teléfono",
   created_time: "Fecha de creación",
   last_edited_time: "Última edición",
+  id: "ID",
   relation: "Relación",
   rollup: "Rollup",
   formula: "Fórmula",
 };
 
-const TYPES = ["text", "number", "select", "multiselect", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time"] as const;
+const TYPES = ["text", "number", "select", "multiselect", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
 
 const AGGS: [string, string][] = [
   ["count", "Contar"],

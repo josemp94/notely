@@ -27,6 +27,7 @@ export function Cell({
   rollupValue,
   createdAt,
   updatedAt,
+  seq,
 }: {
   field: FieldLite;
   value: unknown;
@@ -34,7 +35,18 @@ export function Cell({
   rollupValue?: string | number;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+  seq?: number;
 }) {
+  // ID incremental (solo lectura), con prefijo opcional
+  if (field.type === "id") {
+    const prefix = (field.config as { prefix?: string })?.prefix ?? "";
+    return (
+      <span className="block px-1 py-0.5 text-sm text-[var(--muted)]">
+        {seq == null ? "—" : `${prefix}${seq}`}
+      </span>
+    );
+  }
+
   // Auto (solo lectura): fecha de creación / última edición
   if (field.type === "created_time" || field.type === "last_edited_time") {
     const src = field.type === "created_time" ? createdAt : updatedAt;

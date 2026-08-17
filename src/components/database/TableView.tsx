@@ -13,6 +13,7 @@ type Rec = {
   order: string;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+  seq?: number;
 };
 
 export function TableView({
@@ -121,6 +122,7 @@ export function TableView({
                       value={r.cells?.[f.id]}
                       createdAt={r.createdAt}
                       updatedAt={r.updatedAt}
+                      seq={r.seq}
                       onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
                     />
                   )}
