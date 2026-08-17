@@ -20,6 +20,8 @@ model User {
   sessions     Session[]
   ownedSpaces  Workspace[]  @relation("owner")
   comments     Comment[]
+  notifications     Notification[] @relation("recipient")
+  sentNotifications Notification[] @relation("actor")
 }
 
 model Session {
@@ -41,6 +43,7 @@ model Workspace {
   members   Member[]
   pages     Page[]
   apiTokens ApiToken[]
+  notifications Notification[]
 }
 
 model Member {
@@ -76,6 +79,7 @@ model Page {
   charts      Chart[]
   versions    Version[]
   comments    Comment[]
+  notifications Notification[]
 
   @@index([workspaceId, parentId])
 }
@@ -158,6 +162,24 @@ model Version {
   snapshot  Json
   authorId  String?
   createdAt DateTime @default(now())
+}
+
+// Bandeja de notificaciones (menciones @persona, etc.)
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String // destinatario
+  user        User      @relation("recipient", fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type        String    @default("mention")
+  pageId      String? // dónde ocurrió
+  page        Page?     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  actorId     String? // quién menciona
+  actor       User?     @relation("actor", fields: [actorId], references: [id], onDelete: SetNull)
+  read        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, workspaceId, read])
 }
 
 // Token de servicio para automatización (Dobby / crons), scopeado a un workspace

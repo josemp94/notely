@@ -126,7 +126,7 @@ export function RecordPanel({
 
           <div className="mt-6 border-t border-[var(--border)] pt-4">
             <BlockNoteView editor={editor} onChange={onBodyChange}>
-              <MentionMenu editor={editor} />
+              <MentionMenu editor={editor} pageId={pageId} />
             </BlockNoteView>
           </div>
 

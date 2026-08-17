@@ -27,33 +27,73 @@ const Mention = createReactInlineContentSpec(
   },
 );
 
-/** Schema compartido por todos los editores BlockNote de la app (registra "mention"). */
+/** Chip de mención de persona: @nombre en azul (distinto de las páginas, en naranja de marca). */
+const PersonMention = createReactInlineContentSpec(
+  {
+    type: "personMention",
+    propSchema: {
+      userId: { default: "" },
+      name: { default: "" },
+    },
+    content: "none",
+  },
+  {
+    render: ({ inlineContent }) => (
+      <span className="whitespace-nowrap rounded bg-sky-500/15 px-1 font-medium text-sky-600">
+        @{inlineContent.props.name || "alguien"}
+      </span>
+    ),
+  },
+);
+
+/** Schema compartido por todos los editores BlockNote de la app (registra "mention" y "personMention"). */
 export const editorSchema = BlockNoteSchema.create({
-  inlineContentSpecs: { ...defaultInlineContentSpecs, mention: Mention },
+  inlineContentSpecs: { ...defaultInlineContentSpecs, mention: Mention, personMention: PersonMention },
 });
 
 export type NotelyEditor = typeof editorSchema.BlockNoteEditor;
 export type NotelyPartialBlock = typeof editorSchema.PartialBlock;
 
-/** Menú "@": busca páginas por título (pages.search) e inserta una mención. */
-export function MentionMenu({ editor }: { editor: NotelyEditor }) {
+/** Menú "@": personas del espacio (workspace.members) y páginas (pages.search). */
+export function MentionMenu({ editor, pageId }: { editor: NotelyEditor; pageId: string }) {
   const utils = trpc.useUtils();
+  const notify = trpc.notifications.notifyMention.useMutation();
   return (
     <SuggestionMenuController
       triggerCharacter="@"
       getItems={async (query) => {
-        const pages = query.trim()
-          ? await utils.pages.search.fetch({ query })
-          : (await utils.pages.tree.fetch()).slice(0, 10);
-        return pages.map((p) => ({
-          title: `${p.icon ?? "📄"} ${p.title || "Sin título"}`,
-          onItemClick: () => {
-            editor.insertInlineContent([
-              { type: "mention", props: { pageId: p.id, title: p.title || "Sin título", icon: p.icon ?? "" } },
-              " ",
-            ]);
-          },
-        }));
+        const q = query.trim().toLowerCase();
+        const [pages, ws] = await Promise.all([
+          q ? utils.pages.search.fetch({ query }) : utils.pages.tree.fetch().then((t) => t.slice(0, 10)),
+          utils.workspace.members.fetch(),
+        ]);
+        const people = ws.members.filter(
+          (m) => !q || (m.name ?? "").toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
+        );
+        return [
+          ...people.map((m) => ({
+            title: `@${m.name || m.email}`,
+            subtext: m.email,
+            group: "Personas",
+            onItemClick: () => {
+              editor.insertInlineContent([
+                { type: "personMention", props: { userId: m.userId, name: m.name || m.email } },
+                " ",
+              ]);
+              notify.mutate({ pageId, userId: m.userId });
+            },
+          })),
+          ...pages.map((p) => ({
+            title: `${p.icon ?? "📄"} ${p.title || "Sin título"}`,
+            group: "Páginas",
+            onItemClick: () => {
+              editor.insertInlineContent([
+                { type: "mention", props: { pageId: p.id, title: p.title || "Sin título", icon: p.icon ?? "" } },
+                " ",
+              ]);
+            },
+          })),
+        ];
       }}
     />
   );

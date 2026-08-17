@@ -5,6 +5,7 @@ import { authRouter } from "./routers/auth";
 import { workspaceRouter } from "./routers/workspace";
 import { commentsRouter } from "./routers/comments";
 import { apiTokensRouter } from "./routers/apiTokens";
+import { notificationsRouter } from "./routers/notifications";
 
 export const appRouter = router({
   auth: authRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   workspace: workspaceRouter,
   comments: commentsRouter,
   apiTokens: apiTokensRouter,
+  notifications: notificationsRouter,
   me: workspaceProcedure.query(({ ctx }) => ({
     user: { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email },
     workspace: { id: ctx.workspace.id, name: ctx.workspace.name },

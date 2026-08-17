@@ -154,6 +154,8 @@ export function Sidebar() {
         <span className="ml-auto font-mono text-[10px] text-[var(--muted)]">Ctrl K</span>
       </button>
 
+      <NotificationsBell />
+
       {canEdit && (
         <button
           onClick={() => setShowTemplates(true)}
@@ -176,6 +178,98 @@ export function Sidebar() {
       </Link>
       <AccountFooter me={me} />
     </aside>
+  );
+}
+
+function when(d: Date) {
+  return d.toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Campana 🔔 con contador de no leídas y bandeja de notificaciones (menciones @persona). */
+function NotificationsBell() {
+  const utils = trpc.useUtils();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const { data: unread } = trpc.notifications.unreadCount.useQuery();
+  const { data: items } = trpc.notifications.list.useQuery(undefined, { enabled: open });
+  const refresh = () =>
+    Promise.all([utils.notifications.list.invalidate(), utils.notifications.unreadCount.invalidate()]);
+  const markRead = trpc.notifications.markRead.useMutation({ onSuccess: refresh });
+  const markAll = trpc.notifications.markAllRead.useMutation({ onSuccess: refresh });
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
+        title="Notificaciones"
+      >
+        🔔 Notificaciones
+        {!!unread && (
+          <span className="ml-auto rounded-full bg-brand px-1.5 text-[10px] font-medium leading-4 text-white">
+            {unread > 99 ? "99+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open &&
+        mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={() => setOpen(false)}>
+            <div
+              className="flex max-h-[70vh] w-full max-w-md flex-col rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 pb-2 pt-4">
+                <h2 className="font-display text-lg font-bold">🔔 Notificaciones</h2>
+                <div className="flex items-center gap-2">
+                  {!!unread && (
+                    <button
+                      onClick={() => markAll.mutate()}
+                      disabled={markAll.isPending}
+                      className="rounded px-2 py-1 text-xs text-[var(--muted)] hover:bg-brand-50 hover:text-brand disabled:opacity-50"
+                    >
+                      Marcar todas como leídas
+                    </button>
+                  )}
+                  <button onClick={() => setOpen(false)} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-y-auto px-2 pb-3">
+                {(items ?? []).length === 0 && (
+                  <p className="px-3 py-6 text-center text-sm text-[var(--muted)]">Nada por aquí: nadie te ha mencionado aún.</p>
+                )}
+                {(items ?? []).map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      if (!n.read) markRead.mutate({ id: n.id });
+                      setOpen(false);
+                      if (n.page) router.push(`/p/${n.page.id}`);
+                    }}
+                    className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--border)]/30"
+                  >
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-brand"}`} />
+                    <span className="min-w-0 flex-1">
+                      <span className={n.read ? "text-[var(--muted)]" : ""}>
+                        <span className="font-medium">{n.actor?.name || n.actor?.email || "Alguien"}</span> te mencionó en «
+                        {n.page ? `${n.page.icon ? `${n.page.icon} ` : ""}${n.page.title || "Sin título"}` : "una página borrada"}»
+                      </span>
+                      <span className="block text-xs text-[var(--muted)]">{when(n.createdAt)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 

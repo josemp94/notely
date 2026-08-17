@@ -131,7 +131,7 @@ export function Editor({
       </div>
 
       <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave}>
-        <MentionMenu editor={editor} />
+        <MentionMenu editor={editor} pageId={pageId} />
       </BlockNoteView>
       </div>
     </div>
