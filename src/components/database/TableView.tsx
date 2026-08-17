@@ -11,6 +11,7 @@ type Rec = {
   id: string;
   cells: Record<string, unknown>;
   order: string;
+  parentId?: string | null;
   createdAt?: string | Date;
   updatedAt?: string | Date;
   seq?: number;
@@ -34,6 +35,7 @@ export function TableView({
 
   const updateCell = trpc.db.updateCell.useMutation({ onSuccess: invalidate });
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
+  const addSubRecord = trpc.db.addSubRecord.useMutation({ onSuccess: invalidate });
   const deleteRecord = trpc.db.deleteRecord.useMutation({ onSuccess: invalidate });
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
@@ -44,7 +46,39 @@ export function TableView({
   const [openRec, setOpenRec] = useState<Rec | null>(null);
 
   // El filtrado y el orden se aplican en Database (barra de herramientas superior).
-  const rows = records;
+  // Sub-elementos: los hijos se agrupan indentados bajo su padre si el padre pasa el
+  // filtro; si no, se muestran a nivel raíz. El plegado vive solo en el cliente.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const idSet = new Set(records.map((r) => r.id));
+  const byParent = new Map<string, Rec[]>();
+  for (const r of records) {
+    const key = r.parentId && idSet.has(r.parentId) ? r.parentId : "";
+    byParent.set(key, [...(byParent.get(key) ?? []), r]);
+  }
+  const rows: { rec: Rec; depth: number; hasChildren: boolean }[] = [];
+  const walk = (parentId: string, depth: number) => {
+    for (const r of byParent.get(parentId) ?? []) {
+      const hasChildren = byParent.has(r.id);
+      rows.push({ rec: r, depth, hasChildren });
+      if (hasChildren && !collapsed.has(r.id)) walk(r.id, depth + 1);
+    }
+  };
+  walk("", 0);
+  const toggle = (id: string) =>
+    setCollapsed((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const addSub = (parentRecordId: string) => {
+    setCollapsed((s) => {
+      const next = new Set(s);
+      next.delete(parentRecordId);
+      return next;
+    });
+    addSubRecord.mutate({ parentRecordId });
+  };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cfg = (view.config ?? {}) as any;
@@ -95,7 +129,7 @@ export function TableView({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.map(({ rec: r, depth, hasChildren }) => (
             <tr key={r.id} className="group border-b border-[var(--border)] hover:bg-[var(--border)]/20">
               <td className="px-1 py-1 text-center">
                 <button
@@ -106,9 +140,9 @@ export function TableView({
                   ⤢
                 </button>
               </td>
-              {fields.map((f) => (
-                <td key={f.id} className="px-2 py-1">
-                  {f.type === "relation" ? (
+              {fields.map((f, i) => {
+                const cell =
+                  f.type === "relation" ? (
                     <RelationCell
                       field={f}
                       value={r.cells?.[f.id]}
@@ -125,10 +159,35 @@ export function TableView({
                       seq={r.seq}
                       onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
                     />
-                  )}
-                </td>
-              ))}
-              <td className="px-2 py-1">
+                  );
+                if (i !== 0) return <td key={f.id} className="px-2 py-1">{cell}</td>;
+                return (
+                  <td key={f.id} className="px-2 py-1">
+                    <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
+                      {hasChildren ? (
+                        <button
+                          onClick={() => toggle(r.id)}
+                          className="w-4 shrink-0 text-[var(--muted)] hover:text-brand"
+                          title={collapsed.has(r.id) ? "Expandir subtareas" : "Plegar subtareas"}
+                        >
+                          {collapsed.has(r.id) ? "▸" : "▾"}
+                        </button>
+                      ) : (
+                        <span className="w-4 shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">{cell}</div>
+                    </div>
+                  </td>
+                );
+              })}
+              <td className="whitespace-nowrap px-2 py-1">
+                <button
+                  onClick={() => addSub(r.id)}
+                  className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
+                  title="＋ Subtarea"
+                >
+                  ＋
+                </button>
                 <button
                   onClick={() => deleteRecord.mutate({ id: r.id })}
                   className="opacity-0 transition-opacity group-hover:opacity-100"

@@ -271,6 +271,35 @@ export const dbRouter = router({
       });
     }),
 
+  /** Crea un sub-elemento: registro hijo del indicado, en la misma colección. */
+  addSubRecord: workspaceProcedure
+    .input(z.object({ parentRecordId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const parent = await ctx.db.record.findFirst({
+        where: { id: input.parentRecordId, collection: { page: { workspaceId: ctx.workspace.id } } },
+        select: { id: true, collectionId: true },
+      });
+      if (!parent) throw new TRPCError({ code: "NOT_FOUND" });
+      const last = await ctx.db.record.findFirst({
+        where: { collectionId: parent.collectionId },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
+      const maxSeq = await ctx.db.record.aggregate({
+        where: { collectionId: parent.collectionId },
+        _max: { seq: true },
+      });
+      return ctx.db.record.create({
+        data: {
+          collectionId: parent.collectionId,
+          parentId: parent.id,
+          order: rankAtEnd(last?.order ?? null),
+          seq: (maxSeq._max.seq ?? 0) + 1,
+          cells: {},
+        },
+      });
+    }),
+
   updateCell: workspaceProcedure
     .input(z.object({ recordId: z.string(), fieldId: z.string(), value: z.any() }))
     .mutation(async ({ ctx, input }) => {

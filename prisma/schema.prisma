@@ -119,6 +119,9 @@ model Record {
   id           String     @id @default(cuid())
   collectionId String
   collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  parentId     String?    // sub-elemento: registro padre dentro de la misma colección
+  parent       Record?    @relation("subitems", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Record[]   @relation("subitems")
   cells        Json       @default("{}") // { fieldId: value }
   content      Json?      // cuerpo de bloques (BlockNote) de la fila (fila = página)
   seq          Int?       // ID incremental por colección (tipo de campo "id")
@@ -127,6 +130,7 @@ model Record {
   updatedAt    DateTime   @updatedAt
 
   @@index([collectionId])
+  @@index([parentId])
 }
 
 model View {
