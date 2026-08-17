@@ -4,7 +4,18 @@
 export type DbField = { id: string; name: string; type: string; config: any };
 export type DbRecord = { id: string; cells: Record<string, unknown>; order: string };
 export type Filter = { fieldId: string; op: string; value: any };
+/** Grupo anidado estilo Notion: sus hijos se combinan con su propio op. */
+export type FilterGroup = { type: "group"; op: "and" | "or"; filters: FilterNode[] };
+export type FilterNode = Filter | FilterGroup;
 export type Sort = { fieldId: string; dir: "asc" | "desc" };
+
+export const isFilterGroup = (n: FilterNode): n is FilterGroup =>
+  (n as FilterGroup).type === "group";
+
+/** Nº de condiciones (hojas) de un árbol de filtros, para el contador de la UI. */
+export function countFilters(nodes: FilterNode[]): number {
+  return nodes.reduce((acc, n) => acc + (isFilterGroup(n) ? countFilters(n.filters) : 1), 0);
+}
 
 const s = (v: unknown) => (v == null ? "" : String(v));
 const n = (v: unknown) => (typeof v === "number" ? v : parseFloat(s(v)));
@@ -110,21 +121,30 @@ function compareCells(a: unknown, b: unknown, field?: DbField): number {
   return s(a).localeCompare(s(b));
 }
 
+/** Evalúa un nodo; null = ignorar (condición incompleta o grupo sin condiciones activas). */
+function evalNode(node: FilterNode, r: DbRecord, byId: Map<string, DbField>): boolean | null {
+  if (isFilterGroup(node)) {
+    const results = node.filters
+      .map((c) => evalNode(c, r, byId))
+      .filter((x): x is boolean => x !== null);
+    if (!results.length) return null;
+    return node.op === "or" ? results.some(Boolean) : results.every(Boolean);
+  }
+  const field = byId.get(node.fieldId);
+  if (!field || node.value === "" || node.value == null) return null;
+  return matchFilter(r.cells[node.fieldId], field, node.op, node.value);
+}
+
 export function applyViewConfig(records: DbRecord[], fields: DbField[], config: any): DbRecord[] {
   const byId = new Map(fields.map((f) => [f.id, f]));
   let out = records;
-  const filters: Filter[] = Array.isArray(config?.filters) ? config.filters : [];
-  const active = filters
-    .map((f) => ({ f, field: byId.get(f.fieldId) }))
-    .filter((x): x is { f: Filter; field: DbField } => !!x.field && x.f.value !== "" && x.f.value != null);
-  if (active.length) {
-    const match = ({ f, field }: { f: Filter; field: DbField }, r: DbRecord) =>
-      matchFilter(r.cells[f.fieldId], field, f.op, f.value);
-    out =
-      config?.filterOp === "or"
-        ? out.filter((r) => active.some((a) => match(a, r)))
-        : out.filter((r) => active.every((a) => match(a, r)));
-  }
+  // Retrocompat: el formato plano (filters[] + filterOp) es el grupo raíz.
+  const root: FilterGroup = {
+    type: "group",
+    op: config?.filterOp === "or" ? "or" : "and",
+    filters: Array.isArray(config?.filters) ? config.filters : [],
+  };
+  out = out.filter((r) => evalNode(root, r, byId) !== false);
   const sorts: Sort[] = Array.isArray(config?.sorts) ? config.sorts : [];
   if (sorts.length) {
     out = [...out].sort((a, b) => {

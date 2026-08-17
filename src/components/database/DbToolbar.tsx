@@ -4,7 +4,15 @@
 import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
-import { opsFor, type DbField, type Filter, type Sort } from "@/lib/viewData";
+import {
+  countFilters,
+  isFilterGroup,
+  opsFor,
+  type DbField,
+  type Filter,
+  type FilterNode,
+  type Sort,
+} from "@/lib/viewData";
 
 type View = { id: string; name: string; type: string; config: any };
 
@@ -72,7 +80,8 @@ export function DbToolbar({
     },
   });
 
-  const filters: Filter[] = Array.isArray(view.config?.filters) ? view.config.filters : [];
+  const filters: FilterNode[] = Array.isArray(view.config?.filters) ? view.config.filters : [];
+  const nFilters = countFilters(filters);
   const filterOp: "and" | "or" = view.config?.filterOp === "or" ? "or" : "and";
   const sorts: Sort[] = Array.isArray(view.config?.sorts) ? view.config.sorts : [];
   const hidden: string[] = Array.isArray(view.config?.hiddenFields) ? view.config.hiddenFields : [];
@@ -80,17 +89,15 @@ export function DbToolbar({
   const toggleHidden = (id: string) =>
     saveConfig({ hiddenFields: hidden.includes(id) ? hidden.filter((x) => x !== id) : [...hidden, id] });
 
-  const fieldById = (id: string) => fields.find((f) => f.id === id);
-
   return (
     <div className="flex items-center gap-1 text-sm">
       {/* Filtrar */}
       <div className="relative">
         <button
           onClick={() => setOpen(open === "filter" ? null : "filter")}
-          className={`rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${filters.length ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${nFilters ? "text-brand" : "text-[var(--muted)]"}`}
         >
-          ⧩ Filtrar{filters.length ? ` (${filters.length})` : ""}
+          ⧩ Filtrar{nFilters ? ` (${nFilters})` : ""}
         </button>
         {open === "filter" && (
           <Popover onClose={() => setOpen(null)}>
@@ -109,69 +116,12 @@ export function DbToolbar({
                 <span>los filtros</span>
               </div>
             )}
-            {filters.length === 0 && <p className="mb-2 text-xs text-[var(--muted)]">Sin filtros.</p>}
-            <div className="space-y-2">
-              {filters.map((f, i) => {
-                const field = fieldById(f.fieldId);
-                const ops = opsFor(field?.type ?? "text");
-                return (
-                  <div key={i} className="flex items-center gap-1">
-                    <select
-                      value={f.fieldId}
-                      onChange={(e) => {
-                        const nf = [...filters];
-                        const nt = fieldById(e.target.value)?.type ?? "text";
-                        nf[i] = { fieldId: e.target.value, op: opsFor(nt)[0].value, value: "" };
-                        saveConfig({ filters: nf });
-                      }}
-                      className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
-                    >
-                      {fields.map((fl) => (
-                        <option key={fl.id} value={fl.id}>{fl.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={f.op}
-                      onChange={(e) => {
-                        const nf = [...filters];
-                        nf[i] = { ...f, op: e.target.value };
-                        saveConfig({ filters: nf });
-                      }}
-                      className="rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
-                    >
-                      {ops.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                    <FilterValue
-                      field={field}
-                      value={f.value}
-                      onChange={(v) => {
-                        const nf = [...filters];
-                        nf[i] = { ...f, value: v };
-                        saveConfig({ filters: nf });
-                      }}
-                    />
-                    <button
-                      onClick={() => saveConfig({ filters: filters.filter((_, j) => j !== i) })}
-                      className="shrink-0 px-1 text-[var(--muted)] hover:text-red-500"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => {
-                const fl = fields[0];
-                if (!fl) return;
-                saveConfig({ filters: [...filters, { fieldId: fl.id, op: opsFor(fl.type)[0].value, value: "" }] });
-              }}
-              className="mt-2 text-xs text-brand hover:underline"
-            >
-              + Añadir filtro
-            </button>
+            <FilterNodesEditor
+              nodes={filters}
+              onChange={(nf) => saveConfig({ filters: nf })}
+              fields={fields}
+              depth={0}
+            />
           </Popover>
         )}
       </div>
@@ -382,6 +332,141 @@ export function DbToolbar({
           </Popover>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Editor recursivo de filtros: condiciones sueltas y grupos anidados and/or. */
+function FilterNodesEditor({
+  nodes,
+  onChange,
+  fields,
+  depth,
+}: {
+  nodes: FilterNode[];
+  onChange: (nodes: FilterNode[]) => void;
+  fields: DbField[];
+  depth: number;
+}) {
+  const set = (i: number, n: FilterNode) => onChange(nodes.map((x, j) => (j === i ? n : x)));
+  const remove = (i: number) => onChange(nodes.filter((_, j) => j !== i));
+  const newCondition = (): Filter | null => {
+    const fl = fields[0];
+    return fl ? { fieldId: fl.id, op: opsFor(fl.type)[0].value, value: "" } : null;
+  };
+  return (
+    <div>
+      {nodes.length === 0 && <p className="mb-2 text-xs text-[var(--muted)]">Sin filtros.</p>}
+      <div className="space-y-2">
+        {nodes.map((node, i) =>
+          isFilterGroup(node) ? (
+            <div
+              key={i}
+              className="rounded-md border border-[var(--border)] border-l-2 border-l-brand/60 p-2"
+            >
+              <div className="mb-2 flex items-center gap-1 text-xs text-[var(--muted)]">
+                <span>Coincidir con</span>
+                <select
+                  value={node.op}
+                  onChange={(e) => set(i, { ...node, op: e.target.value as "and" | "or" })}
+                  className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs text-[var(--foreground)]"
+                >
+                  <option value="and">todos</option>
+                  <option value="or">cualquiera</option>
+                </select>
+                <button
+                  onClick={() => remove(i)}
+                  className="ml-auto shrink-0 px-1 text-[var(--muted)] hover:text-red-500"
+                  title="Borrar grupo"
+                >
+                  ✕
+                </button>
+              </div>
+              <FilterNodesEditor
+                nodes={node.filters}
+                onChange={(f) => set(i, { ...node, filters: f })}
+                fields={fields}
+                depth={depth + 1}
+              />
+            </div>
+          ) : (
+            <ConditionRow
+              key={i}
+              filter={node}
+              fields={fields}
+              onChange={(f) => set(i, f)}
+              onRemove={() => remove(i)}
+            />
+          ),
+        )}
+      </div>
+      <div className="mt-2 flex gap-3 text-xs">
+        <button
+          onClick={() => {
+            const c = newCondition();
+            if (c) onChange([...nodes, c]);
+          }}
+          className="text-brand hover:underline"
+        >
+          ＋ Añadir filtro
+        </button>
+        {/* ponytail: anidación capada a 2 niveles por usabilidad del popover; sube el tope si hace falta */}
+        {depth < 2 && (
+          <button
+            onClick={() => {
+              const c = newCondition();
+              onChange([...nodes, { type: "group", op: "and", filters: c ? [c] : [] }]);
+            }}
+            className="text-[var(--muted)] hover:text-brand hover:underline"
+          >
+            ＋ Añadir grupo
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConditionRow({
+  filter,
+  fields,
+  onChange,
+  onRemove,
+}: {
+  filter: Filter;
+  fields: DbField[];
+  onChange: (f: Filter) => void;
+  onRemove: () => void;
+}) {
+  const field = fields.find((f) => f.id === filter.fieldId);
+  const ops = opsFor(field?.type ?? "text");
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={filter.fieldId}
+        onChange={(e) => {
+          const nt = fields.find((f) => f.id === e.target.value)?.type ?? "text";
+          onChange({ fieldId: e.target.value, op: opsFor(nt)[0].value, value: "" });
+        }}
+        className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+      >
+        {fields.map((fl) => (
+          <option key={fl.id} value={fl.id}>{fl.name}</option>
+        ))}
+      </select>
+      <select
+        value={filter.op}
+        onChange={(e) => onChange({ ...filter, op: e.target.value })}
+        className="rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+      >
+        {ops.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <FilterValue field={field} value={filter.value} onChange={(v) => onChange({ ...filter, value: v })} />
+      <button onClick={onRemove} className="shrink-0 px-1 text-[var(--muted)] hover:text-red-500">
+        ✕
+      </button>
     </div>
   );
 }
