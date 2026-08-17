@@ -49,7 +49,7 @@ export function DbToolbar({
   onViewDeleted: () => void;
 }) {
   const utils = trpc.useUtils();
-  const [open, setOpen] = useState<null | "filter" | "sort" | "add" | "cfg">(null);
+  const [open, setOpen] = useState<null | "filter" | "sort" | "props" | "add" | "cfg">(null);
   const refresh = () => utils.db.get.invalidate({ pageId });
 
   const update = trpc.db.updateView.useMutation({ onSuccess: refresh });
@@ -72,7 +72,10 @@ export function DbToolbar({
 
   const filters: Filter[] = Array.isArray(view.config?.filters) ? view.config.filters : [];
   const sorts: Sort[] = Array.isArray(view.config?.sorts) ? view.config.sorts : [];
+  const hidden: string[] = Array.isArray(view.config?.hiddenFields) ? view.config.hiddenFields : [];
   const saveConfig = (patch: any) => update.mutate({ id: view.id, config: { ...view.config, ...patch } });
+  const toggleHidden = (id: string) =>
+    saveConfig({ hiddenFields: hidden.includes(id) ? hidden.filter((x) => x !== id) : [...hidden, id] });
 
   const fieldById = (id: string) => fields.find((f) => f.id === id);
 
@@ -215,6 +218,36 @@ export function DbToolbar({
             >
               + Añadir orden
             </button>
+          </Popover>
+        )}
+      </div>
+
+      {/* Propiedades (mostrar/ocultar columnas) */}
+      <div className="relative">
+        <button
+          onClick={() => setOpen(open === "props" ? null : "props")}
+          className={`rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${hidden.length ? "text-brand" : "text-[var(--muted)]"}`}
+        >
+          👁 Propiedades{hidden.length ? ` (${fields.length - hidden.length}/${fields.length})` : ""}
+        </button>
+        {open === "props" && (
+          <Popover onClose={() => setOpen(null)}>
+            <div className="mb-2 text-xs font-medium text-[var(--muted)]">Mostrar en esta vista</div>
+            <div className="max-h-64 space-y-0.5 overflow-y-auto">
+              {fields.map((f) => {
+                const visible = !hidden.includes(f.id);
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => toggleHidden(f.id)}
+                    className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--border)]/40"
+                  >
+                    <span className={visible ? "" : "opacity-40"}>{f.name}</span>
+                    <span className="ml-auto text-xs">{visible ? "👁" : "🚫"}</span>
+                  </button>
+                );
+              })}
+            </div>
           </Popover>
         )}
       </div>

@@ -63,6 +63,8 @@ export function Database({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const asAny = (r: unknown) => r as any;
+  const hiddenIds: string[] = asAny(active.config)?.hiddenFields ?? [];
+  const visibleFields = fields.filter((f) => !hiddenIds.includes(asAny(f).id));
 
   return (
     <div className="px-3 py-5 md:px-8">
@@ -114,7 +116,7 @@ export function Database({
         <KanbanView
           pageId={pageId}
           collectionId={col.id}
-          fields={fields}
+          fields={asAny(visibleFields)}
           records={asAny(viewRecords)}
           groupByFieldId={asAny(active.config)?.groupByFieldId}
         />
@@ -124,18 +126,18 @@ export function Database({
         <CalendarView
           pageId={pageId}
           collectionId={col.id}
-          fields={fields}
+          fields={asAny(visibleFields)}
           records={asAny(viewRecords)}
           view={active}
         />
       ) : active?.type === "gallery" ? (
-        <GalleryView pageId={pageId} collectionId={col.id} fields={fields} records={asAny(viewRecords)} />
+        <GalleryView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} />
       ) : active?.type === "list" ? (
-        <ListView pageId={pageId} collectionId={col.id} fields={asAny(fields)} records={asAny(viewRecords)} />
+        <ListView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} />
       ) : active?.type === "form" ? (
         <FormView pageId={pageId} collectionId={col.id} fields={asAny(fields)} />
       ) : (
-        <TableView pageId={pageId} collectionId={col.id} fields={fields} records={asAny(viewRecords)} view={active} />
+        <TableView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} view={active} />
       )}
     </div>
   );

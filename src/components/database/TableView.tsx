@@ -20,6 +20,7 @@ export function TableView({
   collectionId,
   fields,
   records,
+  view,
 }: {
   pageId: string;
   collectionId: string;
@@ -35,6 +36,7 @@ export function TableView({
   const deleteRecord = trpc.db.deleteRecord.useMutation({ onSuccess: invalidate });
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
+  const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
   const { data: computed } = trpc.db.computed.useQuery({ pageId });
 
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -42,6 +44,12 @@ export function TableView({
 
   // El filtrado y el orden se aplican en Database (barra de herramientas superior).
   const rows = records;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cfg = (view.config ?? {}) as any;
+  const calcs: Record<string, string> = cfg.calcs ?? {};
+  const setCalc = (fieldId: string, calc: string) =>
+    updateView.mutate({ id: view.id, config: { ...cfg, calcs: { ...calcs, [fieldId]: calc } } });
 
   return (
     <div className="overflow-x-auto">
@@ -130,6 +138,17 @@ export function TableView({
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className="border-t border-[var(--border)] text-xs text-[var(--muted)]">
+            <td />
+            {fields.map((f) => (
+              <td key={f.id} className="px-2 py-1">
+                <CalcCell field={f} calc={calcs[f.id] ?? ""} records={records} onChange={(c) => setCalc(f.id, c)} />
+              </td>
+            ))}
+            <td />
+          </tr>
+        </tfoot>
       </table>
 
       <button
@@ -145,6 +164,87 @@ export function TableView({
           const fresh = records.find((r) => r.id === openRec.id) ?? openRec;
           return <RecordPanel pageId={pageId} record={fresh} fields={fields} onClose={() => setOpenRec(null)} />;
         })()}
+    </div>
+  );
+}
+
+const CALC_OPTS: [string, string][] = [
+  ["", "Calcular"],
+  ["count", "Contar todo"],
+  ["filled", "No vacías"],
+  ["empty", "Vacías"],
+  ["percent_filled", "% no vacías"],
+  ["sum", "Suma"],
+  ["avg", "Media"],
+  ["min", "Mín"],
+  ["max", "Máx"],
+];
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+function computeCalc(calc: string, field: FieldLite, records: Rec[]): string {
+  if (!calc) return "";
+  const vals = records.map((r) => r.cells?.[field.id]);
+  const nonEmpty = vals.filter(
+    (v) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && v.length === 0),
+  );
+  const nums = nonEmpty.map((v) => Number(v)).filter((n) => Number.isFinite(n));
+  switch (calc) {
+    case "count":
+      return String(records.length);
+    case "filled":
+      return String(nonEmpty.length);
+    case "empty":
+      return String(records.length - nonEmpty.length);
+    case "percent_filled":
+      return records.length ? Math.round((nonEmpty.length / records.length) * 100) + "%" : "0%";
+    case "sum":
+      return nums.length ? String(round2(nums.reduce((a, b) => a + b, 0))) : "—";
+    case "avg":
+      return nums.length ? String(round2(nums.reduce((a, b) => a + b, 0) / nums.length)) : "—";
+    case "min":
+      return nums.length ? String(Math.min(...nums)) : "—";
+    case "max":
+      return nums.length ? String(Math.max(...nums)) : "—";
+    default:
+      return "";
+  }
+}
+
+function CalcCell({
+  field,
+  calc,
+  records,
+  onChange,
+}: {
+  field: FieldLite;
+  calc: string;
+  records: Rec[];
+  onChange: (c: string) => void;
+}) {
+  const val = computeCalc(calc, field, records);
+  const label = CALC_OPTS.find((o) => o[0] === calc)?.[1] ?? "Calcular";
+  return (
+    <div className="group/calc flex items-center justify-end gap-1">
+      {calc && (
+        <span className="tabular-nums">
+          {label}: <b className="text-[var(--foreground)]">{val}</b>
+        </span>
+      )}
+      <select
+        value={calc}
+        onChange={(e) => onChange(e.target.value)}
+        className={`cursor-pointer rounded bg-transparent text-xs outline-none ${calc ? "opacity-0 group-hover/calc:opacity-100" : "opacity-40 group-hover/calc:opacity-100"}`}
+        title="Calcular"
+      >
+        {CALC_OPTS.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
