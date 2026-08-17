@@ -7,6 +7,7 @@ import { Editor } from "@/components/editor/Editor";
 import { Database } from "@/components/database/Database";
 import { CommentsButton, CommentsPanel } from "@/components/CommentsPanel";
 import { HistoryButton, VersionHistoryModal } from "@/components/VersionHistory";
+import { ShareButton } from "@/components/SharePublish";
 
 export default function PageView() {
   const params = useParams<{ pageId: string }>();
@@ -55,6 +56,7 @@ export default function PageView() {
         <CommentsPanel pageId={page.id} onClose={() => setComments(false)} />
       ) : (
         <div className="absolute right-3 top-2 z-10 flex items-center gap-1">
+          {canEdit && <ShareButton pageId={page.id} publicToken={page.publicToken} />}
           {page.type !== "database" && <HistoryButton onClick={() => setHistory(true)} />}
           <CommentsButton pageId={page.id} onClick={() => setComments(true)} />
         </div>

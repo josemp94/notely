@@ -9,6 +9,25 @@ import { evalFormula } from "../formula";
 // Tipos de campo soportados en Fase 2
 export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
 
+/** Valor de una celda como texto plano (export CSV y vista pública). */
+export function cellToText(
+  f: { type: string; config: unknown },
+  v: unknown,
+  r: { createdAt: Date; updatedAt: Date; seq: number | null },
+): string {
+  if (f.type === "created_time") return r.createdAt.toISOString();
+  if (f.type === "last_edited_time") return r.updatedAt.toISOString();
+  if (f.type === "id") return r.seq == null ? "" : String(r.seq);
+  if (v === undefined || v === null || v === "") return "";
+  const opts = ((f.config as { options?: { id: string; label: string }[] })?.options) ?? [];
+  if (f.type === "select" || f.type === "status") return opts.find((o) => o.id === v)?.label ?? String(v);
+  if (f.type === "multiselect")
+    return (Array.isArray(v) ? v : [v]).map((x) => opts.find((o) => o.id === x)?.label ?? String(x)).join(", ");
+  if (f.type === "checkbox") return v ? "true" : "false";
+  if (Array.isArray(v)) return v.map(String).join(", ");
+  return String(v);
+}
+
 async function assertPage(ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } }, pageId: string) {
   const p = await ctx.db.page.findFirst({
     where: { id: pageId, workspaceId: ctx.workspace.id },
@@ -86,24 +105,11 @@ export const dbRouter = router({
         },
       });
       if (!col) throw new TRPCError({ code: "NOT_FOUND" });
-      const cellText = (f: (typeof col.fields)[number], v: unknown, r: (typeof col.records)[number]): string => {
-        if (f.type === "created_time") return r.createdAt.toISOString();
-        if (f.type === "last_edited_time") return r.updatedAt.toISOString();
-        if (f.type === "id") return r.seq == null ? "" : String(r.seq);
-        if (v === undefined || v === null || v === "") return "";
-        const opts = ((f.config as { options?: { id: string; label: string }[] })?.options) ?? [];
-        if (f.type === "select" || f.type === "status") return opts.find((o) => o.id === v)?.label ?? String(v);
-        if (f.type === "multiselect")
-          return (Array.isArray(v) ? v : [v]).map((x) => opts.find((o) => o.id === x)?.label ?? String(x)).join(", ");
-        if (f.type === "checkbox") return v ? "true" : "false";
-        if (Array.isArray(v)) return v.map(String).join(", ");
-        return String(v);
-      };
       const rows = [
         col.fields.map((f) => f.name),
         ...col.records.map((r) => {
           const cells = (r.cells ?? {}) as Record<string, unknown>;
-          return col.fields.map((f) => cellText(f, cells[f.id], r));
+          return col.fields.map((f) => cellToText(f, cells[f.id], r));
         }),
       ];
       return { name: col.page.title || col.name || "Base de datos", csv: toCsv(rows) };

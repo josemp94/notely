@@ -66,6 +66,7 @@ model Page {
   order       String    // índice fraccional
   type        String    @default("doc") // doc | database
   content     Json?     // documento de bloques (BlockNote) si type=doc
+  publicToken String?   @unique // si no es null, la página está publicada en la web (/s/<token>)
   archivedAt  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

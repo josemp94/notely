@@ -14,7 +14,7 @@ const GRADIENTS: Record<string, string> = {
   lavender: "linear-gradient(135deg, #a18cd1, #fbc2eb)",
 };
 
-function coverStyle(cover: string): React.CSSProperties {
+export function coverStyle(cover: string): React.CSSProperties {
   if (cover.startsWith("url:")) {
     return {
       backgroundImage: `url(${cover.slice(4)})`,

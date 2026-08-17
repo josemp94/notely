@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Prisma } from "@prisma/client";
@@ -180,6 +181,35 @@ export const pagesRouter = router({
         return { pageId: version.pageId };
       }),
   }),
+
+  /** Publica la página en la web. Idempotente: conserva el token (y la URL) si ya estaba publicada. */
+  publish: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const page = await ctx.db.page.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspace.id },
+        select: { id: true, publicToken: true },
+      });
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      if (page.publicToken) return { id: page.id, publicToken: page.publicToken };
+      return ctx.db.page.update({
+        where: { id: page.id },
+        data: { publicToken: randomBytes(16).toString("base64url") },
+        select: { id: true, publicToken: true },
+      });
+    }),
+
+  /** Retira la página de la web (invalida la URL pública). */
+  unpublish: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertOwned(ctx, input.id);
+      return ctx.db.page.update({
+        where: { id: input.id },
+        data: { publicToken: null },
+        select: { id: true, publicToken: true },
+      });
+    }),
 
   /** Mover una página: re-parent y/o reordenar entre hermanas (drag & drop del sidebar). */
   move: workspaceProcedure
