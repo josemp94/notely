@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { Prisma } from "@prisma/client";
 import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd, rankBetween } from "@/lib/fractional";
 
@@ -164,6 +165,34 @@ export const pagesRouter = router({
       });
     }),
 
+  /** Duplicar una página (copia profunda: contenido, colección y subpáginas). */
+  duplicate: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const orig = await ctx.db.page.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspace.id },
+        select: { id: true, parentId: true, order: true },
+      });
+      if (!orig) throw new TRPCError({ code: "NOT_FOUND" });
+      // La copia va justo detrás de la original entre sus hermanas.
+      const next = await ctx.db.page.findFirst({
+        where: {
+          workspaceId: ctx.workspace.id,
+          parentId: orig.parentId,
+          archivedAt: null,
+          order: { gt: orig.order },
+        },
+        orderBy: { order: "asc" },
+        select: { order: true },
+      });
+      const id = await ctx.db.$transaction(
+        (tx) =>
+          copyPage(tx, ctx.workspace.id, orig.id, orig.parentId, rankBetween(orig.order, next?.order ?? null), true),
+        { timeout: 30_000 },
+      );
+      return { id };
+    }),
+
   /** Enviar a la papelera (soft-delete, con subárbol). */
   archive: workspaceProcedure
     .input(z.object({ id: z.string() }))
@@ -210,6 +239,116 @@ export const pagesRouter = router({
       return { removed: ids.length };
     }),
 });
+
+/** Sustituye ids antiguos por nuevos dentro de un JSON (cells, configs, specs). Los cuid son únicos, el reemplazo textual es seguro. */
+function remapIds<T>(value: T, map: Map<string, string>): T {
+  let s = JSON.stringify(value);
+  if (s === undefined) return value;
+  for (const [oldId, newId] of map) s = s.split(oldId).join(newId);
+  return JSON.parse(s) as T;
+}
+
+function asJson(v: Prisma.JsonValue | null) {
+  return v === null ? Prisma.DbNull : (v as Prisma.InputJsonValue);
+}
+
+/** Copia profunda de una página: contenido, colección (campos/vistas/registros), gráficas y subpáginas. */
+async function copyPage(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  srcId: string,
+  parentId: string | null,
+  order: string,
+  isRoot: boolean,
+): Promise<string> {
+  const src = await tx.page.findUniqueOrThrow({
+    where: { id: srcId },
+    include: {
+      collection: {
+        include: {
+          fields: { orderBy: { order: "asc" } },
+          views: { orderBy: { id: "asc" } },
+          records: { orderBy: { order: "asc" } },
+        },
+      },
+      charts: true,
+    },
+  });
+
+  const page = await tx.page.create({
+    data: {
+      workspaceId,
+      parentId,
+      title: isRoot ? `${src.title} (copia)` : src.title,
+      icon: src.icon,
+      cover: src.cover,
+      type: src.type,
+      order,
+      content: asJson(src.content),
+    },
+  });
+  const map = new Map<string, string>([[src.id, page.id]]);
+
+  if (src.collection) {
+    const col = await tx.collection.create({ data: { pageId: page.id, name: src.collection.name } });
+    map.set(src.collection.id, col.id);
+    for (const f of src.collection.fields) {
+      const nf = await tx.field.create({
+        data: { collectionId: col.id, name: f.name, type: f.type, order: f.order, config: f.config as Prisma.InputJsonValue },
+      });
+      map.set(f.id, nf.id);
+    }
+    const createdRecords: { newId: string; orig: Prisma.JsonValue; stored: Prisma.JsonValue }[] = [];
+    for (const r of src.collection.records) {
+      const cells = remapIds(r.cells, map);
+      const nr = await tx.record.create({
+        data: {
+          collectionId: col.id,
+          order: r.order,
+          seq: r.seq,
+          cells: cells as Prisma.InputJsonValue,
+          content: r.content === null ? Prisma.DbNull : (remapIds(r.content, map) as Prisma.InputJsonValue),
+        },
+      });
+      map.set(r.id, nr.id);
+      createdRecords.push({ newId: nr.id, orig: r.cells, stored: cells });
+    }
+    // Vistas: se crean al final, con el mapa completo (campos y registros ya remapeables).
+    for (const v of src.collection.views) {
+      await tx.view.create({
+        data: { collectionId: col.id, name: v.name, type: v.type, config: remapIds(v.config, map) as Prisma.InputJsonValue },
+      });
+    }
+    // Segunda pasada: configs de campo (relación/rollup a la propia colección) y celdas con relaciones internas.
+    for (const f of src.collection.fields) {
+      const cfg = remapIds(f.config, map);
+      if (JSON.stringify(cfg) !== JSON.stringify(f.config)) {
+        await tx.field.update({ where: { id: map.get(f.id)! }, data: { config: cfg as Prisma.InputJsonValue } });
+      }
+    }
+    for (const r of createdRecords) {
+      const cells = remapIds(r.orig, map);
+      if (JSON.stringify(cells) !== JSON.stringify(r.stored)) {
+        await tx.record.update({ where: { id: r.newId }, data: { cells: cells as Prisma.InputJsonValue } });
+      }
+    }
+  }
+
+  for (const ch of src.charts) {
+    await tx.chart.create({ data: { pageId: page.id, name: ch.name, spec: remapIds(ch.spec, map) as Prisma.InputJsonValue } });
+  }
+
+  const children = await tx.page.findMany({
+    where: { parentId: src.id, archivedAt: null },
+    select: { id: true, order: true },
+    orderBy: { order: "asc" },
+  });
+  for (const c of children) {
+    // Las hermanas nuevas nacen sin conflicto: se reutiliza el order original de cada hija.
+    await copyPage(tx, workspaceId, c.id, page.id, c.order, false);
+  }
+  return page.id;
+}
 
 async function assertOwned(
   ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } },

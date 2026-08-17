@@ -378,6 +378,12 @@ function TreeItem({
       if (active) router.push("/");
     },
   });
+  const duplicate = trpc.pages.duplicate.useMutation({
+    onSuccess: async (res) => {
+      await utils.pages.tree.invalidate();
+      router.push(`/p/${res.id}`);
+    },
+  });
 
   return (
     <li>
@@ -469,6 +475,10 @@ function TreeItem({
             {
               label: "➕ Añadir subpágina",
               onClick: () => addSub.mutate({ parentId: node.id }),
+            },
+            {
+              label: "⧉ Duplicar",
+              onClick: () => duplicate.mutate({ id: node.id }),
             },
             {
               label: "🗑 Enviar a la papelera",
