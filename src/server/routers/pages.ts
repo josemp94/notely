@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { Prisma } from "@prisma/client";
 import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd, rankBetween } from "@/lib/fractional";
+import { TEMPLATES } from "@/lib/templates";
 
 /** Nodo del árbol de páginas para el sidebar. */
 type TreeNode = {
@@ -77,6 +78,75 @@ export const pagesRouter = router({
           content: [],
         },
       });
+    }),
+
+  /** Crea una página o base de datos prehecha a partir de una plantilla de la galería. */
+  createFromTemplate: workspaceProcedure
+    .input(z.object({ key: z.string(), parentId: z.string().nullish() }))
+    .mutation(async ({ ctx, input }) => {
+      const tplDef = TEMPLATES[input.key];
+      if (!tplDef) throw new TRPCError({ code: "BAD_REQUEST", message: "Plantilla desconocida." });
+      const tpl = tplDef.make();
+      const last = await ctx.db.page.findFirst({
+        where: { workspaceId: ctx.workspace.id, parentId: input.parentId ?? null },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
+      const base = {
+        workspaceId: ctx.workspace.id,
+        parentId: input.parentId ?? null,
+        title: tplDef.name,
+        icon: tplDef.icon,
+        order: rankAtEnd(last?.order ?? null),
+      };
+      if (tpl.type === "doc") {
+        const page = await ctx.db.page.create({
+          data: { ...base, content: tpl.content as Prisma.InputJsonValue },
+        });
+        return { id: page.id };
+      }
+      const id = await ctx.db.$transaction(async (tx) => {
+        const page = await tx.page.create({ data: { ...base, type: "database", content: [] } });
+        const col = await tx.collection.create({ data: { pageId: page.id, name: tplDef.name } });
+        const idByName = new Map<string, string>();
+        let fOrd: string | null = null;
+        for (const f of tpl.fields) {
+          fOrd = rankAtEnd(fOrd);
+          const created = await tx.field.create({
+            data: { collectionId: col.id, name: f.name, type: f.type, order: fOrd, config: (f.config ?? {}) as Prisma.InputJsonValue },
+          });
+          idByName.set(f.name, created.id);
+        }
+        for (const v of tpl.views) {
+          const config: Record<string, unknown> = {};
+          if (v.groupByField) config.groupByFieldId = idByName.get(v.groupByField) ?? null;
+          if (v.calcs) {
+            config.calcs = Object.fromEntries(
+              Object.entries(v.calcs).flatMap(([name, calc]) => {
+                const fid = idByName.get(name);
+                return fid ? [[fid, calc] as const] : [];
+              }),
+            );
+          }
+          await tx.view.create({
+            data: { collectionId: col.id, name: v.name, type: v.type, config: config as Prisma.InputJsonValue },
+          });
+        }
+        let rOrd: string | null = null;
+        for (const [i, rec] of tpl.records.entries()) {
+          rOrd = rankAtEnd(rOrd);
+          const cells: Record<string, unknown> = {};
+          for (const [name, value] of Object.entries(rec)) {
+            const fid = idByName.get(name);
+            if (fid && value !== "" && value != null) cells[fid] = value;
+          }
+          await tx.record.create({
+            data: { collectionId: col.id, order: rOrd, seq: i + 1, cells: cells as Prisma.InputJsonValue },
+          });
+        }
+        return page.id;
+      });
+      return { id };
     }),
 
   /** Renombrar (título + icono). */

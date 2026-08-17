@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { BlockNoteEditor } from "@blocknote/core";
 import { trpc } from "@/trpc/react";
 import { parseCsv } from "@/lib/csv";
+import { TEMPLATES } from "@/lib/templates";
 import { openSearchPalette } from "@/components/SearchPalette";
 
 type Node = {
@@ -37,6 +38,7 @@ export function Sidebar() {
   const { data: me } = trpc.auth.me.useQuery();
   const { data: pages } = trpc.pages.tree.useQuery();
   const canEdit = me?.wsRole !== "viewer";
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const create = trpc.pages.create.useMutation({
     onSuccess: async (page) => {
@@ -152,6 +154,17 @@ export function Sidebar() {
         <span className="ml-auto font-mono text-[10px] text-[var(--muted)]">Ctrl K</span>
       </button>
 
+      {canEdit && (
+        <button
+          onClick={() => setShowTemplates(true)}
+          className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
+          title="Crear desde una plantilla"
+        >
+          ✨ Plantillas
+        </button>
+      )}
+      {showTemplates && <TemplatesGallery onClose={() => setShowTemplates(false)} />}
+
       <nav className="flex-1 overflow-y-auto px-2 pb-6">
         <Tree nodes={byParent.get(null) ?? []} byParent={byParent} parentById={parentById} depth={0} canEdit={canEdit} />
       </nav>
@@ -163,6 +176,54 @@ export function Sidebar() {
       </Link>
       <AccountFooter me={me} />
     </aside>
+  );
+}
+
+/** Galería de plantillas (✨): tarjetas con icono + nombre + descripción; crea la página en el servidor. */
+function TemplatesGallery({ onClose }: { onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const create = trpc.pages.createFromTemplate.useMutation({
+    onSuccess: async ({ id }) => {
+      await utils.pages.tree.invalidate();
+      onClose();
+      router.push(`/p/${id}`);
+    },
+  });
+  if (!mounted) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold">✨ Plantillas</h2>
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+            ✕
+          </button>
+        </div>
+        <p className="mb-4 text-xs text-[var(--muted)]">Empieza con una página o base de datos prehecha.</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {Object.entries(TEMPLATES).map(([key, t]) => (
+            <button
+              key={key}
+              disabled={create.isPending}
+              onClick={() => create.mutate({ key })}
+              className="rounded-lg border border-[var(--border)] p-3 text-left transition-colors hover:border-brand hover:bg-brand-50 disabled:opacity-50"
+            >
+              <div className="text-2xl">{t.icon}</div>
+              <div className="mt-1 text-sm font-medium">{t.name}</div>
+              <div className="mt-0.5 text-xs text-[var(--muted)]">{t.description}</div>
+            </button>
+          ))}
+        </div>
+        {create.error && <p className="mt-2 text-xs text-red-500">{create.error.message}</p>}
+      </div>
+    </div>,
+    document.body,
   );
 }
 
