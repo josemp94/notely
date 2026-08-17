@@ -1,13 +1,13 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: notely-db
+    container_name: notiono-db
     environment:
       POSTGRES_USER: notely
       POSTGRES_PASSWORD: notely
       POSTGRES_DB: notely
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     volumes:
       - notely-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -31,7 +31,7 @@ services:
 
   app:
     build: .
-    container_name: notely-app
+    container_name: notiono-app
     command: ["node", "server.js"]
     depends_on:
       db:
@@ -48,7 +48,7 @@ services:
       OIDC_REDIRECT_URI: "https://notiono.monrealperez.com/api/auth/oidc/callback"
       OIDC_PROVIDER_NAME: "Synology"
     ports:
-      - "3000:3000"
+      - "3010:3000"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/health || exit 1"]
       interval: 15s
