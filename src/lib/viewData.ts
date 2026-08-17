@@ -114,10 +114,16 @@ export function applyViewConfig(records: DbRecord[], fields: DbField[], config: 
   const byId = new Map(fields.map((f) => [f.id, f]));
   let out = records;
   const filters: Filter[] = Array.isArray(config?.filters) ? config.filters : [];
-  for (const f of filters) {
-    const field = byId.get(f.fieldId);
-    if (!field || f.value === "" || f.value == null) continue;
-    out = out.filter((r) => matchFilter(r.cells[f.fieldId], field, f.op, f.value));
+  const active = filters
+    .map((f) => ({ f, field: byId.get(f.fieldId) }))
+    .filter((x): x is { f: Filter; field: DbField } => !!x.field && x.f.value !== "" && x.f.value != null);
+  if (active.length) {
+    const match = ({ f, field }: { f: Filter; field: DbField }, r: DbRecord) =>
+      matchFilter(r.cells[f.fieldId], field, f.op, f.value);
+    out =
+      config?.filterOp === "or"
+        ? out.filter((r) => active.some((a) => match(a, r)))
+        : out.filter((r) => active.every((a) => match(a, r)));
   }
   const sorts: Sort[] = Array.isArray(config?.sorts) ? config.sorts : [];
   if (sorts.length) {

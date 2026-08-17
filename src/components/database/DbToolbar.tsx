@@ -72,6 +72,7 @@ export function DbToolbar({
   });
 
   const filters: Filter[] = Array.isArray(view.config?.filters) ? view.config.filters : [];
+  const filterOp: "and" | "or" = view.config?.filterOp === "or" ? "or" : "and";
   const sorts: Sort[] = Array.isArray(view.config?.sorts) ? view.config.sorts : [];
   const hidden: string[] = Array.isArray(view.config?.hiddenFields) ? view.config.hiddenFields : [];
   const saveConfig = (patch: any) => update.mutate({ id: view.id, config: { ...view.config, ...patch } });
@@ -93,6 +94,20 @@ export function DbToolbar({
         {open === "filter" && (
           <Popover onClose={() => setOpen(null)}>
             <div className="mb-2 text-xs font-medium text-[var(--muted)]">Filtros</div>
+            {filters.length >= 2 && (
+              <div className="mb-2 flex items-center gap-1 text-xs text-[var(--muted)]">
+                <span>Coincidir con</span>
+                <select
+                  value={filterOp}
+                  onChange={(e) => saveConfig({ filterOp: e.target.value })}
+                  className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs text-[var(--foreground)]"
+                >
+                  <option value="and">todos</option>
+                  <option value="or">cualquiera</option>
+                </select>
+                <span>los filtros</span>
+              </div>
+            )}
             {filters.length === 0 && <p className="mb-2 text-xs text-[var(--muted)]">Sin filtros.</p>}
             <div className="space-y-2">
               {filters.map((f, i) => {
