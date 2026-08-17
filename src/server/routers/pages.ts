@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "../trpc";
-import { rankAtEnd } from "@/lib/fractional";
+import { rankAtEnd, rankBetween } from "@/lib/fractional";
 
 /** Nodo del árbol de páginas para el sidebar. */
 type TreeNode = {
@@ -109,6 +109,58 @@ export const pagesRouter = router({
         where: { id: input.id },
         data: { content: input.content },
         select: { id: true, updatedAt: true },
+      });
+    }),
+
+  /** Mover una página: re-parent y/o reordenar entre hermanas (drag & drop del sidebar). */
+  move: workspaceProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        parentId: z.string().nullable(),
+        beforeId: z.string().optional(), // insertar justo antes de esta hermana
+        afterId: z.string().optional(), // insertar justo después de esta hermana
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertOwned(ctx, input.id);
+      if (input.parentId) {
+        await assertOwned(ctx, input.parentId);
+        const subtree = await descendantIds(ctx, input.id);
+        if (subtree.includes(input.parentId)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No puedes mover una página dentro de su propio subárbol.",
+          });
+        }
+      }
+      const siblings = await ctx.db.page.findMany({
+        where: {
+          workspaceId: ctx.workspace.id,
+          parentId: input.parentId,
+          archivedAt: null,
+          id: { not: input.id },
+        },
+        select: { id: true, order: true },
+        orderBy: { order: "asc" },
+      });
+      const anchorId = input.beforeId ?? input.afterId;
+      const anchor = anchorId ? siblings.findIndex((s) => s.id === anchorId) : -1;
+      let a: string | null = siblings.at(-1)?.order ?? null; // por defecto: al final
+      let b: string | null = null;
+      if (anchor !== -1) {
+        if (input.beforeId) {
+          a = siblings[anchor - 1]?.order ?? null;
+          b = siblings[anchor].order;
+        } else {
+          a = siblings[anchor].order;
+          b = siblings[anchor + 1]?.order ?? null;
+        }
+      }
+      return ctx.db.page.update({
+        where: { id: input.id },
+        data: { parentId: input.parentId, order: rankBetween(a, b) },
+        select: { id: true, parentId: true, order: true },
       });
     }),
 

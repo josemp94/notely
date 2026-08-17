@@ -16,6 +16,19 @@ type Node = {
   hasChildren: boolean;
 };
 
+// Id de la página que se está arrastrando (solo puede haber un drag a la vez).
+let draggedId: string | null = null;
+
+/** ¿Está `id` dentro del subárbol de `rootId`? (para no soltar una página en sí misma) */
+function isInSubtree(id: string, rootId: string, parentById: Map<string, string | null>): boolean {
+  let cur: string | null = id;
+  while (cur) {
+    if (cur === rootId) return true;
+    cur = parentById.get(cur) ?? null;
+  }
+  return false;
+}
+
 export function Sidebar() {
   const utils = trpc.useUtils();
   const router = useRouter();
@@ -37,10 +50,12 @@ export function Sidebar() {
   });
 
   const byParent = new Map<string | null, Node[]>();
+  const parentById = new Map<string, string | null>();
   for (const p of pages ?? []) {
     const arr = byParent.get(p.parentId) ?? [];
     arr.push(p);
     byParent.set(p.parentId, arr);
+    parentById.set(p.id, p.parentId);
   }
 
   return (
@@ -82,7 +97,7 @@ export function Sidebar() {
       </button>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-6">
-        <Tree nodes={byParent.get(null) ?? []} byParent={byParent} depth={0} canEdit={canEdit} />
+        <Tree nodes={byParent.get(null) ?? []} byParent={byParent} parentById={parentById} depth={0} canEdit={canEdit} />
       </nav>
       <Link
         href="/trash"
@@ -305,18 +320,20 @@ function AccountFooter({ me }: { me: Me }) {
 function Tree({
   nodes,
   byParent,
+  parentById,
   depth,
   canEdit,
 }: {
   nodes: Node[];
   byParent: Map<string | null, Node[]>;
+  parentById: Map<string, string | null>;
   depth: number;
   canEdit: boolean;
 }) {
   return (
     <ul>
       {nodes.map((n) => (
-        <TreeItem key={n.id} node={n} byParent={byParent} depth={depth} canEdit={canEdit} />
+        <TreeItem key={n.id} node={n} byParent={byParent} parentById={parentById} depth={depth} canEdit={canEdit} />
       ))}
     </ul>
   );
@@ -325,11 +342,13 @@ function Tree({
 function TreeItem({
   node,
   byParent,
+  parentById,
   depth,
   canEdit,
 }: {
   node: Node;
   byParent: Map<string | null, Node[]>;
+  parentById: Map<string, string | null>;
   depth: number;
   canEdit: boolean;
 }) {
@@ -338,8 +357,13 @@ function TreeItem({
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(true);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [dropPos, setDropPos] = useState<"before" | "after" | "inside" | null>(null);
   const children = byParent.get(node.id) ?? [];
   const active = pathname === `/p/${node.id}`;
+
+  const move = trpc.pages.move.useMutation({
+    onSuccess: () => utils.pages.tree.invalidate(),
+  });
 
   const addSub = trpc.pages.create.useMutation({
     onSuccess: async (page) => {
@@ -360,8 +384,48 @@ function TreeItem({
       <div
         className={`group flex items-center gap-1 rounded-md pr-1 text-sm ${
           active ? "bg-brand-50 text-brand" : "hover:bg-[var(--border)]/40"
+        } ${
+          dropPos === "inside"
+            ? "bg-brand-50 ring-1 ring-brand"
+            : dropPos === "before"
+              ? "shadow-[inset_0_2px_0_0_var(--color-brand)]"
+              : dropPos === "after"
+                ? "shadow-[inset_0_-2px_0_0_var(--color-brand)]"
+                : ""
         }`}
         style={{ paddingLeft: `${depth * 12 + 4}px` }}
+        draggable={canEdit}
+        onDragStart={(e) => {
+          draggedId = node.id;
+          e.dataTransfer.effectAllowed = "move";
+        }}
+        onDragEnd={() => {
+          draggedId = null;
+        }}
+        onDragOver={(e) => {
+          if (!canEdit || !draggedId || isInSubtree(node.id, draggedId, parentById)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          const r = e.currentTarget.getBoundingClientRect();
+          const y = e.clientY - r.top;
+          setDropPos(y < r.height / 4 ? "before" : y > (r.height * 3) / 4 ? "after" : "inside");
+        }}
+        onDragLeave={() => setDropPos(null)}
+        onDrop={(e) => {
+          e.preventDefault();
+          const pos = dropPos;
+          setDropPos(null);
+          if (!pos || !draggedId || isInSubtree(node.id, draggedId, parentById)) return;
+          if (pos === "inside") {
+            move.mutate({ id: draggedId, parentId: node.id });
+            setOpen(true);
+          } else if (pos === "before") {
+            move.mutate({ id: draggedId, parentId: node.parentId, beforeId: node.id });
+          } else {
+            move.mutate({ id: draggedId, parentId: node.parentId, afterId: node.id });
+          }
+          draggedId = null;
+        }}
       >
         <button
           onClick={() => setOpen((o) => !o)}
@@ -369,7 +433,7 @@ function TreeItem({
         >
           {open ? "▾" : "▸"}
         </button>
-        <Link href={`/p/${node.id}`} className="flex-1 truncate py-1">
+        <Link href={`/p/${node.id}`} className="flex-1 truncate py-1" draggable={false}>
           {node.icon ? `${node.icon} ` : "📄 "}
           {node.title || "Sin título"}
         </Link>
@@ -416,7 +480,7 @@ function TreeItem({
       )}
 
       {open && children.length > 0 && (
-        <Tree nodes={children} byParent={byParent} depth={depth + 1} canEdit={canEdit} />
+        <Tree nodes={children} byParent={byParent} parentById={parentById} depth={depth + 1} canEdit={canEdit} />
       )}
     </li>
   );
