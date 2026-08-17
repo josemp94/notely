@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/trpc/react";
+import { SwRegister } from "@/components/SwRegister";
 
 const display = Bricolage_Grotesque({
   variable: "--font-display",
@@ -21,6 +22,14 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Notiono",
   description: "Tu espacio: notas, bases de datos y gráficas reales. Self-hosted.",
+  appleWebApp: { capable: true, title: "Notiono", statusBarStyle: "default" },
+  icons: { apple: "/icon-192.png" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#ff5c28",
 };
 
 export default function RootLayout({
@@ -31,6 +40,7 @@ export default function RootLayout({
       <body
         className={`${display.variable} ${sans.variable} ${mono.variable} antialiased`}
       >
+        <SwRegister />
         <TRPCProvider>{children}</TRPCProvider>
       </body>
     </html>
