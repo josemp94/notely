@@ -5,7 +5,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import type { PartialBlock } from "@blocknote/core";
+import { editorSchema, MentionMenu, type NotelyPartialBlock } from "./mention";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
 import { PageIcon } from "@/components/PageIcon";
@@ -44,12 +44,12 @@ export function Editor({
   });
   const setCoverM = trpc.pages.setCover.useMutation();
 
-  const initial = useMemo<PartialBlock[] | undefined>(() => {
-    const c = initialContent as PartialBlock[] | undefined;
+  const initial = useMemo<NotelyPartialBlock[] | undefined>(() => {
+    const c = initialContent as NotelyPartialBlock[] | undefined;
     return Array.isArray(c) && c.length > 0 ? c : undefined;
   }, [initialContent]);
 
-  const editor = useCreateBlockNote({ initialContent: initial });
+  const editor = useCreateBlockNote({ schema: editorSchema, initialContent: initial });
 
   function scheduleSave() {
     if (!canEdit) return;
@@ -130,7 +130,9 @@ export function Editor({
         />
       </div>
 
-      <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave} />
+      <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave}>
+        <MentionMenu editor={editor} />
+      </BlockNoteView>
       </div>
     </div>
   );

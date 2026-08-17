@@ -5,7 +5,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import type { PartialBlock } from "@blocknote/core";
+import { editorSchema, MentionMenu, type NotelyPartialBlock } from "@/components/editor/mention";
 import { trpc } from "@/trpc/react";
 import { Cell, type FieldLite } from "./Cell";
 import { RelationCell } from "./RelationCell";
@@ -53,12 +53,12 @@ export function RecordPanel({
   const propFields = fields.filter((f) => f.id !== titleField?.id);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initial = useMemo<PartialBlock[] | undefined>(() => {
-    const c = record.content as PartialBlock[] | undefined;
+  const initial = useMemo<NotelyPartialBlock[] | undefined>(() => {
+    const c = record.content as NotelyPartialBlock[] | undefined;
     return Array.isArray(c) && c.length > 0 ? c : undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record.id]);
-  const editor = useCreateBlockNote({ initialContent: initial });
+  const editor = useCreateBlockNote({ schema: editorSchema, initialContent: initial });
 
   const onBodyChange = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -125,7 +125,9 @@ export function RecordPanel({
           </div>
 
           <div className="mt-6 border-t border-[var(--border)] pt-4">
-            <BlockNoteView editor={editor} onChange={onBodyChange} />
+            <BlockNoteView editor={editor} onChange={onBodyChange}>
+              <MentionMenu editor={editor} />
+            </BlockNoteView>
           </div>
 
           <button

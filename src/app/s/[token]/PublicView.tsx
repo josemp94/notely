@@ -4,7 +4,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import type { PartialBlock } from "@blocknote/core";
+import { editorSchema, type NotelyPartialBlock } from "@/components/editor/mention";
 import { coverStyle } from "@/components/PageCover";
 
 /** Render público de solo lectura: portada, icono, título y contenido (doc o tabla). */
@@ -40,8 +40,9 @@ export function PublicView({
 }
 
 function PublicDoc({ content }: { content: unknown }) {
-  const blocks = content as PartialBlock[] | undefined;
+  const blocks = content as NotelyPartialBlock[] | undefined;
   const editor = useCreateBlockNote({
+    schema: editorSchema,
     initialContent: Array.isArray(blocks) && blocks.length > 0 ? blocks : undefined,
   });
   return <BlockNoteView editor={editor} editable={false} />;

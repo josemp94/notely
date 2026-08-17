@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
-import type { PartialBlock } from "@blocknote/core";
+import { editorSchema, type NotelyPartialBlock } from "@/components/editor/mention";
 import { trpc } from "@/trpc/react";
 
 function rel(d: Date) {
@@ -117,8 +117,9 @@ export function VersionHistoryModal({
 
 /** Render de solo lectura de un snapshot (remontar con `key` por versión). */
 function Preview({ content }: { content: unknown }) {
-  const blocks = content as PartialBlock[];
+  const blocks = content as NotelyPartialBlock[];
   const editor = useCreateBlockNote({
+    schema: editorSchema,
     initialContent: Array.isArray(blocks) && blocks.length > 0 ? blocks : undefined,
   });
   return <BlockNoteView editor={editor} editable={false} />;
