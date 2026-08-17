@@ -207,7 +207,7 @@ export const dbRouter = router({
 
   /** Crear una vista nueva en la colección. */
   addView: workspaceProcedure
-    .input(z.object({ collectionId: z.string(), type: z.enum(["table", "kanban", "calendar", "gallery", "chart", "list", "form"]), name: z.string().optional() }))
+    .input(z.object({ collectionId: z.string(), type: z.enum(["table", "kanban", "calendar", "timeline", "gallery", "chart", "list", "form"]), name: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertCollection(ctx, input.collectionId);
       const fields = await ctx.db.field.findMany({
@@ -215,11 +215,11 @@ export const dbRouter = router({
         orderBy: { order: "asc" },
       });
       const firstOf = (t: string) => fields.find((f) => f.type === t)?.id ?? null;
-      const names: Record<string, string> = { table: "Tabla", kanban: "Kanban", calendar: "Calendario", gallery: "Galería", chart: "Gráfica", list: "Lista", form: "Formulario" };
+      const names: Record<string, string> = { table: "Tabla", kanban: "Kanban", calendar: "Calendario", gallery: "Galería", chart: "Gráfica", list: "Lista", form: "Formulario", timeline: "Cronograma" };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let config: any = {};
       if (input.type === "kanban") config = { groupByFieldId: firstOf("select") };
-      else if (input.type === "calendar") config = { dateFieldId: firstOf("date") };
+      else if (input.type === "calendar" || input.type === "timeline") config = { dateFieldId: firstOf("date") };
       else if (input.type === "chart") config = { chartType: "bar", xFieldId: firstOf("select"), yFieldId: null, agg: "count" };
       return ctx.db.view.create({
         data: { collectionId: input.collectionId, name: input.name?.trim() || names[input.type], type: input.type, config },
@@ -255,7 +255,7 @@ export const dbRouter = router({
 
   /** Cambiar el tipo de una vista ("Mostrar como"), recalculando su config por defecto. */
   setViewType: workspaceProcedure
-    .input(z.object({ id: z.string(), type: z.enum(["table", "kanban", "calendar", "gallery", "chart", "list", "form"]) }))
+    .input(z.object({ id: z.string(), type: z.enum(["table", "kanban", "calendar", "timeline", "gallery", "chart", "list", "form"]) }))
     .mutation(async ({ ctx, input }) => {
       const v = await ctx.db.view.findFirst({
         where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
@@ -272,7 +272,7 @@ export const dbRouter = router({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let config: any = { filters: prev.filters, sorts: prev.sorts };
       if (input.type === "kanban") config.groupByFieldId = prev.groupByFieldId ?? firstOf("select");
-      else if (input.type === "calendar") config.dateFieldId = prev.dateFieldId ?? firstOf("date");
+      else if (input.type === "calendar" || input.type === "timeline") config.dateFieldId = prev.dateFieldId ?? firstOf("date");
       else if (input.type === "chart")
         config = { ...config, chartType: prev.chartType ?? "bar", xFieldId: prev.xFieldId ?? firstOf("select"), yFieldId: prev.yFieldId ?? null, agg: prev.agg ?? "count" };
       return ctx.db.view.update({ where: { id: input.id }, data: { type: input.type, config } });

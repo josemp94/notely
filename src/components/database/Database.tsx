@@ -11,6 +11,7 @@ import { ChartView } from "./ChartView";
 import { CalendarView } from "./CalendarView";
 import { GalleryView } from "./GalleryView";
 import { ListView } from "./ListView";
+import { TimelineView } from "./TimelineView";
 import { FormView } from "./FormView";
 
 export function Database({
@@ -93,7 +94,7 @@ export function Database({
                   : "text-[var(--muted)] hover:text-[var(--foreground)]"
               }`}
             >
-              {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : v.type === "gallery" ? "🖼 " : v.type === "list" ? "☰ " : v.type === "form" ? "📝 " : "▤ "}
+              {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : v.type === "timeline" ? "📊 " : v.type === "gallery" ? "🖼 " : v.type === "list" ? "☰ " : v.type === "form" ? "📝 " : "▤ "}
               {v.name}
             </button>
           ))}
@@ -130,6 +131,8 @@ export function Database({
           records={asAny(viewRecords)}
           view={active}
         />
+      ) : active?.type === "timeline" ? (
+        <TimelineView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} view={active} />
       ) : active?.type === "gallery" ? (
         <GalleryView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} />
       ) : active?.type === "list" ? (
