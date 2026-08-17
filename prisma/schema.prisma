@@ -40,6 +40,7 @@ model Workspace {
   createdAt DateTime @default(now())
   members   Member[]
   pages     Page[]
+  apiTokens ApiToken[]
 }
 
 model Member {
@@ -159,12 +160,17 @@ model Version {
   createdAt DateTime @default(now())
 }
 
-// Token de servicio para automatización (Dobby / crons)
+// Token de servicio para automatización (Dobby / crons), scopeado a un workspace
 model ApiToken {
-  id        String   @id @default(cuid())
-  name      String
-  tokenHash String   @unique
-  scopes    String   @default("*")
-  createdAt DateTime @default(now())
-  lastUsed  DateTime?
+  id          String    @id @default(cuid())
+  name        String
+  tokenHash   String    @unique
+  scopes      String    @default("*")
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  lastUsed    DateTime?
+
+  @@index([workspaceId])
 }
