@@ -19,6 +19,7 @@ model User {
   memberships  Member[]
   sessions     Session[]
   ownedSpaces  Workspace[]  @relation("owner")
+  comments     Comment[]
 }
 
 model Session {
@@ -72,8 +73,24 @@ model Page {
   collection  Collection?
   charts      Chart[]
   versions    Version[]
+  comments    Comment[]
 
   @@index([workspaceId, parentId])
+}
+
+// Comentarios de página (hilo lateral estilo Notion)
+model Comment {
+  id        String   @id @default(cuid())
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId])
 }
 
 // ---- Bases de datos del usuario ----
