@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/trpc/react";
+import { downloadText } from "@/lib/download";
 import { opsFor, type DbField, type Filter, type Sort } from "@/lib/viewData";
 
 type View = { id: string; name: string; type: string; config: any };
@@ -345,6 +346,18 @@ export function DbToolbar({
           </Popover>
         )}
       </div>
+
+      {/* Exportar CSV */}
+      <button
+        onClick={async () => {
+          const { name, csv } = await utils.db.exportCsv.fetch({ collectionId });
+          downloadText(`${name}.csv`, csv, "text/csv");
+        }}
+        className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--border)]/40"
+        title="Exportar CSV"
+      >
+        ⇩ CSV
+      </button>
 
       {/* Añadir vista */}
       <div className="relative">

@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { BlockNoteEditor } from "@blocknote/core";
 import { trpc } from "@/trpc/react";
+import { parseCsv } from "@/lib/csv";
 import { openSearchPalette } from "@/components/SearchPalette";
 
 type Node = {
@@ -49,6 +51,42 @@ export function Sidebar() {
     },
   });
 
+  // Importar: un solo botón para .md (página) y .csv (base de datos), según extensión.
+  const importInput = useRef<HTMLInputElement>(null);
+  const createPage = trpc.pages.create.useMutation();
+  const updateContent = trpc.pages.updateContent.useMutation();
+  const importCsv = trpc.db.importCsv.useMutation();
+
+  async function onImportFile(file: File) {
+    const text = await file.text();
+    const title = file.name.replace(/\.[^.]+$/, "");
+    try {
+      let pageId: string;
+      if (/\.csv$/i.test(file.name)) {
+        const rows = parseCsv(text);
+        if (rows.length === 0) {
+          window.alert("El CSV está vacío.");
+          return;
+        }
+        const page = await importCsv.mutateAsync({
+          name: title || "Base de datos",
+          headers: rows[0],
+          rows: rows.slice(1),
+        });
+        pageId = page.id;
+      } else {
+        const blocks = BlockNoteEditor.create().tryParseMarkdownToBlocks(text);
+        const page = await createPage.mutateAsync({ parentId: null, title });
+        await updateContent.mutateAsync({ id: page.id, content: blocks });
+        pageId = page.id;
+      }
+      await utils.pages.tree.invalidate();
+      router.push(`/p/${pageId}`);
+    } catch (e) {
+      window.alert(`No se pudo importar el archivo: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+
   const byParent = new Map<string | null, Node[]>();
   const parentById = new Map<string, string | null>();
   for (const p of pages ?? []) {
@@ -81,6 +119,24 @@ export function Sidebar() {
               >
                 + BD
               </button>
+              <button
+                onClick={() => importInput.current?.click()}
+                className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+                title="Importar Markdown (página) o CSV (base de datos)"
+              >
+                ⇪
+              </button>
+              <input
+                ref={importInput}
+                type="file"
+                accept=".md,.markdown,.csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = ""; // permite reimportar el mismo archivo
+                  if (f) onImportFile(f);
+                }}
+              />
             </>
           )}
         </div>

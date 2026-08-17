@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { Prisma } from "@prisma/client";
 import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd } from "@/lib/fractional";
+import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
 
 // Tipos de campo soportados en Fase 2
@@ -69,6 +70,99 @@ export const dbRouter = router({
         });
       }
       return page;
+    }),
+
+  /** Exporta la colección a CSV: cabecera = nombres de campos, una fila por registro. */
+  exportCsv: workspaceProcedure
+    .input(z.object({ collectionId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const col = await ctx.db.collection.findUnique({
+        where: { id: input.collectionId },
+        include: {
+          page: { select: { title: true } },
+          fields: { orderBy: { order: "asc" } },
+          records: { orderBy: { order: "asc" } },
+        },
+      });
+      if (!col) throw new TRPCError({ code: "NOT_FOUND" });
+      const cellText = (f: (typeof col.fields)[number], v: unknown, r: (typeof col.records)[number]): string => {
+        if (f.type === "created_time") return r.createdAt.toISOString();
+        if (f.type === "last_edited_time") return r.updatedAt.toISOString();
+        if (f.type === "id") return r.seq == null ? "" : String(r.seq);
+        if (v === undefined || v === null || v === "") return "";
+        const opts = ((f.config as { options?: { id: string; label: string }[] })?.options) ?? [];
+        if (f.type === "select" || f.type === "status") return opts.find((o) => o.id === v)?.label ?? String(v);
+        if (f.type === "multiselect")
+          return (Array.isArray(v) ? v : [v]).map((x) => opts.find((o) => o.id === x)?.label ?? String(x)).join(", ");
+        if (f.type === "checkbox") return v ? "true" : "false";
+        if (Array.isArray(v)) return v.map(String).join(", ");
+        return String(v);
+      };
+      const rows = [
+        col.fields.map((f) => f.name),
+        ...col.records.map((r) => {
+          const cells = (r.cells ?? {}) as Record<string, unknown>;
+          return col.fields.map((f) => cellText(f, cells[f.id], r));
+        }),
+      ];
+      return { name: col.page.title || col.name || "Base de datos", csv: toCsv(rows) };
+    }),
+
+  /** Crea una base de datos nueva a partir de un CSV ya parseado (cabeceras + filas de texto). */
+  importCsv: workspaceProcedure
+    .input(
+      z.object({
+        parentId: z.string().nullish(),
+        name: z.string().min(1),
+        headers: z.array(z.string()).min(1),
+        rows: z.array(z.array(z.string())),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const last = await ctx.db.page.findFirst({
+        where: { workspaceId: ctx.workspace.id, parentId: input.parentId ?? null },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
+      return ctx.db.$transaction(
+        async (tx) => {
+          const page = await tx.page.create({
+            data: {
+              workspaceId: ctx.workspace.id,
+              parentId: input.parentId ?? null,
+              title: input.name,
+              icon: "🗃️",
+              type: "database",
+              order: rankAtEnd(last?.order ?? null),
+              content: [],
+            },
+          });
+          const collection = await tx.collection.create({ data: { pageId: page.id, name: input.name } });
+          let fOrd: string | null = null;
+          const fieldIds: string[] = [];
+          for (const [i, h] of input.headers.entries()) {
+            fOrd = rankAtEnd(fOrd);
+            const f = await tx.field.create({
+              data: { collectionId: collection.id, name: h.trim() || `Columna ${i + 1}`, type: "text", order: fOrd, config: {} },
+            });
+            fieldIds.push(f.id);
+          }
+          await tx.view.create({ data: { collectionId: collection.id, name: "Tabla", type: "table", config: {} } });
+          let rOrd: string | null = null;
+          const records = input.rows.map((row, i) => {
+            rOrd = rankAtEnd(rOrd);
+            const cells: Record<string, string> = {};
+            fieldIds.forEach((fid, j) => {
+              if (row[j]) cells[fid] = row[j];
+            });
+            return { collectionId: collection.id, order: rOrd, seq: i + 1, cells };
+          });
+          if (records.length) await tx.record.createMany({ data: records });
+          return page;
+        },
+        { timeout: 60_000 },
+      );
     }),
 
   /** Devuelve todo lo necesario para renderizar la base de datos de una página. */

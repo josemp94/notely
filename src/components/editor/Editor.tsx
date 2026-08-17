@@ -7,6 +7,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import type { PartialBlock } from "@blocknote/core";
 import { trpc } from "@/trpc/react";
+import { downloadText } from "@/lib/download";
 import { PageIcon } from "@/components/PageIcon";
 import { AddCoverButton, CoverBand } from "@/components/PageCover";
 
@@ -97,6 +98,15 @@ export function Editor({
       <div className={`mx-auto max-w-3xl px-4 pb-6 md:px-12 md:pb-14 ${cover ? "pt-3" : "pt-6 md:pt-14"}`}>
       <div className={`mb-3 flex h-4 items-center gap-2 font-mono text-[11px] text-[var(--muted)] ${cover ? "justify-end" : ""}`}>
         {canEdit ? (saveState === "saving" ? "Guardando…" : "Guardado ✓") : "Solo lectura"}
+        <button
+          onClick={() =>
+            downloadText(`${title.trim() || "Sin título"}.md`, editor.blocksToMarkdownLossy(editor.document), "text/markdown")
+          }
+          className="rounded px-1.5 hover:bg-brand-50 hover:text-brand"
+          title="Exportar a Markdown"
+        >
+          ⇩ MD
+        </button>
       </div>
 
       <div className="group/header">
