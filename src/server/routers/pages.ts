@@ -101,17 +101,85 @@ export const pagesRouter = router({
       });
     }),
 
-  /** Guardar contenido de bloques (autosave). */
+  /** Guardar contenido de bloques (autosave). Snapshota el contenido anterior como Version. */
   updateContent: workspaceProcedure
     .input(z.object({ id: z.string(), content: z.any() }))
     .mutation(async ({ ctx, input }) => {
-      await assertOwned(ctx, input.id);
+      const page = await ctx.db.page.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspace.id },
+        select: { id: true, content: true },
+      });
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      // ponytail: throttle simple — solo se crea versión si la última tiene más de 2 min;
+      // dentro de la ventana se omite (la versión reciente ya cubre ese estado).
+      const last = await ctx.db.version.findFirst({
+        where: { pageId: input.id },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      if (!last || Date.now() - last.createdAt.getTime() > 2 * 60_000) {
+        await ctx.db.version.create({
+          data: { pageId: input.id, snapshot: (page.content ?? []) as Prisma.InputJsonValue, authorId: ctx.user.id },
+        });
+      }
       return ctx.db.page.update({
         where: { id: input.id },
         data: { content: input.content },
         select: { id: true, updatedAt: true },
       });
     }),
+
+  /** Historial de versiones del contenido de una página. */
+  versions: router({
+    /** Últimas versiones (más recientes primero), con autor resuelto. */
+    list: workspaceProcedure
+      .input(z.object({ pageId: z.string() }))
+      .query(async ({ ctx, input }) => {
+        await assertOwned(ctx, input.pageId);
+        const versions = await ctx.db.version.findMany({
+          where: { pageId: input.pageId },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        });
+        const authorIds = [...new Set(versions.map((v) => v.authorId).filter((x): x is string => !!x))];
+        const users = await ctx.db.user.findMany({
+          where: { id: { in: authorIds } },
+          select: { id: true, name: true, email: true },
+        });
+        const nameById = new Map(users.map((u) => [u.id, u.name || u.email]));
+        return versions.map((v) => ({
+          id: v.id,
+          createdAt: v.createdAt,
+          author: v.authorId ? (nameById.get(v.authorId) ?? null) : null,
+          snapshot: v.snapshot,
+        }));
+      }),
+
+    /** Repone el contenido de una versión, guardando antes el estado actual como versión nueva. */
+    restore: workspaceProcedure
+      .input(z.object({ versionId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const version = await ctx.db.version.findFirst({
+          where: { id: input.versionId, page: { workspaceId: ctx.workspace.id } },
+          include: { page: { select: { id: true, content: true } } },
+        });
+        if (!version) throw new TRPCError({ code: "NOT_FOUND" });
+        await ctx.db.$transaction([
+          ctx.db.version.create({
+            data: {
+              pageId: version.pageId,
+              snapshot: (version.page.content ?? []) as Prisma.InputJsonValue,
+              authorId: ctx.user.id,
+            },
+          }),
+          ctx.db.page.update({
+            where: { id: version.pageId },
+            data: { content: version.snapshot as Prisma.InputJsonValue },
+          }),
+        ]);
+        return { pageId: version.pageId };
+      }),
+  }),
 
   /** Mover una página: re-parent y/o reordenar entre hermanas (drag & drop del sidebar). */
   move: workspaceProcedure
