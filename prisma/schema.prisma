@@ -61,6 +61,7 @@ model Page {
   children    Page[]    @relation("tree")
   title       String    @default("")
   icon        String?
+  cover       String?   // "gradient:<id>" preset o "url:<imagen>"
   order       String    // índice fraccional
   type        String    @default("doc") // doc | database
   content     Json?     // documento de bloques (BlockNote) si type=doc

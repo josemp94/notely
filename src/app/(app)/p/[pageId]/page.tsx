@@ -26,6 +26,7 @@ export default function PageView() {
         pageId={page.id}
         initialTitle={page.title || "Base de datos"}
         initialIcon={page.icon}
+        initialCover={page.cover}
         canEdit={canEdit}
       />
     );
@@ -38,6 +39,7 @@ export default function PageView() {
       initialTitle={page.title}
       initialContent={page.content}
       initialIcon={page.icon}
+      initialCover={page.cover}
       canEdit={canEdit}
     />
   );

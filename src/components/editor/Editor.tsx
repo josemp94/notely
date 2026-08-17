@@ -8,6 +8,7 @@ import "@blocknote/mantine/style.css";
 import type { PartialBlock } from "@blocknote/core";
 import { trpc } from "@/trpc/react";
 import { PageIcon } from "@/components/PageIcon";
+import { AddCoverButton, CoverBand } from "@/components/PageCover";
 
 type SaveState = "saved" | "saving" | "idle";
 
@@ -16,17 +17,20 @@ export function Editor({
   initialTitle,
   initialContent,
   initialIcon,
+  initialCover,
   canEdit = true,
 }: {
   pageId: string;
   initialTitle: string;
   initialContent: unknown;
   initialIcon?: string | null;
+  initialCover?: string | null;
   canEdit?: boolean;
 }) {
   const utils = trpc.useUtils();
   const [title, setTitle] = useState(initialTitle);
   const [icon, setIcon] = useState<string | null>(initialIcon ?? null);
+  const [cover, setCover] = useState<string | null>(initialCover ?? null);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,6 +41,7 @@ export function Editor({
   const rename = trpc.pages.rename.useMutation({
     onSuccess: () => utils.pages.tree.invalidate(),
   });
+  const setCoverM = trpc.pages.setCover.useMutation();
 
   const initial = useMemo<PartialBlock[] | undefined>(() => {
     const c = initialContent as PartialBlock[] | undefined;
@@ -74,6 +79,11 @@ export function Editor({
     persist(title, next);
   }
 
+  function onCoverChange(next: string | null) {
+    setCover(next);
+    setCoverM.mutate({ id: pageId, cover: next });
+  }
+
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -82,20 +92,23 @@ export function Editor({
   }, []);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 md:px-12 md:py-14">
-      <div className="mb-3 flex h-4 items-center gap-2 font-mono text-[11px] text-[var(--muted)]">
+    <div>
+      {cover && <CoverBand cover={cover} onChange={onCoverChange} editable={canEdit} />}
+      <div className={`mx-auto max-w-3xl px-4 pb-6 md:px-12 md:pb-14 ${cover ? "pt-3" : "pt-6 md:pt-14"}`}>
+      <div className={`mb-3 flex h-4 items-center gap-2 font-mono text-[11px] text-[var(--muted)] ${cover ? "justify-end" : ""}`}>
         {canEdit ? (saveState === "saving" ? "Guardando…" : "Guardado ✓") : "Solo lectura"}
       </div>
 
       <div className="group/header">
         {icon && (
-          <div className="mb-1">
+          <div className={`mb-1 ${cover ? "relative z-10 -mt-14" : ""}`}>
             <PageIcon icon={icon} onChange={onIconChange} editable={canEdit} />
           </div>
         )}
-        {!icon && canEdit && (
-          <div className="mb-1 h-7">
-            <PageIcon icon={null} onChange={onIconChange} editable={canEdit} />
+        {canEdit && (!icon || !cover) && (
+          <div className="mb-1 flex h-7 items-center gap-1">
+            {!icon && <PageIcon icon={null} onChange={onIconChange} editable={canEdit} />}
+            {!cover && <AddCoverButton onChange={onCoverChange} />}
           </div>
         )}
         <input
@@ -108,6 +121,7 @@ export function Editor({
       </div>
 
       <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave} />
+      </div>
     </div>
   );
 }

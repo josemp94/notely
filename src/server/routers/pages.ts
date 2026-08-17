@@ -88,6 +88,18 @@ export const pagesRouter = router({
       });
     }),
 
+  /** Poner o quitar la portada. */
+  setCover: workspaceProcedure
+    .input(z.object({ id: z.string(), cover: z.string().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertOwned(ctx, input.id);
+      return ctx.db.page.update({
+        where: { id: input.id },
+        data: { cover: input.cover },
+        select: { id: true, cover: true },
+      });
+    }),
+
   /** Guardar contenido de bloques (autosave). */
   updateContent: workspaceProcedure
     .input(z.object({ id: z.string(), content: z.any() }))

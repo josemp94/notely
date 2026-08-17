@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { trpc } from "@/trpc/react";
 import { PageIcon } from "@/components/PageIcon";
+import { AddCoverButton, CoverBand } from "@/components/PageCover";
 import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
 import { DbToolbar } from "./DbToolbar";
 import { TableView } from "./TableView";
@@ -18,11 +19,13 @@ export function Database({
   pageId,
   initialTitle,
   initialIcon,
+  initialCover,
   canEdit = true,
 }: {
   pageId: string;
   initialTitle: string;
   initialIcon?: string | null;
+  initialCover?: string | null;
   canEdit?: boolean;
 }) {
   const utils = trpc.useUtils();
@@ -30,9 +33,11 @@ export function Database({
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const [title, setTitle] = useState(initialTitle);
   const [icon, setIcon] = useState<string | null>(initialIcon ?? "🗃️");
+  const [cover, setCover] = useState<string | null>(initialCover ?? null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rename = trpc.pages.rename.useMutation({ onSuccess: () => utils.pages.tree.invalidate() });
+  const setCoverM = trpc.pages.setCover.useMutation();
 
   function persist(nextTitle: string, nextIcon: string | null) {
     rename.mutate({ id: pageId, title: nextTitle, icon: nextIcon });
@@ -45,6 +50,10 @@ export function Database({
   function onIconChange(next: string | null) {
     setIcon(next);
     persist(title, next);
+  }
+  function onCoverChange(next: string | null) {
+    setCover(next);
+    setCoverM.mutate({ id: pageId, cover: next });
   }
 
   const active = col?.views.find((v) => v.id === activeViewId) ?? col?.views[0];
@@ -68,9 +77,16 @@ export function Database({
   const visibleFields = fields.filter((f) => !hiddenIds.includes(asAny(f).id));
 
   return (
-    <div className="px-3 py-5 md:px-8">
+    <div>
+      {cover && <CoverBand cover={cover} onChange={onCoverChange} editable={canEdit} />}
+      <div className={`px-3 pb-5 md:px-8 ${cover ? "" : "pt-5"}`}>
       <div className="group/header mb-4">
-        <div className="mb-1 flex items-center gap-3">
+        {canEdit && !cover && (
+          <div className="h-7">
+            <AddCoverButton onChange={onCoverChange} />
+          </div>
+        )}
+        <div className={`mb-1 flex items-center gap-3 ${cover ? "relative z-10 -mt-10" : ""}`}>
           <PageIcon icon={icon} onChange={onIconChange} editable={canEdit} />
           <input
             value={title}
@@ -151,6 +167,7 @@ export function Database({
       ) : (
         <TableView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} view={active} />
       )}
+      </div>
     </div>
   );
 }
