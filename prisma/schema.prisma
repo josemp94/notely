@@ -198,6 +198,17 @@ model Notification {
   @@index([userId, workspaceId, read])
 }
 
+// Binario subido por el usuario (portadas). Los bytes viven en Postgres: sin servicios externos.
+// Sin FK a propósito: un asset puede quedar huérfano al cambiar la portada y no pasa nada.
+model Asset {
+  id          String   @id @default(cuid())
+  workspaceId String
+  mime        String
+  bytes       Bytes
+  createdById String?
+  createdAt   DateTime @default(now())
+}
+
 // Token de servicio para automatización (Dobby / crons), scopeado a un workspace
 model ApiToken {
   id          String    @id @default(cuid())

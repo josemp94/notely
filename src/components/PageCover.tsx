@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, Upload } from "lucide-react";
+
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB (mismo límite que /api/upload)
 
 /** Presets de gradiente; se guardan como "gradient:<id>". Imágenes: "url:<https…>". */
 const GRADIENTS: Record<string, string> = {
@@ -36,7 +38,35 @@ function CoverPicker({
   align: "left" | "right";
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(file: File) {
+    setError(null);
+    if (!file.type.startsWith("image/")) {
+      setError("El archivo debe ser una imagen.");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError("La imagen no puede superar los 8 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? "No se pudo subir la imagen.");
+      onPick(`url:${data.url}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo subir la imagen.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -64,6 +94,28 @@ function CoverPicker({
             style={{ background: css }}
           />
         ))}
+      </div>
+      <div className="mt-3 border-t border-[var(--border)] pt-2">
+        <div className="mb-1 text-xs font-medium text-[var(--muted)]">Subir imagen</div>
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-2 py-1.5 text-sm text-[var(--muted)] hover:border-brand hover:text-brand disabled:opacity-50"
+        >
+          <Upload size={14} /> {uploading ? "Subiendo…" : "Elegir archivo (máx. 8 MB)"}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = ""; // permite reelegir el mismo archivo
+            if (f) upload(f);
+          }}
+        />
+        {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
       </div>
       <div className="mt-3 border-t border-[var(--border)] pt-2">
         <div className="mb-1 text-xs font-medium text-[var(--muted)]">Imagen por URL</div>
