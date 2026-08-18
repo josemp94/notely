@@ -22,6 +22,7 @@ export function Editor({
   initialContent,
   initialIcon,
   initialCover,
+  fullWidth = false,
   canEdit = true,
 }: {
   pageId: string;
@@ -29,6 +30,7 @@ export function Editor({
   initialContent: unknown;
   initialIcon?: string | null;
   initialCover?: string | null;
+  fullWidth?: boolean;
   canEdit?: boolean;
 }) {
   const utils = trpc.useUtils();
@@ -100,7 +102,7 @@ export function Editor({
   return (
     <div>
       {cover && <CoverBand cover={cover} onChange={onCoverChange} editable={canEdit} />}
-      <div className={`mx-auto max-w-3xl px-4 pb-6 md:px-12 md:pb-14 ${cover ? "pt-3" : "pt-6 md:pt-14"}`}>
+      <div className={`mx-auto ${fullWidth ? "max-w-none" : "max-w-3xl"} px-4 pb-6 md:px-12 md:pb-14 ${cover ? "pt-3" : "pt-6 md:pt-14"}`}>
       <div className={`mb-3 flex h-4 items-center gap-2 font-mono text-[11px] text-[var(--muted)] ${cover ? "justify-end" : ""}`}>
         {canEdit ? (
           saveState === "saving" ? (

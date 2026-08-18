@@ -15,6 +15,7 @@ import {
   FilePlus,
   FileText,
   Folder,
+  FolderInput,
   Moon,
   MoreHorizontal,
   Plus,
@@ -34,6 +35,7 @@ import { TEMPLATES } from "@/lib/templates";
 import { getRecents, RECENTS_EVENT, type Recent } from "@/lib/recents";
 import { setTheme, useTheme } from "@/lib/theme";
 import { openSearchPalette } from "@/components/SearchPalette";
+import { MovePageModal } from "@/components/MovePage";
 
 type Node = {
   id: string;
@@ -694,6 +696,7 @@ function TreeItem({
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(true);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [moving, setMoving] = useState(false);
   const [dropPos, setDropPos] = useState<"before" | "after" | "inside" | null>(null);
   const children = byParent.get(node.id) ?? [];
   const active = pathname === `/p/${node.id}`;
@@ -820,6 +823,11 @@ function TreeItem({
               onClick: () => duplicate.mutate({ id: node.id }),
             },
             {
+              icon: <FolderInput size={16} />,
+              label: "Mover a…",
+              onClick: () => setMoving(true),
+            },
+            {
               icon: <Trash2 size={16} />,
               label: "Enviar a la papelera",
               danger: true,
@@ -828,6 +836,8 @@ function TreeItem({
           ]}
         />
       )}
+
+      {moving && <MovePageModal pageId={node.id} onClose={() => setMoving(false)} />}
 
       {open && children.length > 0 && (
         <Tree nodes={children} byParent={byParent} parentById={parentById} depth={depth + 1} canEdit={canEdit} />

@@ -176,6 +176,18 @@ export const pagesRouter = router({
       });
     }),
 
+  /** Toggle "Ancho completo": el contenido de la página usa todo el ancho. */
+  setFullWidth: workspaceProcedure
+    .input(z.object({ id: z.string(), value: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertOwned(ctx, input.id);
+      return ctx.db.page.update({
+        where: { id: input.id },
+        data: { fullWidth: input.value },
+        select: { id: true, fullWidth: true },
+      });
+    }),
+
   /** Guardar contenido de bloques (autosave). Snapshota el contenido anterior como Version. */
   updateContent: workspaceProcedure
     .input(z.object({ id: z.string(), content: z.any() }))

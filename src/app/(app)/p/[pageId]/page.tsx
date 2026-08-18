@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Star } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, FileText, Folder, FolderInput, MoreHorizontal, MoveHorizontal, Star } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { trpc } from "@/trpc/react";
 import { pushRecent } from "@/lib/recents";
@@ -10,6 +11,7 @@ import { Database } from "@/components/database/Database";
 import { CommentsButton, CommentsPanel } from "@/components/CommentsPanel";
 import { HistoryButton, VersionHistoryModal } from "@/components/VersionHistory";
 import { ShareButton } from "@/components/SharePublish";
+import { MovePageModal } from "@/components/MovePage";
 
 export default function PageView() {
   const params = useParams<{ pageId: string }>();
@@ -38,38 +40,44 @@ export default function PageView() {
 
   return (
     <div className="relative flex h-full">
-      <div className="min-w-0 flex-1 overflow-y-auto">
-        {page.type === "database" ? (
-          <Database
-            key={page.id}
-            pageId={page.id}
-            initialTitle={page.title || "Base de datos"}
-            initialIcon={page.icon}
-            initialCover={page.cover}
-            canEdit={canEdit}
-          />
-        ) : (
-          <Editor
-            key={`${page.id}:${editorEpoch}`}
-            pageId={page.id}
-            initialTitle={page.title}
-            initialContent={page.content}
-            initialIcon={page.icon}
-            initialCover={page.cover}
-            canEdit={canEdit}
-          />
-        )}
-      </div>
-      {comments ? (
-        <CommentsPanel pageId={page.id} onClose={() => setComments(false)} />
-      ) : (
-        <div className="absolute right-3 top-2 z-10 flex items-center gap-1">
-          {canEdit && <FavoriteButton pageId={page.id} />}
-          {canEdit && <ShareButton pageId={page.id} publicToken={page.publicToken} />}
-          {page.type !== "database" && <HistoryButton onClick={() => setHistory(true)} />}
-          <CommentsButton pageId={page.id} onClick={() => setComments(true)} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex h-10 shrink-0 items-center gap-1 px-3">
+          <Breadcrumbs pageId={page.id} />
+          {!comments && (
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              {canEdit && <FavoriteButton pageId={page.id} />}
+              {canEdit && <ShareButton pageId={page.id} publicToken={page.publicToken} />}
+              {page.type !== "database" && <HistoryButton onClick={() => setHistory(true)} />}
+              <CommentsButton pageId={page.id} onClick={() => setComments(true)} />
+              {canEdit && <PageMenu page={page} />}
+            </div>
+          )}
         </div>
-      )}
+        <div className="min-w-0 flex-1 overflow-y-auto">
+          {page.type === "database" ? (
+            <Database
+              key={page.id}
+              pageId={page.id}
+              initialTitle={page.title || "Base de datos"}
+              initialIcon={page.icon}
+              initialCover={page.cover}
+              canEdit={canEdit}
+            />
+          ) : (
+            <Editor
+              key={`${page.id}:${editorEpoch}`}
+              pageId={page.id}
+              initialTitle={page.title}
+              initialContent={page.content}
+              initialIcon={page.icon}
+              initialCover={page.cover}
+              fullWidth={page.fullWidth}
+              canEdit={canEdit}
+            />
+          )}
+        </div>
+      </div>
+      {comments && <CommentsPanel pageId={page.id} onClose={() => setComments(false)} />}
       {history && (
         <VersionHistoryModal
           pageId={page.id}
@@ -81,6 +89,113 @@ export default function PageView() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** Miga de pan: Espacio ▸ ancestros ▸ página actual, resuelta desde el árbol ya cargado. */
+function Breadcrumbs({ pageId }: { pageId: string }) {
+  const { data: me } = trpc.auth.me.useQuery();
+  const { data: tree } = trpc.pages.tree.useQuery();
+
+  const byId = new Map((tree ?? []).map((p) => [p.id, p]));
+  const chain: NonNullable<typeof tree> = [];
+  let cur = byId.get(pageId);
+  while (cur) {
+    chain.unshift(cur);
+    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+  }
+
+  const sep = <span className="shrink-0 text-[var(--border)]">▸</span>;
+  return (
+    <nav className="flex min-w-0 items-center gap-1 text-sm text-[var(--muted)]">
+      <Link
+        href="/"
+        className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
+      >
+        {me?.workspace?.icon ? <span>{me.workspace.icon}</span> : <Folder size={13} />}
+        <span className="max-w-32 truncate">{me?.workspace?.name ?? "Espacio"}</span>
+      </Link>
+      {chain.map((p, i) => (
+        <span key={p.id} className="flex min-w-0 items-center gap-1">
+          {sep}
+          {i === chain.length - 1 ? (
+            <span className="flex min-w-0 items-center gap-1 px-1 py-0.5 text-[var(--foreground)]">
+              {p.icon ? <span className="shrink-0">{p.icon}</span> : <FileText size={13} className="shrink-0" />}
+              <span className="truncate">{p.title || "Sin título"}</span>
+            </span>
+          ) : (
+            <Link
+              href={`/p/${p.id}`}
+              className="flex min-w-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
+            >
+              {p.icon ? <span className="shrink-0">{p.icon}</span> : <FileText size={13} className="shrink-0" />}
+              <span className="max-w-32 truncate">{p.title || "Sin título"}</span>
+            </Link>
+          )}
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+/** Menú "⋯" de la cabecera: Ancho completo (solo docs) y Mover a…. */
+function PageMenu({ page }: { page: { id: string; type: string; fullWidth: boolean } }) {
+  const utils = trpc.useUtils();
+  const [open, setOpen] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const setFullWidth = trpc.pages.setFullWidth.useMutation();
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  function toggleFullWidth() {
+    const value = !page.fullWidth;
+    // Actualiza la caché al vuelo (mismo estado que persistirá el servidor).
+    utils.pages.get.setData({ id: page.id }, (p) => (p ? { ...p, fullWidth: value } : p));
+    setFullWidth.mutate({ id: page.id, value });
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+        title="Opciones de página"
+      >
+        <MoreHorizontal size={16} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-lg border border-[var(--border)] bg-[var(--background)] p-1 shadow-xl">
+          {page.type !== "database" && (
+            <button
+              onClick={toggleFullWidth}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+            >
+              <MoveHorizontal size={16} />
+              Ancho completo
+              {page.fullWidth && <Check size={14} className="ml-auto text-brand" />}
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setOpen(false);
+              setMoving(true);
+            }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+          >
+            <FolderInput size={16} />
+            Mover a…
+          </button>
+        </div>
+      )}
+      {moving && <MovePageModal pageId={page.id} onClose={() => setMoving(false)} />}
     </div>
   );
 }
