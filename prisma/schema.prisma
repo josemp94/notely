@@ -22,6 +22,7 @@ model User {
   comments     Comment[]
   notifications     Notification[] @relation("recipient")
   sentNotifications Notification[] @relation("actor")
+  favorites    Favorite[]
 }
 
 model Session {
@@ -80,8 +81,21 @@ model Page {
   versions    Version[]
   comments    Comment[]
   notifications Notification[]
+  favorites   Favorite[]
 
   @@index([workspaceId, parentId])
+}
+
+// Página marcada como favorita por un usuario (sección ⭐ del sidebar)
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, pageId])
 }
 
 // Comentarios de página (hilo lateral estilo Notion)

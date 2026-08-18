@@ -8,6 +8,7 @@ import { BlockNoteEditor } from "@blocknote/core";
 import { trpc } from "@/trpc/react";
 import { parseCsv } from "@/lib/csv";
 import { TEMPLATES } from "@/lib/templates";
+import { getRecents, RECENTS_EVENT, type Recent } from "@/lib/recents";
 import { openSearchPalette } from "@/components/SearchPalette";
 
 type Node = {
@@ -168,6 +169,8 @@ export function Sidebar() {
       {showTemplates && <TemplatesGallery onClose={() => setShowTemplates(false)} />}
 
       <nav className="flex-1 overflow-y-auto px-2 pb-6">
+        <Favorites />
+        <Recents workspaceId={me?.workspace?.id} pages={pages} />
         <Tree nodes={byParent.get(null) ?? []} byParent={byParent} parentById={parentById} depth={0} canEdit={canEdit} />
       </nav>
       <Link
@@ -178,6 +181,78 @@ export function Sidebar() {
       </Link>
       <AccountFooter me={me} />
     </aside>
+  );
+}
+
+/** Sección plegable del sidebar (⭐ Favoritos / 🕘 Recientes). */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="mb-2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
+      >
+        {title}
+        <span className="ml-auto">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
+function SectionLink({ page }: { page: { id: string; title: string; icon: string | null } }) {
+  const pathname = usePathname();
+  const active = pathname === `/p/${page.id}`;
+  return (
+    <Link
+      href={`/p/${page.id}`}
+      className={`flex items-center gap-1 truncate rounded-md px-2 py-1 text-sm ${
+        active ? "bg-brand-50 text-brand" : "hover:bg-[var(--border)]/40"
+      }`}
+    >
+      <span className="truncate">
+        {page.icon ? `${page.icon} ` : "📄 "}
+        {page.title || "Sin título"}
+      </span>
+    </Link>
+  );
+}
+
+/** ⭐ Favoritos del usuario (por encima del árbol). */
+function Favorites() {
+  const { data: favs } = trpc.favorites.list.useQuery();
+  if (!favs?.length) return null;
+  return (
+    <Section title="⭐ Favoritos">
+      {favs.map((p) => (
+        <SectionLink key={p.id} page={p} />
+      ))}
+    </Section>
+  );
+}
+
+/** 🕘 Últimas páginas visitadas (localStorage, por workspace). */
+function Recents({ workspaceId, pages }: { workspaceId: string | undefined; pages: Node[] | undefined }) {
+  const [recents, setRecents] = useState<Recent[]>([]);
+  useEffect(() => {
+    if (!workspaceId) return;
+    const load = () => setRecents(getRecents(workspaceId));
+    load();
+    window.addEventListener(RECENTS_EVENT, load);
+    return () => window.removeEventListener(RECENTS_EVENT, load);
+  }, [workspaceId]);
+
+  // Solo páginas vivas, con título/icono frescos del árbol (lo guardado puede estar obsoleto).
+  const byId = new Map((pages ?? []).map((p) => [p.id, p]));
+  const items = recents.flatMap((r) => byId.get(r.pageId) ?? []);
+  if (!items.length) return null;
+  return (
+    <Section title="🕘 Recientes">
+      {items.map((p) => (
+        <SectionLink key={p.id} page={p} />
+      ))}
+    </Section>
   );
 }
 

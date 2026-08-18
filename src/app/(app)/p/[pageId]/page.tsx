@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { trpc } from "@/trpc/react";
+import { pushRecent } from "@/lib/recents";
 import { Editor } from "@/components/editor/Editor";
 import { Database } from "@/components/database/Database";
 import { CommentsButton, CommentsPanel } from "@/components/CommentsPanel";
@@ -20,6 +21,12 @@ export default function PageView() {
   // Remonta el editor tras restaurar una versión (initialContent solo se lee al montar).
   const [editorEpoch, setEditorEpoch] = useState(0);
   const canEdit = me?.wsRole !== "viewer";
+
+  // Registra la visita en 🕘 Recientes (localStorage, por workspace).
+  const workspaceId = me?.workspace?.id;
+  useEffect(() => {
+    if (page && workspaceId) pushRecent(workspaceId, { id: page.id, title: page.title, icon: page.icon });
+  }, [page, workspaceId]);
 
   if (isLoading) {
     return <div className="px-12 py-16 text-[var(--muted)]">Cargando…</div>;
@@ -56,6 +63,7 @@ export default function PageView() {
         <CommentsPanel pageId={page.id} onClose={() => setComments(false)} />
       ) : (
         <div className="absolute right-3 top-2 z-10 flex items-center gap-1">
+          {canEdit && <FavoriteButton pageId={page.id} />}
           {canEdit && <ShareButton pageId={page.id} publicToken={page.publicToken} />}
           {page.type !== "database" && <HistoryButton onClick={() => setHistory(true)} />}
           <CommentsButton pageId={page.id} onClick={() => setComments(true)} />
@@ -73,5 +81,25 @@ export default function PageView() {
         />
       )}
     </div>
+  );
+}
+
+/** Estrella ★ de la cabecera: añade/quita la página de ⭐ Favoritos. */
+function FavoriteButton({ pageId }: { pageId: string }) {
+  const utils = trpc.useUtils();
+  const { data: favs } = trpc.favorites.list.useQuery();
+  const isFav = (favs ?? []).some((f) => f.id === pageId);
+  const toggle = trpc.pages.toggleFavorite.useMutation({
+    onSuccess: () => utils.favorites.list.invalidate(),
+  });
+  return (
+    <button
+      onClick={() => toggle.mutate({ pageId })}
+      disabled={toggle.isPending}
+      className={`rounded-md px-2 py-1 text-sm hover:bg-brand-50 ${isFav ? "text-brand" : "text-[var(--muted)] hover:text-brand"}`}
+      title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}
+    >
+      {isFav ? "★" : "☆"}
+    </button>
   );
 }

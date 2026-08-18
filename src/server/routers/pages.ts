@@ -396,6 +396,21 @@ export const pagesRouter = router({
       return { restored: ids.length };
     }),
 
+  /** Marcar/desmarcar una página como favorita (★, por usuario). */
+  toggleFavorite: workspaceProcedure
+    .input(z.object({ pageId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertOwned(ctx, input.pageId);
+      const key = { userId_pageId: { userId: ctx.user.id, pageId: input.pageId } };
+      const existing = await ctx.db.favorite.findUnique({ where: key });
+      if (existing) {
+        await ctx.db.favorite.delete({ where: key });
+        return { favorite: false };
+      }
+      await ctx.db.favorite.create({ data: { userId: ctx.user.id, pageId: input.pageId } });
+      return { favorite: true };
+    }),
+
   /** Borrar definitivamente (con subárbol). */
   remove: workspaceProcedure
     .input(z.object({ id: z.string() }))
@@ -406,6 +421,18 @@ export const pagesRouter = router({
       await ctx.db.page.deleteMany({ where: { id: { in: ids } } });
       return { removed: ids.length };
     }),
+});
+
+/** Favoritos del usuario en el workspace activo (sección ⭐ del sidebar). */
+export const favoritesRouter = router({
+  list: workspaceProcedure.query(async ({ ctx }) => {
+    const favs = await ctx.db.favorite.findMany({
+      where: { userId: ctx.user.id, page: { workspaceId: ctx.workspace.id, archivedAt: null } },
+      orderBy: { createdAt: "asc" },
+      select: { page: { select: { id: true, title: true, icon: true } } },
+    });
+    return favs.map((f) => f.page);
+  }),
 });
 
 /** Sustituye ids antiguos por nuevos dentro de un JSON (cells, configs, specs). Los cuid son únicos, el reemplazo textual es seguro. */

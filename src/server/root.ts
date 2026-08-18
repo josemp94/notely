@@ -1,5 +1,5 @@
 import { router, workspaceProcedure } from "./trpc";
-import { pagesRouter } from "./routers/pages";
+import { pagesRouter, favoritesRouter } from "./routers/pages";
 import { dbRouter } from "./routers/db";
 import { authRouter } from "./routers/auth";
 import { workspaceRouter } from "./routers/workspace";
@@ -10,6 +10,7 @@ import { notificationsRouter } from "./routers/notifications";
 export const appRouter = router({
   auth: authRouter,
   pages: pagesRouter,
+  favorites: favoritesRouter,
   db: dbRouter,
   workspace: workspaceRouter,
   comments: commentsRouter,
