@@ -23,7 +23,6 @@ export const metadata: Metadata = {
   title: "Notiono",
   description: "Tu espacio: notas, bases de datos y gráficas reales. Self-hosted.",
   appleWebApp: { capable: true, title: "Notiono", statusBarStyle: "default" },
-  icons: { apple: "/icon-192.png" },
 };
 
 export const viewport: Viewport = {
