@@ -21,12 +21,15 @@ export function Database({
   initialIcon,
   initialCover,
   canEdit = true,
+  embedded = false,
 }: {
   pageId: string;
   initialTitle: string;
   initialIcon?: string | null;
   initialCover?: string | null;
   canEdit?: boolean;
+  /** BD embebida en el cuerpo de otra página: sin cabecera (título/icono/portada) y con padding compacto. */
+  embedded?: boolean;
 }) {
   const utils = trpc.useUtils();
   const { data: col, isLoading } = trpc.db.get.useQuery({ pageId });
@@ -65,10 +68,10 @@ export function Database({
   );
 
   if (isLoading || !col) {
-    return <div className="px-10 py-10 text-[var(--muted)]">Cargando base de datos…</div>;
+    return <div className="px-4 py-6 text-[var(--muted)]">Cargando base de datos…</div>;
   }
   if (!active) {
-    return <div className="px-10 py-10 text-[var(--muted)]">Esta base de datos no tiene vistas.</div>;
+    return <div className="px-4 py-6 text-[var(--muted)]">Esta base de datos no tiene vistas.</div>;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,8 +81,9 @@ export function Database({
 
   return (
     <div>
-      {cover && <CoverBand cover={cover} onChange={onCoverChange} editable={canEdit} />}
-      <div className={`px-3 pb-5 md:px-8 ${cover ? "" : "pt-5"}`}>
+      {!embedded && cover && <CoverBand cover={cover} onChange={onCoverChange} editable={canEdit} />}
+      <div className={embedded ? "px-3 pb-3" : `px-3 pb-5 md:px-8 ${cover ? "" : "pt-5"}`}>
+      {!embedded && (
       <div className="group/header mb-4">
         {canEdit && !cover && (
           <div className="h-7">
@@ -97,6 +101,7 @@ export function Database({
           />
         </div>
       </div>
+      )}
 
       <div className="mb-4 flex items-end justify-between gap-2 border-b border-[var(--border)]">
         <div className="flex gap-1 overflow-x-auto">

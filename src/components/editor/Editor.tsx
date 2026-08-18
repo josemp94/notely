@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useCreateBlockNote } from "@blocknote/react";
+import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
+import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -43,6 +44,7 @@ export function Editor({
     onSuccess: () => utils.pages.tree.invalidate(),
   });
   const setCoverM = trpc.pages.setCover.useMutation();
+  const createInlineDb = trpc.db.createInline.useMutation();
 
   const initial = useMemo<NotelyPartialBlock[] | undefined>(() => {
     const c = initialContent as NotelyPartialBlock[] | undefined;
@@ -130,8 +132,34 @@ export function Editor({
         />
       </div>
 
-      <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave}>
+      <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave} slashMenu={false}>
         <MentionMenu editor={editor} pageId={pageId} />
+        {/* Menú "/" propio: los ítems por defecto + "Base de datos" embebida. */}
+        <SuggestionMenuController
+          triggerCharacter="/"
+          getItems={async (query) =>
+            filterSuggestionItems(
+              [
+                ...getDefaultReactSlashMenuItems(editor),
+                {
+                  title: "Base de datos",
+                  subtext: "Tabla embebida en esta página",
+                  aliases: ["bd", "db", "tabla", "database", "base de datos"],
+                  group: "Bases de datos",
+                  icon: <span>🗃️</span>,
+                  onItemClick: async () => {
+                    const { pageId: dbPageId, collectionId } = await createInlineDb.mutateAsync();
+                    insertOrUpdateBlockForSlashMenu(editor, {
+                      type: "database",
+                      props: { collectionId, pageId: dbPageId },
+                    });
+                  },
+                },
+              ],
+              query,
+            )
+          }
+        />
       </BlockNoteView>
       </div>
     </div>

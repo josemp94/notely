@@ -1,7 +1,43 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { cellToText } from "@/server/routers/db";
+import type { PublicDbTable } from "@/components/editor/databaseBlock";
 import { PublicView } from "./PublicView";
+
+type Col = NonNullable<Awaited<ReturnType<typeof loadCollection>>>;
+
+function loadCollection(where: { pageId: string } | { id: string; page: { workspaceId: string } }) {
+  return db.collection.findFirst({
+    where,
+    include: {
+      fields: { orderBy: { order: "asc" } },
+      records: { orderBy: { order: "asc" } },
+    },
+  });
+}
+
+/** Colección → tabla estática. Campos computados (relación/rollup/fórmula) fuera: sus celdas no tienen valor legible. */
+function tableOf(col: Col): PublicDbTable {
+  const fields = col.fields.filter((f) => !["relation", "rollup", "formula"].includes(f.type));
+  return {
+    headers: fields.map((f) => f.name),
+    rows: col.records.map((r) => {
+      const cells = (r.cells ?? {}) as Record<string, unknown>;
+      return fields.map((f) => cellToText(f, cells[f.id], r));
+    }),
+  };
+}
+
+/** Ids de colección de los bloques "database" embebidos en un documento de bloques. */
+function collectEmbeddedIds(node: unknown, ids: Set<string>) {
+  if (Array.isArray(node)) {
+    for (const n of node) collectEmbeddedIds(n, ids);
+  } else if (node && typeof node === "object") {
+    const b = node as { type?: string; props?: { collectionId?: string }; children?: unknown };
+    if (b.type === "database" && b.props?.collectionId) ids.add(b.props.collectionId);
+    collectEmbeddedIds(b.children, ids);
+  }
+}
 
 // Ruta pública (sin sesión): solo expone la página cuyo publicToken coincide.
 export default async function PublicShare({ params }: { params: Promise<{ token: string }> }) {
@@ -9,27 +45,29 @@ export default async function PublicShare({ params }: { params: Promise<{ token:
   const page = await db.page.findUnique({ where: { publicToken: token } });
   if (!page || page.archivedAt) notFound();
 
-  let table: { headers: string[]; rows: string[][] } | null = null;
+  let table: PublicDbTable | null = null;
   if (page.type === "database") {
-    const col = await db.collection.findUnique({
-      where: { pageId: page.id },
-      include: {
-        fields: { orderBy: { order: "asc" } },
-        records: { orderBy: { order: "asc" } },
-      },
-    });
-    // Campos computados (relación/rollup/fórmula) fuera: sus celdas no tienen valor legible.
-    const fields = (col?.fields ?? []).filter((f) => !["relation", "rollup", "formula"].includes(f.type));
-    table = {
-      headers: fields.map((f) => f.name),
-      rows: (col?.records ?? []).map((r) => {
-        const cells = (r.cells ?? {}) as Record<string, unknown>;
-        return fields.map((f) => cellToText(f, cells[f.id], r));
-      }),
-    };
+    const col = await loadCollection({ pageId: page.id });
+    if (col) table = tableOf(col);
+  }
+
+  // BD embebidas en el cuerpo: se resuelven aquí (no hay tRPC sin sesión), solo las del mismo workspace.
+  const dbTables: Record<string, PublicDbTable> = {};
+  const ids = new Set<string>();
+  collectEmbeddedIds(page.content, ids);
+  for (const id of ids) {
+    const col = await loadCollection({ id, page: { workspaceId: page.workspaceId } });
+    if (col) dbTables[id] = tableOf(col);
   }
 
   return (
-    <PublicView title={page.title} icon={page.icon} cover={page.cover} content={page.content} table={table} />
+    <PublicView
+      title={page.title}
+      icon={page.icon}
+      cover={page.cover}
+      content={page.content}
+      table={table}
+      dbTables={dbTables}
+    />
   );
 }

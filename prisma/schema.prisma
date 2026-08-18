@@ -70,6 +70,7 @@ model Page {
   cover       String?   // "gradient:<id>" preset o "url:<imagen>"
   order       String    // índice fraccional
   type        String    @default("doc") // doc | database
+  embedded    Boolean   @default(false) // contenedor oculto de una BD embebida en otra página (no sale en el árbol)
   content     Json?     // documento de bloques (BlockNote) si type=doc
   publicToken String?   @unique // si no es null, la página está publicada en la web (/s/<token>)
   archivedAt  DateTime?

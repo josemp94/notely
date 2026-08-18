@@ -23,7 +23,7 @@ export const pagesRouter = router({
   /** Árbol completo de páginas vivas del workspace (para el sidebar). */
   tree: workspaceProcedure.query(async ({ ctx }): Promise<TreeNode[]> => {
     const pages = await ctx.db.page.findMany({
-      where: { workspaceId: ctx.workspace.id, archivedAt: null },
+      where: { workspaceId: ctx.workspace.id, archivedAt: null, embedded: false },
       select: { id: true, title: true, icon: true, parentId: true, order: true },
       orderBy: { order: "asc" },
     });
@@ -44,6 +44,7 @@ export const pagesRouter = router({
         where: {
           workspaceId: ctx.workspace.id,
           archivedAt: null,
+          embedded: false,
           title: { contains: q, mode: "insensitive" },
         },
         select: { id: true, title: true, icon: true, type: true },

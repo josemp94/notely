@@ -28,6 +28,25 @@ export function cellToText(
   return String(v);
 }
 
+/** Colección recién nacida, como en Notion: campo "Nombre", vista Tabla y 3 filas vacías. */
+async function seedCollection(db: typeof import("@/lib/db").db, pageId: string, name: string) {
+  const collection = await db.collection.create({ data: { pageId, name } });
+  await db.field.create({
+    data: { collectionId: collection.id, name: "Nombre", type: "text", order: rankAtEnd(null), config: {} },
+  });
+  await db.view.create({
+    data: { collectionId: collection.id, name: "Tabla", type: "table", config: {} },
+  });
+  let ord: string | null = null;
+  for (let i = 0; i < 3; i++) {
+    ord = rankAtEnd(ord);
+    await db.record.create({
+      data: { collectionId: collection.id, order: ord, seq: i + 1, cells: {} },
+    });
+  }
+  return collection;
+}
+
 async function assertPage(ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } }, pageId: string) {
   const p = await ctx.db.page.findFirst({
     where: { id: pageId, workspaceId: ctx.workspace.id },
@@ -69,27 +88,29 @@ export const dbRouter = router({
           content: [],
         },
       });
-      const collection = await ctx.db.collection.create({
-        data: { pageId: page.id, name: input.title },
-      });
-      // Campo único inicial: "Nombre" (como Notion). El resto se añaden con "+".
-      await ctx.db.field.create({
-        data: { collectionId: collection.id, name: "Nombre", type: "text", order: rankAtEnd(null), config: {} },
-      });
-      // Vista inicial: solo Tabla. El resto se añaden con "+ Vista".
-      await ctx.db.view.create({
-        data: { collectionId: collection.id, name: "Tabla", type: "table", config: {} },
-      });
-      // Filas vacías iniciales (como Notion).
-      let ord: string | null = null;
-      for (let i = 0; i < 3; i++) {
-        ord = rankAtEnd(ord);
-        await ctx.db.record.create({
-          data: { collectionId: collection.id, order: ord, seq: i + 1, cells: {} },
-        });
-      }
+      await seedCollection(ctx.db, page.id, input.title);
       return page;
     }),
+
+  /**
+   * Crea una BD para embeber en el cuerpo de una página: la Collection cuelga de una
+   * página contenedora oculta (embedded=true, excluida del árbol y de la búsqueda).
+   */
+  createInline: workspaceProcedure.mutation(async ({ ctx }) => {
+    const page = await ctx.db.page.create({
+      data: {
+        workspaceId: ctx.workspace.id,
+        title: "Base de datos",
+        icon: "🗃️",
+        type: "database",
+        embedded: true,
+        order: rankAtEnd(null),
+        content: [],
+      },
+    });
+    const collection = await seedCollection(ctx.db, page.id, "Base de datos");
+    return { pageId: page.id, collectionId: collection.id };
+  }),
 
   /** Exporta la colección a CSV: cabecera = nombres de campos, una fila por registro. */
   exportCsv: workspaceProcedure
@@ -431,7 +452,7 @@ export const dbRouter = router({
   /** Lista todas las bases de datos del workspace (para elegir destino de una relación). */
   listDatabases: workspaceProcedure.query(async ({ ctx }) => {
     const cols = await ctx.db.collection.findMany({
-      where: { page: { workspaceId: ctx.workspace.id, type: "database", archivedAt: null } },
+      where: { page: { workspaceId: ctx.workspace.id, type: "database", archivedAt: null, embedded: false } },
       select: {
         id: true,
         page: { select: { id: true, title: true, icon: true } },
