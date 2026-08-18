@@ -3,26 +3,28 @@
 @theme inline {
   --color-brand: #ff5c28;
   --color-brand-600: #e64a1a;
-  --color-brand-50: #fff2ec;
+  --color-brand-50: var(--brand-50);
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
 }
 
+/* Tema claro/oscuro por data-theme en <html>; lo fija un script inline en el layout
+   (localStorage.theme o, si no hay preferencia, prefers-color-scheme) antes de pintar. */
 :root {
   --background: #ffffff;
   --foreground: #1a1a1a;
   --muted: #6b6b6b;
   --border: #ececec;
+  --brand-50: #fff2ec;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0e0e0f;
-    --foreground: #ededed;
-    --muted: #9a9a9a;
-    --border: #232325;
-  }
+:root[data-theme="dark"] {
+  --background: #0e0e0f;
+  --foreground: #ededed;
+  --muted: #9a9a9a;
+  --border: #232325;
+  --brand-50: #3a2015;
 }
 
 body {
@@ -39,9 +41,11 @@ h1, h2, h3, .font-display {
   background: color-mix(in srgb, var(--color-brand) 22%, transparent);
 }
 
-/* --- Editor BlockNote: tipografía coherente con la marca --- */
+/* --- Editor BlockNote: tipografía y colores coherentes con la marca --- */
 .bn-container {
   --bn-font-family: var(--font-sans), system-ui, sans-serif;
+  --bn-colors-editor-background: transparent; /* hereda el fondo del tema de la app */
+  --bn-colors-editor-text: var(--foreground);
 }
 .bn-editor {
   font-size: 16px;

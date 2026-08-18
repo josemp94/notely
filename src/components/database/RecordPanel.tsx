@@ -7,6 +7,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { editorSchema, MentionMenu, type NotelyPartialBlock } from "@/components/editor/mention";
 import { trpc } from "@/trpc/react";
+import { useTheme } from "@/lib/theme";
 import { Cell, type FieldLite } from "./Cell";
 import { RelationCell } from "./RelationCell";
 import { AddFieldButton } from "./shared";
@@ -35,6 +36,7 @@ export function RecordPanel({
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
+  const theme = useTheme();
   const invalidate = () => utils.db.get.invalidate({ pageId });
   const { data: computed } = trpc.db.computed.useQuery({ pageId });
   const updateCell = trpc.db.updateCell.useMutation({ onSuccess: invalidate });
@@ -125,7 +127,7 @@ export function RecordPanel({
           </div>
 
           <div className="mt-6 border-t border-[var(--border)] pt-4">
-            <BlockNoteView editor={editor} onChange={onBodyChange}>
+            <BlockNoteView editor={editor} onChange={onBodyChange} theme={theme}>
               <MentionMenu editor={editor} pageId={pageId} />
             </BlockNoteView>
           </div>

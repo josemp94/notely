@@ -40,6 +40,12 @@ export default function RootLayout({
       <body
         className={`${display.variable} ${sans.variable} ${mono.variable} antialiased`}
       >
+        {/* Fija el tema antes de pintar (sin flash): localStorage.theme o preferencia del sistema. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.theme;document.documentElement.dataset.theme=(t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"}catch(e){}`,
+          }}
+        />
         <SwRegister />
         <TRPCProvider>{children}</TRPCProvider>
       </body>

@@ -9,6 +9,7 @@ import { trpc } from "@/trpc/react";
 import { parseCsv } from "@/lib/csv";
 import { TEMPLATES } from "@/lib/templates";
 import { getRecents, RECENTS_EVENT, type Recent } from "@/lib/recents";
+import { setTheme, useTheme } from "@/lib/theme";
 import { openSearchPalette } from "@/components/SearchPalette";
 
 type Node = {
@@ -592,6 +593,7 @@ function AccountFooter({ me }: { me: Me }) {
       <Link href="/settings" className="min-w-0 flex-1 truncate text-xs text-[var(--muted)] hover:text-brand" title={me?.email ?? ""}>
         ⚙ {me?.name || me?.email || "Cuenta"}
       </Link>
+      <ThemeToggle />
       <button
         onClick={() => logout.mutate()}
         className="shrink-0 rounded px-2 py-1 text-xs text-[var(--muted)] hover:text-brand"
@@ -600,6 +602,20 @@ function AccountFooter({ me }: { me: Me }) {
         Salir
       </button>
     </div>
+  );
+}
+
+/** Conmutador de tema claro/oscuro (persistido en localStorage). */
+function ThemeToggle() {
+  const theme = useTheme();
+  return (
+    <button
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="shrink-0 rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:text-brand"
+      title={theme === "dark" ? "Tema claro" : "Tema oscuro"}
+    >
+      {theme === "dark" ? "☀️" : "🌙"}
+    </button>
   );
 }
 

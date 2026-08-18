@@ -7,6 +7,7 @@ import "@blocknote/mantine/style.css";
 import { editorSchema, type NotelyPartialBlock } from "@/components/editor/mention";
 import { PublicDbContext, StaticDbTable, type PublicDbTable } from "@/components/editor/databaseBlock";
 import { coverStyle } from "@/components/PageCover";
+import { useTheme } from "@/lib/theme";
 
 /** Render público de solo lectura: portada, icono, título y contenido (doc o tabla). */
 export function PublicView({
@@ -49,10 +50,11 @@ export function PublicView({
 }
 
 function PublicDoc({ content }: { content: unknown }) {
+  const theme = useTheme();
   const blocks = content as NotelyPartialBlock[] | undefined;
   const editor = useCreateBlockNote({
     schema: editorSchema,
     initialContent: Array.isArray(blocks) && blocks.length > 0 ? blocks : undefined,
   });
-  return <BlockNoteView editor={editor} editable={false} />;
+  return <BlockNoteView editor={editor} editable={false} theme={theme} />;
 }

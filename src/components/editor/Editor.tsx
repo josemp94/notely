@@ -9,6 +9,7 @@ import "@blocknote/mantine/style.css";
 import { editorSchema, MentionMenu, type NotelyPartialBlock } from "./mention";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
+import { useTheme } from "@/lib/theme";
 import { PageIcon } from "@/components/PageIcon";
 import { AddCoverButton, CoverBand } from "@/components/PageCover";
 
@@ -30,6 +31,7 @@ export function Editor({
   canEdit?: boolean;
 }) {
   const utils = trpc.useUtils();
+  const theme = useTheme();
   const [title, setTitle] = useState(initialTitle);
   const [icon, setIcon] = useState<string | null>(initialIcon ?? null);
   const [cover, setCover] = useState<string | null>(initialCover ?? null);
@@ -132,7 +134,7 @@ export function Editor({
         />
       </div>
 
-      <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave} slashMenu={false}>
+      <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave} slashMenu={false} theme={theme}>
         <MentionMenu editor={editor} pageId={pageId} />
         {/* Menú "/" propio: los ítems por defecto + "Base de datos" embebida. */}
         <SuggestionMenuController

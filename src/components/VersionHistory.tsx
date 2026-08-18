@@ -6,6 +6,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { editorSchema, type NotelyPartialBlock } from "@/components/editor/mention";
 import { trpc } from "@/trpc/react";
+import { useTheme } from "@/lib/theme";
 
 function rel(d: Date) {
   const s = Math.max(0, (Date.now() - d.getTime()) / 1000);
@@ -117,10 +118,11 @@ export function VersionHistoryModal({
 
 /** Render de solo lectura de un snapshot (remontar con `key` por versión). */
 function Preview({ content }: { content: unknown }) {
+  const theme = useTheme();
   const blocks = content as NotelyPartialBlock[];
   const editor = useCreateBlockNote({
     schema: editorSchema,
     initialContent: Array.isArray(blocks) && blocks.length > 0 ? blocks : undefined,
   });
-  return <BlockNoteView editor={editor} editable={false} />;
+  return <BlockNoteView editor={editor} editable={false} theme={theme} />;
 }
