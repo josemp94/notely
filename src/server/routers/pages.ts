@@ -6,6 +6,9 @@ import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { TEMPLATES } from "@/lib/templates";
 
+/** Días que aguanta una página en la papelera antes de la auto-purga (también en /trash). */
+const TRASH_TTL_DAYS = 30;
+
 /** Nodo del árbol de páginas para el sidebar. */
 type TreeNode = {
   id: string;
@@ -395,6 +398,31 @@ export const pagesRouter = router({
       });
       return { restored: ids.length };
     }),
+
+  /**
+   * Auto-purga perezosa: borra definitivamente lo que lleve más de 30 días en la
+   * papelera (con subárbol). Se invoca al abrir la papelera; sin cron.
+   */
+  purgeExpired: workspaceProcedure.mutation(async ({ ctx }) => {
+    const cutoff = new Date(Date.now() - TRASH_TTL_DAYS * 864e5);
+    const expired = await ctx.db.page.findMany({
+      where: { workspaceId: ctx.workspace.id, archivedAt: { lt: cutoff } },
+      select: { id: true },
+    });
+    if (expired.length === 0) return { purged: 0 };
+    const ids = new Set<string>();
+    for (const p of expired) for (const d of await descendantIds(ctx, p.id)) ids.add(d);
+    const r = await ctx.db.page.deleteMany({ where: { id: { in: [...ids] } } });
+    return { purged: r.count };
+  }),
+
+  /** Vaciar la papelera: borra definitivamente todo lo archivado del workspace. */
+  emptyTrash: workspaceProcedure.mutation(async ({ ctx }) => {
+    const r = await ctx.db.page.deleteMany({
+      where: { workspaceId: ctx.workspace.id, archivedAt: { not: null } },
+    });
+    return { removed: r.count };
+  }),
 
   /** Marcar/desmarcar una página como favorita (★, por usuario). */
   toggleFavorite: workspaceProcedure
