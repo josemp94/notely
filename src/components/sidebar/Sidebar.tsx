@@ -5,6 +5,29 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BlockNoteEditor } from "@blocknote/core";
+import {
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Copy,
+  Database,
+  FilePlus,
+  FileText,
+  Folder,
+  Moon,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Settings,
+  Sparkles,
+  Star,
+  Sun,
+  Trash2,
+  Upload,
+  Users,
+  X,
+} from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { parseCsv } from "@/lib/csv";
 import { TEMPLATES } from "@/lib/templates";
@@ -114,21 +137,21 @@ export function Sidebar() {
                 className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
                 title="Nueva página"
               >
-                + Página
+                <FilePlus size={16} />
               </button>
               <button
                 onClick={() => createDb.mutate({ parentId: null })}
                 className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
                 title="Nueva base de datos"
               >
-                + BD
+                <Database size={16} />
               </button>
               <button
                 onClick={() => importInput.current?.click()}
                 className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
                 title="Importar Markdown (página) o CSV (base de datos)"
               >
-                ⇪
+                <Upload size={16} />
               </button>
               <input
                 ref={importInput}
@@ -152,7 +175,7 @@ export function Sidebar() {
         onClick={openSearchPalette}
         className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
       >
-        🔍 Buscar
+        <Search size={16} /> Buscar
         <span className="ml-auto font-mono text-[10px] text-[var(--muted)]">Ctrl K</span>
       </button>
 
@@ -164,7 +187,7 @@ export function Sidebar() {
           className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
           title="Crear desde una plantilla"
         >
-          ✨ Plantillas
+          <Sparkles size={16} /> Plantillas
         </button>
       )}
       {showTemplates && <TemplatesGallery onClose={() => setShowTemplates(false)} />}
@@ -176,17 +199,17 @@ export function Sidebar() {
       </nav>
       <Link
         href="/trash"
-        className="border-t border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)] hover:text-brand"
+        className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)] hover:text-brand"
       >
-        🗑 Papelera
+        <Trash2 size={16} /> Papelera
       </Link>
       <AccountFooter me={me} />
     </aside>
   );
 }
 
-/** Sección plegable del sidebar (⭐ Favoritos / 🕘 Recientes). */
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** Sección plegable del sidebar (Favoritos / Recientes). */
+function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
     <div className="mb-2">
@@ -194,8 +217,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
       >
+        {icon}
         {title}
-        <span className="ml-auto">{open ? "▾" : "▸"}</span>
+        <span className="ml-auto">{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
       </button>
       {open && children}
     </div>
@@ -213,19 +237,19 @@ function SectionLink({ page }: { page: { id: string; title: string; icon: string
       }`}
     >
       <span className="truncate">
-        {page.icon ? `${page.icon} ` : "📄 "}
+        {page.icon ? `${page.icon} ` : <FileText size={13} className="mr-1 inline align-[-2px]" />}
         {page.title || "Sin título"}
       </span>
     </Link>
   );
 }
 
-/** ⭐ Favoritos del usuario (por encima del árbol). */
+/** Favoritos del usuario (por encima del árbol). */
 function Favorites() {
   const { data: favs } = trpc.favorites.list.useQuery();
   if (!favs?.length) return null;
   return (
-    <Section title="⭐ Favoritos">
+    <Section icon={<Star size={12} />} title="Favoritos">
       {favs.map((p) => (
         <SectionLink key={p.id} page={p} />
       ))}
@@ -233,7 +257,7 @@ function Favorites() {
   );
 }
 
-/** 🕘 Últimas páginas visitadas (localStorage, por workspace). */
+/** Últimas páginas visitadas (localStorage, por workspace). */
 function Recents({ workspaceId, pages }: { workspaceId: string | undefined; pages: Node[] | undefined }) {
   const [recents, setRecents] = useState<Recent[]>([]);
   useEffect(() => {
@@ -249,7 +273,7 @@ function Recents({ workspaceId, pages }: { workspaceId: string | undefined; page
   const items = recents.flatMap((r) => byId.get(r.pageId) ?? []);
   if (!items.length) return null;
   return (
-    <Section title="🕘 Recientes">
+    <Section icon={<Clock size={12} />} title="Recientes">
       {items.map((p) => (
         <SectionLink key={p.id} page={p} />
       ))}
@@ -261,7 +285,7 @@ function when(d: Date) {
   return d.toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-/** Campana 🔔 con contador de no leídas y bandeja de notificaciones (menciones @persona). */
+/** Campana con contador de no leídas y bandeja de notificaciones (menciones @persona). */
 function NotificationsBell() {
   const utils = trpc.useUtils();
   const router = useRouter();
@@ -283,7 +307,7 @@ function NotificationsBell() {
         className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
         title="Notificaciones"
       >
-        🔔 Notificaciones
+        <Bell size={16} /> Notificaciones
         {!!unread && (
           <span className="ml-auto rounded-full bg-brand px-1.5 text-[10px] font-medium leading-4 text-white">
             {unread > 99 ? "99+" : unread}
@@ -300,7 +324,9 @@ function NotificationsBell() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-5 pb-2 pt-4">
-                <h2 className="font-display text-lg font-bold">🔔 Notificaciones</h2>
+                <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+                  <Bell size={18} /> Notificaciones
+                </h2>
                 <div className="flex items-center gap-2">
                   {!!unread && (
                     <button
@@ -312,7 +338,7 @@ function NotificationsBell() {
                     </button>
                   )}
                   <button onClick={() => setOpen(false)} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
-                    ✕
+                    <X size={16} />
                   </button>
                 </div>
               </div>
@@ -349,7 +375,7 @@ function NotificationsBell() {
   );
 }
 
-/** Galería de plantillas (✨): tarjetas con icono + nombre + descripción; crea la página en el servidor. */
+/** Galería de plantillas: tarjetas con icono + nombre + descripción; crea la página en el servidor. */
 function TemplatesGallery({ onClose }: { onClose: () => void }) {
   const utils = trpc.useUtils();
   const router = useRouter();
@@ -370,9 +396,11 @@ function TemplatesGallery({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">✨ Plantillas</h2>
+          <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+            <Sparkles size={18} /> Plantillas
+          </h2>
           <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
-            ✕
+            <X size={16} />
           </button>
         </div>
         <p className="mb-4 text-xs text-[var(--muted)]">Empieza con una página o base de datos prehecha.</p>
@@ -427,10 +455,10 @@ function WorkspaceBar({ me }: { me: Me }) {
           title="Cambiar de espacio"
         >
           <span className="truncate">
-            {current?.icon ? `${current.icon} ` : "🗂 "}
+            {current?.icon ? `${current.icon} ` : <Folder size={13} className="mr-1 inline align-[-2px]" />}
             {current?.name ?? "Espacio"}
           </span>
-          <span className="ml-auto shrink-0">▾</span>
+          <span className="ml-auto shrink-0"><ChevronDown size={14} /></span>
         </button>
         {me?.wsRole === "owner" && (
           <button
@@ -438,7 +466,7 @@ function WorkspaceBar({ me }: { me: Me }) {
             className="shrink-0 rounded-md px-2 py-1 text-xs text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
             title="Compartir este espacio"
           >
-            👥
+            <Users size={14} />
           </button>
         )}
       </div>
@@ -459,7 +487,7 @@ function WorkspaceBar({ me }: { me: Me }) {
               }`}
             >
               <span className="truncate">
-                {s.icon ? `${s.icon} ` : "🗂 "}
+                {s.icon ? `${s.icon} ` : <Folder size={13} className="mr-1 inline align-[-2px]" />}
                 {s.name}
               </span>
               {!s.isOwner && (
@@ -508,9 +536,11 @@ function ShareDialog({ onClose, onChange }: { onClose: () => void; onChange: () 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">Compartir espacio</h2>
+          <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+            <Users size={18} /> Compartir espacio
+          </h2>
           <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
-            ✕
+            <X size={16} />
           </button>
         </div>
         <p className="mb-4 text-xs text-[var(--muted)]">
@@ -568,7 +598,7 @@ function ShareDialog({ onClose, onChange }: { onClose: () => void; onChange: () 
                       className="rounded px-1 text-xs text-[var(--muted)] hover:text-red-500"
                       title="Quitar acceso"
                     >
-                      ✕
+                      <X size={14} />
                     </button>
                   </>
                 )}
@@ -590,8 +620,13 @@ function AccountFooter({ me }: { me: Me }) {
   });
   return (
     <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] px-4 py-3">
-      <Link href="/settings" className="min-w-0 flex-1 truncate text-xs text-[var(--muted)] hover:text-brand" title={me?.email ?? ""}>
-        ⚙ {me?.name || me?.email || "Cuenta"}
+      <Link
+        href="/settings"
+        className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-[var(--muted)] hover:text-brand"
+        title={me?.email ?? ""}
+      >
+        <Settings size={14} />
+        <span className="truncate">{me?.name || me?.email || "Cuenta"}</span>
       </Link>
       <ThemeToggle />
       <button
@@ -614,7 +649,7 @@ function ThemeToggle() {
       className="shrink-0 rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:text-brand"
       title={theme === "dark" ? "Tema claro" : "Tema oscuro"}
     >
-      {theme === "dark" ? "☀️" : "🌙"}
+      {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
     </button>
   );
 }
@@ -737,12 +772,12 @@ function TreeItem({
       >
         <button
           onClick={() => setOpen((o) => !o)}
-          className={`w-4 shrink-0 text-[var(--muted)] ${node.hasChildren ? "" : "invisible"}`}
+          className={`flex w-4 shrink-0 items-center justify-center text-[var(--muted)] ${node.hasChildren ? "" : "invisible"}`}
         >
-          {open ? "▾" : "▸"}
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         <Link href={`/p/${node.id}`} className="flex-1 truncate py-1" draggable={false}>
-          {node.icon ? `${node.icon} ` : "📄 "}
+          {node.icon ? `${node.icon} ` : <FileText size={13} className="mr-1 inline align-[-2px]" />}
           {node.title || "Sin título"}
         </Link>
         {canEdit && (
@@ -752,7 +787,7 @@ function TreeItem({
               className="rounded px-1 text-[var(--muted)] hover:text-brand"
               title="Añadir subpágina"
             >
-              +
+              <Plus size={14} />
             </button>
             <button
               onClick={(e) => {
@@ -762,7 +797,7 @@ function TreeItem({
               className="rounded px-1 text-[var(--muted)] hover:text-brand"
               title="Más acciones"
             >
-              ⋯
+              <MoreHorizontal size={14} />
             </button>
           </div>
         )}
@@ -775,15 +810,18 @@ function TreeItem({
           onClose={() => setMenu(null)}
           items={[
             {
-              label: "➕ Añadir subpágina",
+              icon: <Plus size={16} />,
+              label: "Añadir subpágina",
               onClick: () => addSub.mutate({ parentId: node.id }),
             },
             {
-              label: "⧉ Duplicar",
+              icon: <Copy size={16} />,
+              label: "Duplicar",
               onClick: () => duplicate.mutate({ id: node.id }),
             },
             {
-              label: "🗑 Enviar a la papelera",
+              icon: <Trash2 size={16} />,
+              label: "Enviar a la papelera",
               danger: true,
               onClick: () => archive.mutate({ id: node.id }),
             },
@@ -806,7 +844,7 @@ function RowMenu({
 }: {
   x: number;
   y: number;
-  items: { label: string; onClick: () => void; danger?: boolean }[];
+  items: { icon?: React.ReactNode; label: string; onClick: () => void; danger?: boolean }[];
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -833,10 +871,11 @@ function RowMenu({
             it.onClick();
             onClose();
           }}
-          className={`block w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40 ${
+          className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40 ${
             it.danger ? "text-red-500" : ""
           }`}
         >
+          {it.icon}
           {it.label}
         </button>
       ))}

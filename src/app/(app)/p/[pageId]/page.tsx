@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Star } from "lucide-react";
 import { useParams } from "next/navigation";
 import { trpc } from "@/trpc/react";
 import { pushRecent } from "@/lib/recents";
@@ -84,7 +85,7 @@ export default function PageView() {
   );
 }
 
-/** Estrella ★ de la cabecera: añade/quita la página de ⭐ Favoritos. */
+/** Estrella de la cabecera: añade/quita la página de Favoritos. */
 function FavoriteButton({ pageId }: { pageId: string }) {
   const utils = trpc.useUtils();
   const { data: favs } = trpc.favorites.list.useQuery();
@@ -99,7 +100,7 @@ function FavoriteButton({ pageId }: { pageId: string }) {
       className={`rounded-md px-2 py-1 text-sm hover:bg-brand-50 ${isFav ? "text-brand" : "text-[var(--muted)] hover:text-brand"}`}
       title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}
     >
-      {isFav ? "★" : "☆"}
+      <Star size={16} fill={isFav ? "currentColor" : "none"} />
     </button>
   );
 }

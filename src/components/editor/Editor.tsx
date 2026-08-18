@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Database, Download } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -101,15 +102,25 @@ export function Editor({
       {cover && <CoverBand cover={cover} onChange={onCoverChange} editable={canEdit} />}
       <div className={`mx-auto max-w-3xl px-4 pb-6 md:px-12 md:pb-14 ${cover ? "pt-3" : "pt-6 md:pt-14"}`}>
       <div className={`mb-3 flex h-4 items-center gap-2 font-mono text-[11px] text-[var(--muted)] ${cover ? "justify-end" : ""}`}>
-        {canEdit ? (saveState === "saving" ? "Guardando…" : "Guardado ✓") : "Solo lectura"}
+        {canEdit ? (
+          saveState === "saving" ? (
+            "Guardando…"
+          ) : (
+            <span className="flex items-center gap-1">
+              Guardado <Check size={12} />
+            </span>
+          )
+        ) : (
+          "Solo lectura"
+        )}
         <button
           onClick={() =>
             downloadText(`${title.trim() || "Sin título"}.md`, editor.blocksToMarkdownLossy(editor.document), "text/markdown")
           }
-          className="rounded px-1.5 hover:bg-brand-50 hover:text-brand"
+          className="flex items-center gap-1 rounded px-1.5 hover:bg-brand-50 hover:text-brand"
           title="Exportar a Markdown"
         >
-          ⇩ MD
+          <Download size={12} /> MD
         </button>
       </div>
 
@@ -148,7 +159,7 @@ export function Editor({
                   subtext: "Tabla embebida en esta página",
                   aliases: ["bd", "db", "tabla", "database", "base de datos"],
                   group: "Bases de datos",
-                  icon: <span>🗃️</span>,
+                  icon: <Database size={18} />,
                   onItemClick: async () => {
                     const { pageId: dbPageId, collectionId } = await createInlineDb.mutateAsync();
                     insertOrUpdateBlockForSlashMenu(editor, {

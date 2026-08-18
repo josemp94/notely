@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Image as ImageIcon } from "lucide-react";
 
 /** Presets de gradiente; se guardan como "gradient:<id>". Imágenes: "url:<https…>". */
 const GRADIENTS: Record<string, string> = {
@@ -136,11 +137,11 @@ export function AddCoverButton({ onChange }: { onChange: (cover: string) => void
     <div className="relative inline-block">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`rounded-md px-2 py-1 text-sm text-[var(--muted)] transition-opacity hover:bg-[var(--border)]/40 hover:text-[var(--foreground)] group-hover/header:opacity-100 ${
+        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-[var(--muted)] transition-opacity hover:bg-[var(--border)]/40 hover:text-[var(--foreground)] group-hover/header:opacity-100 ${
           open ? "opacity-100" : "opacity-0"
         }`}
       >
-        🖼 Añadir portada
+        <ImageIcon size={16} /> Añadir portada
       </button>
       {open && (
         <CoverPicker

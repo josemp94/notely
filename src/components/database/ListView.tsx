@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FileText } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
 import { optionsOf, type FieldLite } from "./Cell";
@@ -51,7 +52,8 @@ export function ListView({
               onClick={() => setOpenRec(r)}
               className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--border)]/30"
             >
-              <span className="min-w-0 flex-1 truncate font-medium">📄 {recTitle(r)}</span>
+              <FileText size={14} className="shrink-0 text-[var(--muted)]" />
+              <span className="min-w-0 flex-1 truncate font-medium">{recTitle(r)}</span>
               <span className="hidden shrink-0 items-center gap-3 text-xs text-[var(--muted)] sm:flex">
                 {propFields.map((f) => {
                   const txt = displayValue(f, r.cells?.[f.id]);

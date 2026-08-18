@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Check, Globe } from "lucide-react";
 import { trpc } from "@/trpc/react";
 
-/** Botón 🌐 de cabecera con popover Publicar/Despublicar y URL pública copiable. */
+/** Botón de cabecera con popover Publicar/Despublicar y URL pública copiable. */
 export function ShareButton({ pageId, publicToken }: { pageId: string; publicToken: string | null }) {
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
@@ -35,7 +36,7 @@ export function ShareButton({ pageId, publicToken }: { pageId: string; publicTok
         }`}
         title="Compartir / Publicar en la web"
       >
-        🌐
+        <Globe size={16} />
       </button>
       {open && (
         <div className="absolute right-0 top-full z-30 mt-1 w-80 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 shadow-xl">
@@ -79,9 +80,15 @@ export function ShareButton({ pageId, publicToken }: { pageId: string; publicTok
                   setCopied(true);
                   setTimeout(() => setCopied(false), 1500);
                 }}
-                className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
+                className="flex shrink-0 items-center gap-1 rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
               >
-                {copied ? "Copiado ✓" : "Copiar"}
+                {copied ? (
+                  <>
+                    Copiado <Check size={12} />
+                  </>
+                ) : (
+                  "Copiar"
+                )}
               </button>
             </div>
           )}

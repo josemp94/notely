@@ -2,6 +2,26 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
+import {
+  ArrowUpDown,
+  BarChart3,
+  Calendar,
+  ClipboardList,
+  Columns3,
+  Download,
+  Eye,
+  EyeOff,
+  Filter as FilterIcon,
+  GanttChart,
+  LayoutGrid,
+  List,
+  Pencil,
+  Plus,
+  Settings,
+  Table,
+  Trash2,
+  X,
+} from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
 import {
@@ -16,16 +36,22 @@ import {
 
 type View = { id: string; name: string; type: string; config: any };
 
-const VIEW_TYPES: { type: "table" | "kanban" | "calendar" | "timeline" | "gallery" | "chart" | "list" | "form"; label: string; icon: string }[] = [
-  { type: "table", label: "Tabla", icon: "▤" },
-  { type: "kanban", label: "Kanban", icon: "▦" },
-  { type: "list", label: "Lista", icon: "☰" },
-  { type: "gallery", label: "Galería", icon: "🖼" },
-  { type: "calendar", label: "Calendario", icon: "🗓" },
-  { type: "timeline", label: "Cronograma", icon: "📊" },
-  { type: "chart", label: "Gráfica", icon: "▧" },
-  { type: "form", label: "Formulario", icon: "📝" },
+const VIEW_TYPES: { type: "table" | "kanban" | "calendar" | "timeline" | "gallery" | "chart" | "list" | "form"; label: string; icon: typeof Table }[] = [
+  { type: "table", label: "Tabla", icon: Table },
+  { type: "kanban", label: "Kanban", icon: Columns3 },
+  { type: "list", label: "Lista", icon: List },
+  { type: "gallery", label: "Galería", icon: LayoutGrid },
+  { type: "calendar", label: "Calendario", icon: Calendar },
+  { type: "timeline", label: "Cronograma", icon: GanttChart },
+  { type: "chart", label: "Gráfica", icon: BarChart3 },
+  { type: "form", label: "Formulario", icon: ClipboardList },
 ];
+
+/** Icono lucide del tipo de vista (Tabla por defecto). */
+export function ViewIcon({ type, size = 14 }: { type: string; size?: number }) {
+  const I = VIEW_TYPES.find((v) => v.type === type)?.icon ?? Table;
+  return <I size={size} />;
+}
 
 function Popover({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -95,9 +121,9 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "filter" ? null : "filter")}
-          className={`rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${nFilters ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${nFilters ? "text-brand" : "text-[var(--muted)]"}`}
         >
-          ⧩ Filtrar{nFilters ? ` (${nFilters})` : ""}
+          <FilterIcon size={14} /> Filtrar{nFilters ? ` (${nFilters})` : ""}
         </button>
         {open === "filter" && (
           <Popover onClose={() => setOpen(null)}>
@@ -130,9 +156,9 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "sort" ? null : "sort")}
-          className={`rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${sorts.length ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${sorts.length ? "text-brand" : "text-[var(--muted)]"}`}
         >
-          ↕ Ordenar{sorts.length ? ` (${sorts.length})` : ""}
+          <ArrowUpDown size={14} /> Ordenar{sorts.length ? ` (${sorts.length})` : ""}
         </button>
         {open === "sort" && (
           <Popover onClose={() => setOpen(null)}>
@@ -170,7 +196,7 @@ export function DbToolbar({
                     onClick={() => saveConfig({ sorts: sorts.filter((_, j) => j !== i) })}
                     className="shrink-0 px-1 text-[var(--muted)] hover:text-red-500"
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 </div>
               ))}
@@ -181,9 +207,9 @@ export function DbToolbar({
                 if (!fl) return;
                 saveConfig({ sorts: [...sorts, { fieldId: fl.id, dir: "asc" }] });
               }}
-              className="mt-2 text-xs text-brand hover:underline"
+              className="mt-2 flex items-center gap-1 text-xs text-brand hover:underline"
             >
-              + Añadir orden
+              <Plus size={12} /> Añadir orden
             </button>
           </Popover>
         )}
@@ -193,9 +219,9 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "props" ? null : "props")}
-          className={`rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${hidden.length ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${hidden.length ? "text-brand" : "text-[var(--muted)]"}`}
         >
-          👁 Propiedades{hidden.length ? ` (${fields.length - hidden.length}/${fields.length})` : ""}
+          <Eye size={14} /> Propiedades{hidden.length ? ` (${fields.length - hidden.length}/${fields.length})` : ""}
         </button>
         {open === "props" && (
           <Popover onClose={() => setOpen(null)}>
@@ -210,7 +236,7 @@ export function DbToolbar({
                     className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--border)]/40"
                   >
                     <span className={visible ? "" : "opacity-40"}>{f.name}</span>
-                    <span className="ml-auto text-xs">{visible ? "👁" : "🚫"}</span>
+                    <span className="ml-auto text-[var(--muted)]">{visible ? <Eye size={14} /> : <EyeOff size={14} />}</span>
                   </button>
                 );
               })}
@@ -226,7 +252,7 @@ export function DbToolbar({
           className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--border)]/40"
           title="Ajustes de la vista"
         >
-          ⚙
+          <Settings size={16} />
         </button>
         {open === "cfg" && (
           <Popover onClose={() => setOpen(null)}>
@@ -236,9 +262,9 @@ export function DbToolbar({
                 if (name && name.trim()) renameView.mutate({ id: view.id, name: name.trim() });
                 setOpen(null);
               }}
-              className="block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
             >
-              ✏️ Renombrar vista
+              <Pencil size={14} /> Renombrar vista
             </button>
             <div className="my-1 border-t border-[var(--border)] pt-1">
               <div className="px-2 pb-1 text-[11px] font-medium text-[var(--muted)]">Mostrar como</div>
@@ -247,10 +273,10 @@ export function DbToolbar({
                   <button
                     key={vt.type}
                     onClick={() => setViewType.mutate({ id: view.id, type: vt.type })}
-                    className={`rounded-md px-2 py-1 text-xs hover:bg-brand-50 ${view.type === vt.type ? "bg-brand-50 text-brand" : ""}`}
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-brand-50 ${view.type === vt.type ? "bg-brand-50 text-brand" : ""}`}
                     title={vt.label}
                   >
-                    {vt.icon} {vt.label}
+                    <vt.icon size={13} /> {vt.label}
                   </button>
                 ))}
               </div>
@@ -289,9 +315,9 @@ export function DbToolbar({
               onClick={() => {
                 if (window.confirm(`¿Borrar la vista "${view.name}"?`)) deleteView.mutate({ id: view.id });
               }}
-              className="mt-1 block w-full rounded-md px-2 py-1.5 text-left text-sm text-red-500 hover:bg-[var(--border)]/40"
+              className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-red-500 hover:bg-[var(--border)]/40"
             >
-              🗑 Borrar vista
+              <Trash2 size={14} /> Borrar vista
             </button>
           </Popover>
         )}
@@ -303,19 +329,19 @@ export function DbToolbar({
           const { name, csv } = await utils.db.exportCsv.fetch({ collectionId });
           downloadText(`${name}.csv`, csv, "text/csv");
         }}
-        className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--border)]/40"
+        className="flex items-center gap-1 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--border)]/40"
         title="Exportar CSV"
       >
-        ⇩ CSV
+        <Download size={14} /> CSV
       </button>
 
       {/* Añadir vista */}
       <div className="relative">
         <button
           onClick={() => setOpen(open === "add" ? null : "add")}
-          className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
         >
-          + Vista
+          <Plus size={14} /> Vista
         </button>
         {open === "add" && (
           <Popover onClose={() => setOpen(null)}>
@@ -324,9 +350,9 @@ export function DbToolbar({
               <button
                 key={vt.type}
                 onClick={() => addView.mutate({ collectionId, type: vt.type })}
-                className="block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-brand-50"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-brand-50"
               >
-                {vt.icon} {vt.label}
+                <vt.icon size={14} /> {vt.label}
               </button>
             ))}
           </Popover>
@@ -379,7 +405,7 @@ function FilterNodesEditor({
                   className="ml-auto shrink-0 px-1 text-[var(--muted)] hover:text-red-500"
                   title="Borrar grupo"
                 >
-                  ✕
+                  <X size={14} />
                 </button>
               </div>
               <FilterNodesEditor
@@ -406,9 +432,9 @@ function FilterNodesEditor({
             const c = newCondition();
             if (c) onChange([...nodes, c]);
           }}
-          className="text-brand hover:underline"
+          className="flex items-center gap-1 text-brand hover:underline"
         >
-          ＋ Añadir filtro
+          <Plus size={12} /> Añadir filtro
         </button>
         {/* ponytail: anidación capada a 2 niveles por usabilidad del popover; sube el tope si hace falta */}
         {depth < 2 && (
@@ -417,9 +443,9 @@ function FilterNodesEditor({
               const c = newCondition();
               onChange([...nodes, { type: "group", op: "and", filters: c ? [c] : [] }]);
             }}
-            className="text-[var(--muted)] hover:text-brand hover:underline"
+            className="flex items-center gap-1 text-[var(--muted)] hover:text-brand hover:underline"
           >
-            ＋ Añadir grupo
+            <Plus size={12} /> Añadir grupo
           </button>
         )}
       </div>
@@ -465,7 +491,7 @@ function ConditionRow({
       </select>
       <FilterValue field={field} value={filter.value} onChange={(v) => onChange({ ...filter, value: v })} />
       <button onClick={onRemove} className="shrink-0 px-1 text-[var(--muted)] hover:text-red-500">
-        ✕
+        <X size={14} />
       </button>
     </div>
   );
@@ -476,8 +502,8 @@ function FilterValue({ field, value, onChange }: { field?: DbField; value: any; 
   if (field.type === "checkbox") {
     return (
       <select value={String(value)} onChange={(e) => onChange(e.target.value === "true")} className="rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs">
-        <option value="true">✓</option>
-        <option value="false">✗</option>
+        <option value="true">Sí</option>
+        <option value="false">No</option>
       </select>
     );
   }

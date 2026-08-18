@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
 import type { FieldLite } from "./Cell";
@@ -93,9 +94,9 @@ export function TimelineView({
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button onClick={prev} className="rounded px-2 py-1 text-sm hover:bg-[var(--border)]/30" aria-label="Mes anterior">‹</button>
+        <button onClick={prev} className="rounded px-2 py-1 hover:bg-[var(--border)]/30" aria-label="Mes anterior"><ChevronLeft size={16} /></button>
         <span className="font-display min-w-[9rem] text-center text-lg font-bold">{MONTHS[cursor.m]} {cursor.y}</span>
-        <button onClick={next} className="rounded px-2 py-1 text-sm hover:bg-[var(--border)]/30" aria-label="Mes siguiente">›</button>
+        <button onClick={next} className="rounded px-2 py-1 hover:bg-[var(--border)]/30" aria-label="Mes siguiente"><ChevronRight size={16} /></button>
         <button onClick={goToday} className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--border)]/30">Hoy</button>
 
         <div className="ml-auto flex items-center gap-2">

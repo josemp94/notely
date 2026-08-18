@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { Trash2, X } from "lucide-react";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
@@ -80,7 +81,7 @@ export function RecordPanel({
       >
         <div className="flex items-center justify-between px-8 pt-5">
           <span className="text-xs text-[var(--muted)]">Ficha</span>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">✕</button>
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar"><X size={16} /></button>
         </div>
 
         <div className="px-8 pb-10 pt-2">
@@ -136,9 +137,9 @@ export function RecordPanel({
             onClick={() => {
               if (confirm("¿Borrar este registro?")) deleteRecord.mutate({ id: record.id });
             }}
-            className="mt-8 text-sm text-[var(--muted)] hover:text-red-500"
+            className="mt-8 flex items-center gap-1.5 text-sm text-[var(--muted)] hover:text-red-500"
           >
-            🗑 Borrar registro
+            <Trash2 size={14} /> Borrar registro
           </button>
         </div>
       </div>

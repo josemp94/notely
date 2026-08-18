@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, ChevronRight, Maximize2, Plus, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, type FieldLite } from "./Cell";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
@@ -118,7 +119,7 @@ export function TableView({
                     className="ml-auto opacity-0 transition-opacity group-hover:opacity-100"
                     title="Borrar columna"
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 </span>
               </th>
@@ -137,7 +138,7 @@ export function TableView({
                   className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
                   title="Abrir ficha"
                 >
-                  ⤢
+                  <Maximize2 size={14} />
                 </button>
               </td>
               {fields.map((f, i) => {
@@ -167,10 +168,10 @@ export function TableView({
                       {hasChildren ? (
                         <button
                           onClick={() => toggle(r.id)}
-                          className="w-4 shrink-0 text-[var(--muted)] hover:text-brand"
+                          className="flex w-4 shrink-0 items-center justify-center text-[var(--muted)] hover:text-brand"
                           title={collapsed.has(r.id) ? "Expandir subtareas" : "Plegar subtareas"}
                         >
-                          {collapsed.has(r.id) ? "▸" : "▾"}
+                          {collapsed.has(r.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                         </button>
                       ) : (
                         <span className="w-4 shrink-0" />
@@ -181,20 +182,22 @@ export function TableView({
                 );
               })}
               <td className="whitespace-nowrap px-2 py-1">
-                <button
-                  onClick={() => addSub(r.id)}
-                  className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
-                  title="＋ Subtarea"
-                >
-                  ＋
-                </button>
-                <button
-                  onClick={() => deleteRecord.mutate({ id: r.id })}
-                  className="opacity-0 transition-opacity group-hover:opacity-100"
-                  title="Borrar fila"
-                >
-                  🗑
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => addSub(r.id)}
+                    className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
+                    title="Añadir subtarea"
+                  >
+                    <Plus size={14} />
+                  </button>
+                  <button
+                    onClick={() => deleteRecord.mutate({ id: r.id })}
+                    className="text-[var(--muted)] opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                    title="Borrar fila"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

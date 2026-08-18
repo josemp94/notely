@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import type { FieldLite } from "./Cell";
 
@@ -56,7 +57,7 @@ export function RelationCell({
               onClick={() => toggle(o.id)}
               className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-brand/10"
             >
-              <span className="w-4 text-brand">{ids.includes(o.id) ? "✓" : ""}</span>
+              <span className="w-4 shrink-0 text-brand">{ids.includes(o.id) && <Check size={14} />}</span>
               <span className="truncate">{o.title}</span>
             </button>
           ))}

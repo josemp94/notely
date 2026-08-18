@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { History, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -21,7 +22,7 @@ function when(d: Date) {
   return d.toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-/** Botón "🕐" para la cabecera de la página. */
+/** Botón de historial para la cabecera de la página. */
 export function HistoryButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -29,7 +30,7 @@ export function HistoryButton({ onClick }: { onClick: () => void }) {
       className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
       title="Historial de versiones"
     >
-      🕐
+      <History size={16} />
     </button>
   );
 }
@@ -75,9 +76,11 @@ export function VersionHistoryModal({
 
         <aside className="flex w-72 shrink-0 flex-col border-l border-[var(--border)]">
           <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-            <h2 className="font-display text-sm font-bold">🕐 Historial de versiones</h2>
+            <h2 className="flex items-center gap-2 font-display text-sm font-bold">
+              <History size={16} /> Historial de versiones
+            </h2>
             <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
-              ✕
+              <X size={16} />
             </button>
           </div>
           <div className="flex-1 space-y-0.5 overflow-y-auto p-2">

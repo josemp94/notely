@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ArrowUpRight, Check, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 
 type Option = { id: string; label: string; color?: string };
@@ -116,8 +117,8 @@ export function Cell({
           className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
         />
         {raw && (
-          <a href={href} target="_blank" rel="noreferrer" className="shrink-0 px-1 text-xs text-brand hover:underline" title="Abrir">
-            ↗
+          <a href={href} target="_blank" rel="noreferrer" className="flex shrink-0 items-center px-1 text-brand hover:underline" title="Abrir">
+            <ArrowUpRight size={14} />
           </a>
         )}
       </div>
@@ -200,7 +201,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
       {o.label}
       {multi && (
         <button onClick={(e) => { e.stopPropagation(); toggle(o.id); }} className="opacity-60 hover:opacity-100">
-          ×
+          <X size={12} />
         </button>
       )}
     </span>
@@ -243,7 +244,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
                 <span className="rounded px-1.5 py-0.5 text-xs" style={{ background: COLORS[o.color ?? "gray"] }}>
                   {o.label}
                 </span>
-                {selected.includes(o.id) && <span className="ml-auto text-brand">✓</span>}
+                {selected.includes(o.id) && <span className="ml-auto text-brand"><Check size={14} /></span>}
               </button>
             ))}
             {q && !opts.some((o) => o.label.toLowerCase() === q.toLowerCase()) && (

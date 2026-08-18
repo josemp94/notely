@@ -1,5 +1,6 @@
 "use client";
 
+import { FileText } from "lucide-react";
 import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs } from "@blocknote/core";
 import { createReactInlineContentSpec, SuggestionMenuController } from "@blocknote/react";
 import { trpc } from "@/trpc/react";
@@ -22,7 +23,8 @@ const Mention = createReactInlineContentSpec(
         href={`/p/${inlineContent.props.pageId}`}
         className="whitespace-nowrap rounded bg-brand-50 px-1 font-medium text-brand no-underline hover:underline"
       >
-        {inlineContent.props.icon || "📄"} {inlineContent.props.title || "Sin título"}
+        {inlineContent.props.icon || <FileText size={13} className="inline align-[-2px]" />}{" "}
+        {inlineContent.props.title || "Sin título"}
       </a>
     ),
   },
@@ -86,7 +88,8 @@ export function MentionMenu({ editor, pageId }: { editor: NotelyEditor; pageId: 
             },
           })),
           ...pages.map((p) => ({
-            title: `${p.icon ?? "📄"} ${p.title || "Sin título"}`,
+            title: p.title || "Sin título",
+            icon: p.icon ? <span>{p.icon}</span> : <FileText size={16} />,
             group: "Páginas",
             onItemClick: () => {
               editor.insertInlineContent([

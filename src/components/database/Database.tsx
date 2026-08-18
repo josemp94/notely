@@ -5,7 +5,7 @@ import { trpc } from "@/trpc/react";
 import { PageIcon } from "@/components/PageIcon";
 import { AddCoverButton, CoverBand } from "@/components/PageCover";
 import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
-import { DbToolbar } from "./DbToolbar";
+import { DbToolbar, ViewIcon } from "./DbToolbar";
 import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
 import { ChartView } from "./ChartView";
@@ -109,13 +109,13 @@ export function Database({
             <button
               key={v.id}
               onClick={() => setActiveViewId(v.id)}
-              className={`whitespace-nowrap px-3 py-1.5 text-sm ${
+              className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm ${
                 active?.id === v.id
                   ? "border-b-2 border-brand font-medium text-brand"
                   : "text-[var(--muted)] hover:text-[var(--foreground)]"
               }`}
             >
-              {v.type === "kanban" ? "▦ " : v.type === "chart" ? "▧ " : v.type === "calendar" ? "🗓 " : v.type === "timeline" ? "📊 " : v.type === "gallery" ? "🖼 " : v.type === "list" ? "☰ " : v.type === "form" ? "📝 " : "▤ "}
+              <ViewIcon type={v.type} />
               {v.name}
             </button>
           ))}

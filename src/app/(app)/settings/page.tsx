@@ -15,7 +15,7 @@ export default function SettingsPage() {
   const [nameMsg, setNameMsg] = useState<string | null>(null);
   const updateProfile = trpc.auth.updateProfile.useMutation({
     onSuccess: () => {
-      setNameMsg("Guardado ✓");
+      setNameMsg("Guardado");
       utils.auth.me.invalidate();
     },
     onError: (e) => setNameMsg(e.message),

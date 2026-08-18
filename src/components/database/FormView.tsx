@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { optionsOf, type FieldLite } from "./Cell";
 
@@ -54,7 +55,7 @@ export function FormView({ pageId, collectionId, fields }: { pageId: string; col
           >
             Enviar
           </button>
-          {done && <span className="text-sm text-green-600">✓ Registro añadido</span>}
+          {done && <span className="flex items-center gap-1 text-sm text-green-600"><Check size={14} /> Registro añadido</span>}
         </div>
       </div>
     </div>

@@ -41,6 +41,12 @@ h1, h2, h3, .font-display {
   background: color-mix(in srgb, var(--color-brand) 22%, transparent);
 }
 
+/* Iconos Lucide (chrome de la interfaz): trazo y encaje coherentes, color heredado */
+.lucide {
+  stroke-width: 1.75;
+  flex-shrink: 0;
+}
+
 /* --- Editor BlockNote: tipografía y colores coherentes con la marca --- */
 .bn-container {
   --bn-font-family: var(--font-sans), system-ui, sans-serif;

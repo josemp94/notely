@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CornerDownRight, FileText } from "lucide-react";
 import { trpc } from "@/trpc/react";
 
 type Item = { id: string; title: string; icon: string | null; parentId: string | null; archivedAt: Date };
@@ -74,9 +75,9 @@ export default function TrashPage() {
           className="flex items-center gap-2 py-1 text-sm text-[var(--muted)]"
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
-          <span className="opacity-60">↳</span>
+          <CornerDownRight size={14} className="shrink-0 opacity-60" />
           <span className="truncate">
-            {c.icon ? `${c.icon} ` : "📄 "}
+            {c.icon ? `${c.icon} ` : <FileText size={13} className="mr-1 inline align-[-2px]" />}
             {c.title || "Sin título"}
           </span>
         </div>
@@ -88,7 +89,7 @@ export default function TrashPage() {
     <div className="mx-auto max-w-3xl px-6 py-12 md:px-12 md:py-16">
       <h1 className="font-display mb-2 text-4xl font-extrabold">Papelera</h1>
       <p className="mb-6 text-sm text-[var(--muted)]">
-        Al restaurar o borrar un elemento, se aplica también a sus subpáginas (mostradas debajo con ↳). Lo que lleve
+        Al restaurar o borrar un elemento, se aplica también a sus subpáginas (mostradas debajo). Lo que lleve
         más de {TRASH_TTL_DAYS} días aquí se borra definitivamente de forma automática.
       </p>
       {roots.length > 0 && (
@@ -125,7 +126,7 @@ export default function TrashPage() {
               <li key={p.id} className="py-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="min-w-0 truncate font-medium">
-                    {p.icon ? `${p.icon} ` : "📄 "}
+                    {p.icon ? `${p.icon} ` : <FileText size={14} className="mr-1 inline align-[-2px]" />}
                     {p.title || "Sin título"}
                     {n > 0 && (
                       <span className="ml-2 text-xs font-normal text-[var(--muted)]">

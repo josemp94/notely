@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, MessageSquare, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 
 function when(d: Date) {
@@ -35,9 +36,11 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
   return (
     <aside className="fixed inset-y-0 right-0 z-40 flex w-80 flex-col border-l border-[var(--border)] bg-[var(--background)] shadow-xl md:static md:z-auto md:shadow-none">
       <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-        <h2 className="font-display text-sm font-bold">💬 Comentarios</h2>
+        <h2 className="flex items-center gap-2 font-display text-sm font-bold">
+          <MessageSquare size={16} /> Comentarios
+        </h2>
         <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
-          ✕
+          <X size={16} />
         </button>
       </div>
 
@@ -60,7 +63,7 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
                     className="rounded px-1 text-xs text-[var(--muted)] hover:text-brand"
                     title={c.resolved ? "Reabrir" : "Marcar como resuelto"}
                   >
-                    ✓
+                    <Check size={14} />
                   </button>
                   {canDelete(c.author.id) && (
                     <button
@@ -68,7 +71,7 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
                       className="rounded px-1 text-xs text-[var(--muted)] hover:text-red-500"
                       title="Borrar comentario"
                     >
-                      ✕
+                      <X size={14} />
                     </button>
                   )}
                 </span>
@@ -107,16 +110,16 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
   );
 }
 
-/** Botón "💬 Comentarios (N)" para la cabecera de la página. */
+/** Botón "Comentarios (N)" para la cabecera de la página. */
 export function CommentsButton({ pageId, onClick }: { pageId: string; onClick: () => void }) {
   const { data: comments } = trpc.comments.list.useQuery({ pageId });
   return (
     <button
       onClick={onClick}
-      className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+      className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
       title="Comentarios"
     >
-      💬 {comments?.length ?? 0}
+      <MessageSquare size={16} /> {comments?.length ?? 0}
     </button>
   );
 }

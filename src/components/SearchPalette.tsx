@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Database, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/react";
 
@@ -105,8 +106,8 @@ export function SearchPalette() {
                 i === selIdx ? "bg-brand-50 text-brand" : ""
               }`}
             >
-              <span className="shrink-0">
-                {p.icon ?? (p.type === "database" ? "🗃️" : "📄")}
+              <span className="flex shrink-0 items-center text-[var(--muted)]">
+                {p.icon ?? (p.type === "database" ? <Database size={16} /> : <FileText size={16} />)}
               </span>
               <span className="min-w-0 flex-1 truncate">{p.title || "Sin título"}</span>
               <span className="shrink-0 text-[11px] text-[var(--muted)]">

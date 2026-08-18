@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { SearchPalette } from "@/components/SearchPalette";
@@ -39,10 +40,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2 md:hidden">
           <button
             onClick={() => setOpen(true)}
-            className="rounded p-1 text-xl leading-none text-[var(--muted)] hover:text-brand"
+            className="rounded p-1 text-[var(--muted)] hover:text-brand"
             aria-label="Abrir menú"
           >
-            ☰
+            <Menu size={20} />
           </button>
           <span className="font-display font-bold">
             No<span className="text-brand">tio</span>no

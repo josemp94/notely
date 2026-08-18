@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronLeft, ChevronRight, Database, FunctionSquare, Link2, Plus, Sigma } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import type { FieldLite } from "./Cell";
 
@@ -83,7 +84,7 @@ export function AddFieldButton({
         className="rounded px-2 py-0.5 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
         title="Añadir columna"
       >
-        +
+        <Plus size={16} />
       </button>
       {open && (
         <div className="absolute right-0 z-30 mt-1 max-h-72 w-52 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--background)] p-1 shadow-lg">
@@ -101,31 +102,31 @@ export function AddFieldButton({
               <div className="my-1 border-t border-[var(--border)]" />
               <button
                 onClick={() => setView("relation")}
-                className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
               >
-                🔗 Relación →
+                <Link2 size={14} /> Relación <ChevronRight size={12} className="ml-auto" />
               </button>
               <button
                 onClick={() => setView("rollup")}
                 disabled={relationFields.length === 0}
-                className="block w-full rounded px-2 py-1 text-left text-sm enabled:hover:bg-brand-50 enabled:hover:text-brand disabled:opacity-40"
+                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm enabled:hover:bg-brand-50 enabled:hover:text-brand disabled:opacity-40"
                 title={relationFields.length === 0 ? "Crea antes un campo de Relación" : ""}
               >
-                Σ Rollup →
+                <Sigma size={14} /> Rollup <ChevronRight size={12} className="ml-auto" />
               </button>
               <button
                 onClick={() => setView("formula")}
-                className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
               >
-                ƒ Fórmula →
+                <FunctionSquare size={14} /> Fórmula <ChevronRight size={12} className="ml-auto" />
               </button>
             </>
           )}
 
           {view === "formula" && (
             <div className="w-64 p-1">
-              <button onClick={() => setView("root")} className="mb-1 block text-left text-xs text-[var(--muted)] hover:text-brand">
-                ‹ Nueva fórmula
+              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+                <ChevronLeft size={12} /> Nueva fórmula
               </button>
               <input
                 value={fname}
@@ -167,8 +168,8 @@ export function AddFieldButton({
 
           {view === "relation" && (
             <>
-              <button onClick={() => setView("root")} className="mb-1 block px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
-                ‹ Vincular con…
+              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+                <ChevronLeft size={12} /> Vincular con…
               </button>
               {(databases ?? []).map((d) => (
                 <button
@@ -176,7 +177,7 @@ export function AddFieldButton({
                   onClick={() => addRelation.mutate({ collectionId, name: `→ ${d.title || "BD"}`, targetCollectionId: d.collectionId })}
                   className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
                 >
-                  <span>{d.icon ?? "🗃️"}</span>
+                  {d.icon ? <span>{d.icon}</span> : <Database size={14} className="shrink-0 text-[var(--muted)]" />}
                   <span className="truncate">{d.title || "Sin título"}</span>
                 </button>
               ))}
@@ -188,8 +189,8 @@ export function AddFieldButton({
 
           {view === "rollup" && !relField && (
             <>
-              <button onClick={() => setView("root")} className="mb-1 block px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
-                ‹ Rollup sobre la relación…
+              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+                <ChevronLeft size={12} /> Rollup sobre la relación…
               </button>
               {relationFields.map((rf) => (
                 <button
@@ -205,8 +206,8 @@ export function AddFieldButton({
 
           {view === "rollup" && relField && !agg && (
             <>
-              <button onClick={() => setRelField(null)} className="mb-1 block px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
-                ‹ Cómo agregar
+              <button onClick={() => setRelField(null)} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+                <ChevronLeft size={12} /> Cómo agregar
               </button>
               {AGGS.map(([v, l]) => (
                 <button
@@ -228,8 +229,8 @@ export function AddFieldButton({
 
           {view === "rollup" && relField && agg && (
             <>
-              <button onClick={() => setAgg(null)} className="mb-1 block px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
-                ‹ Campo a agregar
+              <button onClick={() => setAgg(null)} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+                <ChevronLeft size={12} /> Campo a agregar
               </button>
               {(targetOf(relField)?.fields ?? [])
                 .filter((tf) => tf.type !== "rollup" && tf.type !== "relation")
