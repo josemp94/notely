@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import { optionsOf, type FieldLite } from "./Cell";
+import { optionsOf, type FieldLite } from "@/lib/cellText";
 
 const SUPPORTED = ["text", "number", "select", "status", "date", "checkbox", "url", "email", "phone"];
 

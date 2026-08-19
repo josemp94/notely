@@ -3,11 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Check, Paperclip, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
-
-type Option = { id: string; label: string; color?: string };
-/** Adjunto del campo "Archivos y multimedia" (los bytes viven en el modelo Asset). */
-export type Attachment = { id: string; url: string; name?: string | null; mime?: string | null };
-export type FieldLite = { id: string; name: string; type: string; config: unknown };
+import { optionsOf, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
 
 const COLORS: Record<string, string> = {
   gray: "#e5e0d8",
@@ -18,10 +14,6 @@ const COLORS: Record<string, string> = {
   yellow: "#fbeec2",
 };
 
-export function optionsOf(field: FieldLite): Option[] {
-  const cfg = field.config as { options?: Option[] } | null;
-  return cfg?.options ?? [];
-}
 
 /** Mapa userId -> nombre de los miembros del espacio (para pintar campos "person"). */
 export function usePeople(): Map<string, string> {
@@ -32,37 +24,6 @@ export function usePeople(): Map<string, string> {
   );
 }
 
-/**
- * Valor de una celda como texto plano para tarjetas y listas.
- * `people` (userId -> nombre) solo hace falta para los campos "person".
- */
-export function displayValue(field: FieldLite, value: unknown, people?: Map<string, string>): string {
-  if (value === null || value === undefined || value === "") return "";
-  if (field.type === "select" || field.type === "status") {
-    return optionsOf(field).find((o) => o.id === value)?.label ?? String(value);
-  }
-  if (field.type === "multiselect") {
-    const opts = optionsOf(field);
-    return (Array.isArray(value) ? value : [value])
-      .map((v) => opts.find((o) => o.id === v)?.label ?? String(v))
-      .join(", ");
-  }
-  if (field.type === "person") {
-    return (Array.isArray(value) ? value : [value])
-      .map((v) => people?.get(String(v)) ?? String(v))
-      .join(", ");
-  }
-  if (field.type === "files") {
-    return (Array.isArray(value) ? (value as Attachment[]) : []).map((a) => a.name || "archivo").join(", ");
-  }
-  if (field.type === "checkbox") return value ? "Sí" : "No";
-  if (field.type === "relation") {
-    const n = Array.isArray(value) ? value.length : 0;
-    return n ? `${n} vinculado${n > 1 ? "s" : ""}` : "";
-  }
-  if (field.type === "rollup" || field.type === "formula") return ""; // calculado; no vive en la celda
-  return String(value);
-}
 
 export function Cell({
   field,

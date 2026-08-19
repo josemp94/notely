@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { applyViewConfig, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
+import { displayValue, groupBy } from "../src/lib/cellText";
 
 const f = (id: string, type: string, config: unknown = {}): DbField => ({ id, name: id, type, config });
 const r = (id: string, cells: Record<string, unknown>): DbRecord => ({ id, cells, order: id });
@@ -79,4 +80,23 @@ assert.equal(new Date(domingo + "T00:00:00").getDay(), 0);
 assert.deepEqual(relativeRange("this_month", new Date(2026, 1, 15)), ["2026-02-01", "2026-02-28"]);
 assert.deepEqual(relativeRange("last_7_days", new Date(2026, 0, 3)), ["2025-12-28", "2026-01-03"]);
 
-console.log("OK — filtros y orden de vistas");
+// --- Texto visible de las celdas ---
+const gente = new Map([["u1", "Jose"], ["u2", "Ana"]]);
+assert.equal(displayValue(fields[0], ["u1", "u2"], gente), "Jose, Ana");
+assert.equal(displayValue(fields[3], "done"), "Hecho"); // estado -> etiqueta, no el id
+assert.equal(displayValue(f("adj", "files"), [{ id: "a", url: "/x", name: "acta.pdf" }]), "acta.pdf");
+
+// --- Agrupación de la tabla ---
+const grupos = groupBy(records, fields[3], gente); // por Estado
+assert.deepEqual(grupos.map((g) => g.label), ["Por hacer", "Hecho"]); // orden de las opciones, no alfabético
+assert.deepEqual(grupos.map((g) => g.records.length), [2, 1]);
+
+// Las filas sin valor van a un grupo propio, siempre el último.
+const sinValor = groupBy(
+  [...records, r("d", {})],
+  f("estado", "status", { options: [{ id: "todo", label: "Por hacer" }, { id: "done", label: "Hecho" }] }),
+  gente,
+);
+assert.equal(sinValor.at(-1)!.label, "Sin estado");
+
+console.log("OK — filtros, orden, texto de celdas y agrupación");

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Maximize2, Plus, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import { Cell, type FieldLite } from "./Cell";
+import { Cell, usePeople } from "./Cell";
+import { groupBy, type FieldLite } from "@/lib/cellText";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
 import { RelationCell } from "./RelationCell";
 import { RecordPanel } from "./RecordPanel";
@@ -50,6 +51,8 @@ export function TableView({
   // Sub-elementos: los hijos se agrupan indentados bajo su padre si el padre pasa el
   // filtro; si no, se muestran a nivel raíz. El plegado vive solo en el cliente.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [foldedGroups, setFoldedGroups] = useState<Set<string>>(new Set());
+  const people = usePeople();
   const idSet = new Set(records.map((r) => r.id));
   const byParent = new Map<string, Rec[]>();
   for (const r of records) {
@@ -86,6 +89,85 @@ export function TableView({
   const calcs: Record<string, string> = cfg.calcs ?? {};
   const setCalc = (fieldId: string, calc: string) =>
     updateView.mutate({ id: view.id, config: { ...cfg, calcs: { ...calcs, [fieldId]: calc } } });
+
+  // Agrupar en secciones plegables. Como en Notion, agrupar aplana la jerarquía de
+  // subtareas: cada fila cae en el grupo de su propio valor, sin sangría.
+  const groupField = fields.find((f) => f.id === cfg.groupByFieldId);
+  const groups = groupBy(records, groupField, people);
+  const hasCalcs = fields.some((f) => calcs[f.id]);
+
+  /** Una fila de la tabla; `depth`/`hasChildren` solo se usan sin agrupar (árbol de subtareas). */
+  const renderRow = ({ rec: r, depth, hasChildren }: { rec: Rec; depth: number; hasChildren: boolean }) => (
+    <tr key={r.id} className="group border-b border-[var(--border)] hover:bg-[var(--border)]/20">
+      <td className="px-1 py-1 text-center">
+        <button
+          onClick={() => setOpenRec(r)}
+          className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
+          title="Abrir ficha"
+        >
+          <Maximize2 size={14} />
+        </button>
+      </td>
+      {fields.map((f, i) => {
+        const cell =
+          f.type === "relation" ? (
+            <RelationCell
+              field={f}
+              value={r.cells?.[f.id]}
+              onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
+            />
+          ) : f.type === "rollup" || f.type === "formula" ? (
+            <Cell field={f} value={null} rollupValue={computed?.rollups?.[r.id]?.[f.id]} onCommit={() => {}} />
+          ) : (
+            <Cell
+              field={f}
+              value={r.cells?.[f.id]}
+              createdAt={r.createdAt}
+              updatedAt={r.updatedAt}
+              seq={r.seq}
+              onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
+            />
+          );
+        if (i !== 0) return <td key={f.id} className="px-2 py-1">{cell}</td>;
+        return (
+          <td key={f.id} className="px-2 py-1">
+            <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
+              {hasChildren ? (
+                <button
+                  onClick={() => toggle(r.id)}
+                  className="flex w-4 shrink-0 items-center justify-center text-[var(--muted)] hover:text-brand"
+                  title={collapsed.has(r.id) ? "Expandir subtareas" : "Plegar subtareas"}
+                >
+                  {collapsed.has(r.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                </button>
+              ) : (
+                <span className="w-4 shrink-0" />
+              )}
+              <div className="min-w-0 flex-1">{cell}</div>
+            </div>
+          </td>
+        );
+      })}
+      <td className="whitespace-nowrap px-2 py-1">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => addSub(r.id)}
+            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
+            title="Añadir subtarea"
+          >
+            <Plus size={14} />
+          </button>
+          <button
+            onClick={() => deleteRecord.mutate({ id: r.id })}
+            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+            title="Borrar fila"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
 
   return (
     <div className="overflow-x-auto">
@@ -129,79 +211,48 @@ export function TableView({
             </th>
           </tr>
         </thead>
-        <tbody>
-          {rows.map(({ rec: r, depth, hasChildren }) => (
-            <tr key={r.id} className="group border-b border-[var(--border)] hover:bg-[var(--border)]/20">
-              <td className="px-1 py-1 text-center">
-                <button
-                  onClick={() => setOpenRec(r)}
-                  className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
-                  title="Abrir ficha"
-                >
-                  <Maximize2 size={14} />
-                </button>
-              </td>
-              {fields.map((f, i) => {
-                const cell =
-                  f.type === "relation" ? (
-                    <RelationCell
-                      field={f}
-                      value={r.cells?.[f.id]}
-                      onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
-                    />
-                  ) : f.type === "rollup" || f.type === "formula" ? (
-                    <Cell field={f} value={null} rollupValue={computed?.rollups?.[r.id]?.[f.id]} onCommit={() => {}} />
-                  ) : (
-                    <Cell
-                      field={f}
-                      value={r.cells?.[f.id]}
-                      createdAt={r.createdAt}
-                      updatedAt={r.updatedAt}
-                      seq={r.seq}
-                      onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
-                    />
-                  );
-                if (i !== 0) return <td key={f.id} className="px-2 py-1">{cell}</td>;
-                return (
-                  <td key={f.id} className="px-2 py-1">
-                    <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
-                      {hasChildren ? (
-                        <button
-                          onClick={() => toggle(r.id)}
-                          className="flex w-4 shrink-0 items-center justify-center text-[var(--muted)] hover:text-brand"
-                          title={collapsed.has(r.id) ? "Expandir subtareas" : "Plegar subtareas"}
-                        >
-                          {collapsed.has(r.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                        </button>
-                      ) : (
-                        <span className="w-4 shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">{cell}</div>
-                    </div>
+        {groupField ? (
+          groups.map((g) => {
+            const folded = foldedGroups.has(g.key);
+            return (
+              <tbody key={g.key}>
+                <tr className="border-b border-[var(--border)] bg-[var(--border)]/20">
+                  <td colSpan={fields.length + 2} className="px-1 py-1">
+                    <button
+                      onClick={() =>
+                        setFoldedGroups((s) => {
+                          const next = new Set(s);
+                          if (next.has(g.key)) next.delete(g.key);
+                          else next.add(g.key);
+                          return next;
+                        })
+                      }
+                      className="flex items-center gap-1 text-sm font-medium hover:text-brand"
+                    >
+                      {folded ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                      {g.label}
+                      <span className="text-xs font-normal text-[var(--muted)]">{g.records.length}</span>
+                    </button>
                   </td>
-                );
-              })}
-              <td className="whitespace-nowrap px-2 py-1">
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => addSub(r.id)}
-                    className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
-                    title="Añadir subtarea"
-                  >
-                    <Plus size={14} />
-                  </button>
-                  <button
-                    onClick={() => deleteRecord.mutate({ id: r.id })}
-                    className="text-[var(--muted)] opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                    title="Borrar fila"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+                </tr>
+                {!folded && g.records.map((r) => renderRow({ rec: r, depth: 0, hasChildren: false }))}
+                {!folded && hasCalcs && (
+                  <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
+                    <td />
+                    {fields.map((f) => (
+                      <td key={f.id} className="px-2 py-1 text-right tabular-nums">
+                        {calcs[f.id] ? computeCalc(calcs[f.id], f, g.records) : ""}
+                      </td>
+                    ))}
+                    <td />
+                  </tr>
+                )}
+              </tbody>
+            );
+          })
+        ) : (
+        <tbody>{rows.map(renderRow)}</tbody>
+        )}
         <tfoot>
           <tr className="border-t border-[var(--border)] text-xs text-[var(--muted)]">
             <td />
@@ -312,3 +363,4 @@ function CalcCell({
     </div>
   );
 }
+

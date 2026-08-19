@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
-import type { FieldLite } from "./Cell";
+import type { FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 

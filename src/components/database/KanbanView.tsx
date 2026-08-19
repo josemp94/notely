@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/trpc/react";
-import { optionsOf, type FieldLite } from "./Cell";
+import { optionsOf, type FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 

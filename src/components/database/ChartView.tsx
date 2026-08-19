@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import { trpc } from "@/trpc/react";
-import type { FieldLite } from "./Cell";
+import type { FieldLite } from "@/lib/cellText";
 
 const BRAND = "#ff5c28";
 const PALETTE = ["#ff5c28", "#2d9d78", "#4a5568", "#e2b93b", "#9f7aea", "#38b2ac", "#ed64a6"];

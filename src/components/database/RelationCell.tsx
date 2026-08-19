@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import type { FieldLite } from "./Cell";
+import type { FieldLite } from "@/lib/cellText";
 
 /** Editor de un campo de relación: chips de registros vinculados + selector multi. */
 export function RelationCell({

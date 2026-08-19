@@ -9,7 +9,8 @@ import "@blocknote/mantine/style.css";
 import { editorSchema, MentionMenu, type NotionoPartialBlock } from "@/components/editor/mention";
 import { trpc } from "@/trpc/react";
 import { useTheme } from "@/lib/theme";
-import { Cell, type FieldLite } from "./Cell";
+import { Cell } from "./Cell";
+import { type FieldLite } from "@/lib/cellText";
 import { RelationCell } from "./RelationCell";
 import { AddFieldButton } from "./shared";
 

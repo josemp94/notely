@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Database, FunctionSquare, Link2, Plus, Sigma } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import type { FieldLite } from "./Cell";
+import type { FieldLite } from "@/lib/cellText";
 
 export const FIELD_LABELS: Record<string, string> = {
   text: "Texto",

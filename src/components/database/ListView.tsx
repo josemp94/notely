@@ -4,7 +4,8 @@ import { useState } from "react";
 import { FileText } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
-import { displayValue, usePeople, type FieldLite } from "./Cell";
+import { usePeople } from "./Cell";
+import { displayValue, type FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
