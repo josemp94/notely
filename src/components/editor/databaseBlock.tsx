@@ -50,7 +50,19 @@ export function StaticDbTable({ table }: { table: PublicDbTable }) {
   );
 }
 
-function EmbeddedDatabase({ collectionId, pageId, canEdit }: { collectionId: string; pageId: string; canEdit: boolean }) {
+function EmbeddedDatabase({
+  collectionId,
+  pageId,
+  viewId,
+  canEdit,
+  onViewChange,
+}: {
+  collectionId: string;
+  pageId: string;
+  viewId?: string;
+  canEdit: boolean;
+  onViewChange?: (viewId: string) => void;
+}) {
   const publicTables = useContext(PublicDbContext);
   if (publicTables) {
     const table = publicTables[collectionId];
@@ -65,7 +77,14 @@ function EmbeddedDatabase({ collectionId, pageId, canEdit }: { collectionId: str
   if (!pageId) return <div className="my-2 text-sm text-[var(--muted)]">Base de datos no disponible.</div>;
   return (
     <div className="my-2 w-full rounded-lg border border-[var(--border)]" contentEditable={false}>
-      <Database pageId={pageId} initialTitle="" canEdit={canEdit} embedded />
+      <Database
+        pageId={pageId}
+        initialTitle=""
+        canEdit={canEdit}
+        embedded
+        viewId={viewId || undefined}
+        onViewChange={onViewChange}
+      />
     </div>
   );
 }
@@ -77,6 +96,7 @@ export const DatabaseBlock = createReactBlockSpec(
     propSchema: {
       collectionId: { default: "" },
       pageId: { default: "" }, // página contenedora oculta (embedded=true) de la que cuelga la Collection
+      viewId: { default: "" }, // vista que muestra el bloque (las vistas enlazadas recuerdan la suya)
     },
     content: "none",
   },
@@ -85,7 +105,9 @@ export const DatabaseBlock = createReactBlockSpec(
       <EmbeddedDatabase
         collectionId={block.props.collectionId}
         pageId={block.props.pageId}
+        viewId={block.props.viewId}
         canEdit={editor.isEditable}
+        onViewChange={(viewId) => editor.updateBlock(block, { props: { viewId } })}
       />
     ),
   },

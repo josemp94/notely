@@ -25,6 +25,8 @@ export function Database({
   initialCover,
   canEdit = true,
   embedded = false,
+  viewId,
+  onViewChange,
 }: {
   pageId: string;
   initialTitle: string;
@@ -33,10 +35,13 @@ export function Database({
   canEdit?: boolean;
   /** BD embebida en el cuerpo de otra página: sin cabecera (título/icono/portada) y con padding compacto. */
   embedded?: boolean;
+  /** Vista que debe mostrar el bloque embebido (una vista enlazada recuerda la suya). */
+  viewId?: string;
+  onViewChange?: (viewId: string) => void;
 }) {
   const utils = trpc.useUtils();
   const { data: col, isLoading } = trpc.db.get.useQuery({ pageId });
-  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [activeViewId, setActiveViewId] = useState<string | null>(viewId ?? null);
   const [title, setTitle] = useState(initialTitle);
   const [icon, setIcon] = useState<string | null>(initialIcon ?? "🗃️");
   const [cover, setCover] = useState<string | null>(initialCover ?? null);
@@ -124,7 +129,10 @@ export function Database({
           {col.views.map((v) => (
             <button
               key={v.id}
-              onClick={() => setActiveViewId(v.id)}
+              onClick={() => {
+                setActiveViewId(v.id);
+                onViewChange?.(v.id);
+              }}
               className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm ${
                 active?.id === v.id
                   ? "border-b-2 border-brand font-medium text-brand"
