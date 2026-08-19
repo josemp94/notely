@@ -7,13 +7,15 @@ import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
 
 // Tipos de campo soportados en Fase 2
-export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
+export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "person", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
 
 /** Valor de una celda como texto plano (export CSV y vista pública). */
 export function cellToText(
   f: { type: string; config: unknown },
   v: unknown,
   r: { createdAt: Date; updatedAt: Date; seq: number | null },
+  /** userId -> nombre, para los campos de tipo "person" (ver peopleOf). */
+  people?: Map<string, string>,
 ): string {
   if (f.type === "created_time") return r.createdAt.toISOString();
   if (f.type === "last_edited_time") return r.updatedAt.toISOString();
@@ -23,9 +25,25 @@ export function cellToText(
   if (f.type === "select" || f.type === "status") return opts.find((o) => o.id === v)?.label ?? String(v);
   if (f.type === "multiselect")
     return (Array.isArray(v) ? v : [v]).map((x) => opts.find((o) => o.id === x)?.label ?? String(x)).join(", ");
+  if (f.type === "person")
+    return (Array.isArray(v) ? v : [v]).map((x) => people?.get(String(x)) ?? String(x)).join(", ");
   if (f.type === "checkbox") return v ? "true" : "false";
   if (Array.isArray(v)) return v.map(String).join(", ");
   return String(v);
+}
+
+/** Mapa userId -> nombre de los miembros del espacio; vacío si la BD no usa campos "person". */
+export async function peopleOf(
+  db: typeof import("@/lib/db").db,
+  workspaceId: string,
+  fields: { type: string }[],
+): Promise<Map<string, string>> {
+  if (!fields.some((f) => f.type === "person")) return new Map();
+  const ms = await db.member.findMany({
+    where: { workspaceId },
+    select: { user: { select: { id: true, name: true, email: true } } },
+  });
+  return new Map(ms.map((m) => [m.user.id, m.user.name || m.user.email]));
 }
 
 /** Colección recién nacida, como en Notion: campo "Nombre", vista Tabla y 3 filas vacías. */
@@ -126,11 +144,12 @@ export const dbRouter = router({
         },
       });
       if (!col) throw new TRPCError({ code: "NOT_FOUND" });
+      const people = await peopleOf(ctx.db, ctx.workspace.id, col.fields);
       const rows = [
         col.fields.map((f) => f.name),
         ...col.records.map((r) => {
           const cells = (r.cells ?? {}) as Record<string, unknown>;
-          return col.fields.map((f) => cellToText(f, cells[f.id], r));
+          return col.fields.map((f) => cellToText(f, cells[f.id], r, people));
         }),
       ];
       return { name: col.page.title || col.name || "Base de datos", csv: toCsv(rows) };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Check, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 
@@ -19,6 +19,44 @@ const COLORS: Record<string, string> = {
 export function optionsOf(field: FieldLite): Option[] {
   const cfg = field.config as { options?: Option[] } | null;
   return cfg?.options ?? [];
+}
+
+/** Mapa userId -> nombre de los miembros del espacio (para pintar campos "person"). */
+export function usePeople(): Map<string, string> {
+  const { data } = trpc.workspace.members.useQuery();
+  return useMemo(
+    () => new Map((data?.members ?? []).map((m) => [m.userId, m.name || m.email])),
+    [data],
+  );
+}
+
+/**
+ * Valor de una celda como texto plano para tarjetas y listas.
+ * `people` (userId -> nombre) solo hace falta para los campos "person".
+ */
+export function displayValue(field: FieldLite, value: unknown, people?: Map<string, string>): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (field.type === "select" || field.type === "status") {
+    return optionsOf(field).find((o) => o.id === value)?.label ?? String(value);
+  }
+  if (field.type === "multiselect") {
+    const opts = optionsOf(field);
+    return (Array.isArray(value) ? value : [value])
+      .map((v) => opts.find((o) => o.id === v)?.label ?? String(v))
+      .join(", ");
+  }
+  if (field.type === "person") {
+    return (Array.isArray(value) ? value : [value])
+      .map((v) => people?.get(String(v)) ?? String(v))
+      .join(", ");
+  }
+  if (field.type === "checkbox") return value ? "Sí" : "No";
+  if (field.type === "relation") {
+    const n = Array.isArray(value) ? value.length : 0;
+    return n ? `${n} vinculado${n > 1 ? "s" : ""}` : "";
+  }
+  if (field.type === "rollup" || field.type === "formula") return ""; // calculado; no vive en la celda
+  return String(value);
 }
 
 export function Cell({
@@ -86,6 +124,10 @@ export function Cell({
         className="size-4 accent-[var(--color-brand,#ff5c28)]"
       />
     );
+  }
+
+  if (field.type === "person") {
+    return <PersonCell value={value} onCommit={onCommit} />;
   }
 
   if (field.type === "select" || field.type === "status" || field.type === "multiselect") {
@@ -253,6 +295,101 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
               </button>
             )}
             {shown.length === 0 && !q && <p className="px-1 py-1 text-xs text-[var(--muted)]">Sin opciones. Escribe para crear.</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Iniciales para el avatar: "Jose Monreal" -> "JM"; "jose@x.com" -> "J". */
+export function initialsOf(name: string): string {
+  const parts = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
+  return (parts[0]?.[0] ?? "?").toUpperCase() + (parts[1]?.[0] ?? "").toUpperCase();
+}
+
+export function Avatar({ name, size = 18 }: { name: string; size?: number }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-semibold text-brand"
+      style={{ width: size, height: size }}
+      title={name}
+    >
+      {initialsOf(name)}
+    </span>
+  );
+}
+
+/** Campo "Persona": varios miembros del espacio, como en Notion. Valor = userId[]. */
+function PersonCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const { data } = trpc.workspace.members.useQuery(undefined, { enabled: open });
+  const selected: string[] = Array.isArray(value) ? (value as string[]) : value ? [String(value)] : [];
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as globalThis.Node)) {
+        setOpen(false);
+        setQ("");
+      }
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  const members = data?.members ?? [];
+  const nameOf = (userId: string) => {
+    const m = members.find((x) => x.userId === userId);
+    return m ? m.name || m.email : userId;
+  };
+  const toggle = (userId: string) =>
+    onCommit(selected.includes(userId) ? selected.filter((x) => x !== userId) : [...selected, userId]);
+  const shown = q
+    ? members.filter((m) => (m.name || m.email).toLowerCase().includes(q.toLowerCase()))
+    : members;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex min-h-[26px] w-full flex-wrap items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-[var(--border)]/30"
+      >
+        {selected.length ? (
+          selected.map((id) => (
+            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-[var(--border)]/40 py-0.5 pl-0.5 pr-2 text-xs">
+              <Avatar name={nameOf(id)} />
+              {nameOf(id)}
+            </span>
+          ))
+        ) : (
+          <span className="text-sm text-[var(--muted)]">—</span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-60 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 shadow-xl">
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar persona…"
+            className="mb-2 w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none focus:border-brand"
+          />
+          <div className="max-h-48 space-y-0.5 overflow-y-auto">
+            {shown.map((m) => (
+              <button
+                key={m.userId}
+                onClick={() => toggle(m.userId)}
+                className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--border)]/40"
+              >
+                <Avatar name={m.name || m.email} />
+                <span className="min-w-0 flex-1 truncate">{m.name || m.email}</span>
+                {selected.includes(m.userId) && <span className="text-brand"><Check size={14} /></span>}
+              </button>
+            ))}
+            {!shown.length && <p className="px-1 py-1 text-xs text-[var(--muted)]">Sin miembros que coincidan.</p>}
           </div>
         </div>
       )}

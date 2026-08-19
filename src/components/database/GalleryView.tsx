@@ -3,24 +3,9 @@
 import { useState } from "react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
-import { optionsOf, type FieldLite } from "./Cell";
+import { displayValue, usePeople, type FieldLite } from "./Cell";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
-
-/** Muestra el valor de una celda como texto para la tarjeta. */
-function displayValue(field: FieldLite, value: unknown): string {
-  if (value === null || value === undefined || value === "") return "";
-  if (field.type === "select") {
-    return optionsOf(field).find((o) => o.id === value)?.label ?? String(value);
-  }
-  if (field.type === "checkbox") return value ? "Sí" : "No";
-  if (field.type === "relation") {
-    const n = Array.isArray(value) ? value.length : 0;
-    return n ? `${n} vinculado${n > 1 ? "s" : ""}` : "";
-  }
-  if (field.type === "rollup") return ""; // calculado; no vive en la celda
-  return String(value);
-}
 
 const SIZES: Record<string, { grid: string; card: string; title: string }> = {
   small: { grid: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6", card: "p-3 text-xs", title: "text-sm" },
@@ -47,6 +32,7 @@ export function GalleryView({
   const invalidate = () => utils.db.get.invalidate({ pageId });
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const [openRec, setOpenRec] = useState<Rec | null>(null);
+  const people = usePeople();
 
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
   const size = SIZES[cardSize ?? "medium"] ?? SIZES.medium;
@@ -69,7 +55,7 @@ export function GalleryView({
           >
             <div className={`font-display truncate font-semibold ${size.title}`}>{recTitle(r)}</div>
             {previewField && (() => {
-              const txt = displayValue(previewField, r.cells?.[previewField.id]);
+              const txt = displayValue(previewField, r.cells?.[previewField.id], people);
               if (!txt) return null;
               return (
                 <div className="line-clamp-4 break-words rounded-md bg-[var(--border)]/30 p-2">{txt}</div>
@@ -77,7 +63,7 @@ export function GalleryView({
             })()}
             <div className="space-y-1">
               {propFields.map((f) => {
-                const txt = displayValue(f, r.cells?.[f.id]);
+                const txt = displayValue(f, r.cells?.[f.id], people);
                 if (!txt) return null;
                 return (
                   <div key={f.id} className="flex gap-2 text-xs">

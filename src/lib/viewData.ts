@@ -36,6 +36,8 @@ export function opsFor(type: string): { value: string; label: string }[] {
       ];
     case "select":
     case "multiselect":
+    case "status":
+    case "person":
       return [
         { value: "is", label: "es" },
         { value: "isnot", label: "no es" },
@@ -65,10 +67,11 @@ function matchFilter(cell: unknown, field: DbField, op: string, value: any): boo
       return s(cell).toLowerCase() === s(value).toLowerCase();
     case "is":
       if (field.type === "checkbox") return Boolean(cell) === (value === true || value === "true");
-      if (field.type === "multiselect") return Array.isArray(cell) && cell.includes(value);
+      // multiselect y person guardan varios valores: "es" = lo contiene
+      if (Array.isArray(cell)) return cell.map(s).includes(s(value));
       return s(cell) === s(value);
     case "isnot":
-      if (field.type === "multiselect") return !(Array.isArray(cell) && cell.includes(value));
+      if (Array.isArray(cell)) return !cell.map(s).includes(s(value));
       return s(cell) !== s(value);
     case "gt":
       return n(cell) > n(value);
@@ -109,7 +112,7 @@ function compareCells(a: unknown, b: unknown, field?: DbField): number {
     return x - y;
   }
   if (field.type === "checkbox") return Number(Boolean(a)) - Number(Boolean(b));
-  if (field.type === "select") {
+  if (field.type === "select" || field.type === "status") {
     // ordena por el orden de las opciones definidas
     const opts: any[] = field.config?.options ?? [];
     const idx = (v: unknown) => {

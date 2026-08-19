@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { cellToText } from "@/server/routers/db";
+import { cellToText, peopleOf } from "@/server/routers/db";
 import type { PublicDbTable } from "@/components/editor/databaseBlock";
 import { PublicView } from "./PublicView";
 
@@ -17,13 +17,13 @@ function loadCollection(where: { pageId: string } | { id: string; page: { worksp
 }
 
 /** Colección → tabla estática. Campos computados (relación/rollup/fórmula) fuera: sus celdas no tienen valor legible. */
-function tableOf(col: Col): PublicDbTable {
+function tableOf(col: Col, people: Map<string, string>): PublicDbTable {
   const fields = col.fields.filter((f) => !["relation", "rollup", "formula"].includes(f.type));
   return {
     headers: fields.map((f) => f.name),
     rows: col.records.map((r) => {
       const cells = (r.cells ?? {}) as Record<string, unknown>;
-      return fields.map((f) => cellToText(f, cells[f.id], r));
+      return fields.map((f) => cellToText(f, cells[f.id], r, people));
     }),
   };
 }
@@ -48,7 +48,7 @@ export default async function PublicShare({ params }: { params: Promise<{ token:
   let table: PublicDbTable | null = null;
   if (page.type === "database") {
     const col = await loadCollection({ pageId: page.id });
-    if (col) table = tableOf(col);
+    if (col) table = tableOf(col, await peopleOf(db, page.workspaceId, col.fields));
   }
 
   // BD embebidas en el cuerpo: se resuelven aquí (no hay tRPC sin sesión), solo las del mismo workspace.
@@ -57,7 +57,7 @@ export default async function PublicShare({ params }: { params: Promise<{ token:
   collectEmbeddedIds(page.content, ids);
   for (const id of ids) {
     const col = await loadCollection({ id, page: { workspaceId: page.workspaceId } });
-    if (col) dbTables[id] = tableOf(col);
+    if (col) dbTables[id] = tableOf(col, await peopleOf(db, page.workspaceId, col.fields));
   }
 
   return (

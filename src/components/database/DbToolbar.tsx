@@ -507,7 +507,8 @@ function FilterValue({ field, value, onChange }: { field?: DbField; value: any; 
       </select>
     );
   }
-  if (field.type === "select" || field.type === "multiselect") {
+  if (field.type === "person") return <PersonFilterValue value={value} onChange={onChange} />;
+  if (field.type === "select" || field.type === "multiselect" || field.type === "status") {
     const opts: any[] = field.config?.options ?? [];
     return (
       <select value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs">
@@ -526,5 +527,22 @@ function FilterValue({ field, value, onChange }: { field?: DbField; value: any; 
       onChange={(e) => onChange(e.target.value)}
       className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
     />
+  );
+}
+
+/** Valor de filtro para campos "Persona": desplegable de miembros del espacio. */
+function PersonFilterValue({ value, onChange }: { value: any; onChange: (v: any) => void }) {
+  const { data } = trpc.workspace.members.useQuery();
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+    >
+      <option value="">—</option>
+      {(data?.members ?? []).map((m) => (
+        <option key={m.userId} value={m.userId}>{m.name || m.email}</option>
+      ))}
+    </select>
   );
 }
