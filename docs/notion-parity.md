@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~577494c). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~40ce6f8). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -168,14 +168,18 @@ el panel de registro, el historial y las páginas publicadas.
 > bloque «Enlace web» con vista previa y vídeo incrustado · editor en español.
 
 > Hecho también el 19-ago-2026 (cuarta tanda): reglas de color · borrado reversible de filas ·
-> papelera de filas · webhooks salientes.
+> papelera de filas · webhooks salientes · **notificaciones push reales**.
 
 **A — Lo siguiente, barato y visible**
 1. **Subagrupar** (segundo nivel) y fila de cálculos fuera de la Tabla.
 2. Envolver texto en celdas y elegir hasta qué columna congelar (necesita anchos conocidos).
-3. **Notificaciones push** reales (el service worker ya está; falta VAPID y suscripciones).
-4. **Columnas** en el editor (a mano: el paquete oficial de BlockNote es de pago).
-5. Más eventos de webhook (páginas, comentarios) y reintentos.
+3. **Columnas** en el editor (a mano: el paquete oficial de BlockNote es de pago).
+4. Más eventos de webhook (páginas, comentarios) y reintentos con espera.
+5. Envolver texto en celdas y elegir hasta qué columna congelar.
+
+> Decidido **no** hacer: cálculos configurables fuera de la Tabla. El Kanban ya cuenta tarjetas
+> por columna y la vista Gráfica cubre los agregados por campo; añadir un tercer sitio donde
+> configurar lo mismo era complejidad sin función nueva.
 
 **B — Editor**
 6. **Toggle heading** y **embeds/bookmark** (tarjeta OpenGraph).
