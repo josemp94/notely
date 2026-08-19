@@ -1,7 +1,14 @@
 // Texto visible de las celdas y agrupación de filas. Funciones puras (sin React):
 // se usan en las vistas de base de datos y se comprueban en scripts/check.ts.
 
-export type Option = { id: string; label: string; color?: string };
+export type Option = { id: string; label: string; color?: string; group?: string };
+
+/** Grupos del campo Estado, en el orden en que los muestra Notion. */
+export const STATUS_GROUPS: [string, string][] = [
+  ["todo", "Por hacer"],
+  ["doing", "En curso"],
+  ["done", "Hecho"],
+];
 export type FieldLite = { id: string; name: string; type: string; config: unknown };
 /** Adjunto del campo "Archivos y multimedia" (los bytes viven en el modelo Asset). */
 export type Attachment = { id: string; url: string; name?: string | null; mime?: string | null };

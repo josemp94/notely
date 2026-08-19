@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Check, Paperclip, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import { dateValue, formatNumber, OPTION_COLORS, optionsOf, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
+import { dateValue, formatNumber, OPTION_COLORS, optionsOf, STATUS_GROUPS, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
 
 
 /** Mapa userId -> nombre de los miembros del espacio (para pintar campos "person"). */
@@ -192,6 +192,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
   const [q, setQ] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const multi = field.type === "multiselect";
+  const isStatus = field.type === "status";
   const opts = optionsOf(field);
   const selected: string[] = multi
     ? (Array.isArray(value) ? (value as string[]) : [])
@@ -221,6 +222,14 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
     }
   };
 
+  const setGroup = (optionId: string, group: string) => {
+    const cfg = (field.config as { options?: Option[] }) ?? {};
+    updateField.mutate({
+      id: field.id,
+      config: { ...cfg, options: opts.map((o) => (o.id === optionId ? { ...o, group } : o)) },
+    });
+  };
+
   const addOption = () => {
     const label = q.trim();
     if (!label) return;
@@ -233,7 +242,8 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
     const id = "opt_" + Math.random().toString(36).slice(2, 9);
     const color = COLOR_NAMES[opts.length % COLOR_NAMES.length];
     const cfg = (field.config as { options?: Option[] }) ?? {};
-    updateField.mutate({ id: field.id, config: { ...cfg, options: [...opts, { id, label, color }] } });
+    const option: Option = isStatus ? { id, label, color, group: "todo" } : { id, label, color };
+    updateField.mutate({ id: field.id, config: { ...cfg, options: [...opts, option] } });
     commit(multi ? [...selected, id] : [id]);
     setQ("");
     if (!multi) setOpen(false);
@@ -277,19 +287,43 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
             placeholder="Buscar o crear…"
             className="mb-2 w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none focus:border-brand"
           />
-          <div className="max-h-48 space-y-0.5 overflow-y-auto">
-            {shown.map((o) => (
-              <button
-                key={o.id}
-                onClick={() => toggle(o.id)}
-                className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--border)]/40"
-              >
-                <span className="rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"] }}>
-                  {o.label}
-                </span>
-                {selected.includes(o.id) && <span className="ml-auto text-brand"><Check size={14} /></span>}
-              </button>
-            ))}
+          <div className="max-h-56 space-y-0.5 overflow-y-auto">
+            {/* El campo Estado separa sus opciones en Por hacer / En curso / Hecho, como Notion. */}
+            {(isStatus ? STATUS_GROUPS : [["", ""] as [string, string]]).map(([group, groupLabel]) => {
+              const inGroup = isStatus ? shown.filter((o) => (o.group ?? "todo") === group) : shown;
+              if (isStatus && !inGroup.length) return null;
+              return (
+                <div key={group}>
+                  {isStatus && (
+                    <div className="px-1 pb-0.5 pt-1 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
+                      {groupLabel}
+                    </div>
+                  )}
+                  {inGroup.map((o) => (
+                    <div key={o.id} className="group/opt flex items-center gap-1 rounded hover:bg-[var(--border)]/40">
+                      <button onClick={() => toggle(o.id)} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-left text-sm">
+                        <span className="truncate rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"] }}>
+                          {o.label}
+                        </span>
+                        {selected.includes(o.id) && <span className="ml-auto text-brand"><Check size={14} /></span>}
+                      </button>
+                      {isStatus && (
+                        <select
+                          value={o.group ?? "todo"}
+                          onChange={(e) => setGroup(o.id, e.target.value)}
+                          className="shrink-0 cursor-pointer bg-transparent text-[10px] text-[var(--muted)] opacity-0 outline-none group-hover/opt:opacity-100"
+                          title="Mover a otro grupo"
+                        >
+                          {STATUS_GROUPS.map(([g, l]) => (
+                            <option key={g} value={g}>{l}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
             {q && !opts.some((o) => o.label.toLowerCase() === q.toLowerCase()) && (
               <button onClick={addOption} className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm text-brand hover:bg-brand-50">
                 + Crear «{q}»
