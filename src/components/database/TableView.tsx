@@ -176,7 +176,10 @@ export function TableView({
         setDragRow(null);
       }}
     >
-      <td className="px-1 py-1 text-center">
+      <td
+        className="sticky left-0 z-10 px-1 py-1 text-center"
+        style={{ background: rowColor(colorField, r.cells) ?? "var(--background)" }}
+      >
         <div className="flex items-center">
           {canReorder && (
             <span
@@ -220,15 +223,27 @@ export function TableView({
               value={r.cells?.[f.id]}
               createdAt={r.createdAt}
               updatedAt={r.updatedAt}
-                      createdById={r.createdById}
-                      updatedById={r.updatedById}
+              createdById={r.createdById}
+              updatedById={r.updatedById}
               seq={r.seq}
               onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
             />
           );
-        if (i !== 0) return <td key={f.id} className="px-2 py-1">{cell}</td>;
+        const w = widthOf(f.id);
+        const style = w ? { maxWidth: w, width: w } : undefined;
+        if (i !== 0)
+          return (
+            <td key={f.id} className="overflow-hidden px-2 py-1" style={style}>
+              {cell}
+            </td>
+          );
+        // Primera columna: congelada al desplazar en horizontal, con el color de la fila si lo hay.
         return (
-          <td key={f.id} className="px-2 py-1">
+          <td
+            key={f.id}
+            className="sticky left-14 z-10 overflow-hidden px-2 py-1"
+            style={{ ...style, background: rowColor(colorField, r.cells) ?? "var(--background)" }}
+          >
             <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
               {hasChildren ? (
                 <button
@@ -272,11 +287,13 @@ export function TableView({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-y border-[var(--border)] text-left text-[var(--muted)]">
-            <th className="w-14" />
-            {fields.map((f) => (
+            <th className="sticky left-0 z-20 w-14 bg-[var(--background)]" />
+            {fields.map((f, i) => (
               <th
                 key={f.id}
-                className={`group relative px-2 py-1 font-medium ${widthOf(f.id) ? "" : "min-w-40"}`}
+                className={`group relative px-2 py-1 font-medium ${widthOf(f.id) ? "" : "min-w-40"} ${
+                  i === 0 ? "sticky left-14 z-20 bg-[var(--background)]" : ""
+                }`}
                 style={widthOf(f.id) ? { width: widthOf(f.id), minWidth: widthOf(f.id), maxWidth: widthOf(f.id) } : undefined}
               >
                 <span className="flex items-center gap-1">
@@ -388,9 +405,9 @@ export function TableView({
         )}
         <tfoot>
           <tr className="border-t border-[var(--border)] text-xs text-[var(--muted)]">
-            <td />
-            {fields.map((f) => (
-              <td key={f.id} className="px-2 py-1">
+            <td className="sticky left-0 z-10 bg-[var(--background)]" />
+            {fields.map((f, i) => (
+              <td key={f.id} className={`px-2 py-1 ${i === 0 ? "sticky left-14 z-10 bg-[var(--background)]" : ""}`}>
                 <CalcCell field={f} calc={calcs[f.id] ?? ""} records={records} onChange={(c) => setCalc(f.id, c)} />
               </td>
             ))}
