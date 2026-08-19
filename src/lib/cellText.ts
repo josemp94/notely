@@ -74,6 +74,29 @@ export function formatNumber(value: unknown, field: FieldLite): string {
   return es(n);
 }
 
+/** Colores de las etiquetas de Selección/Estado (fondo suave). */
+export const OPTION_COLORS: Record<string, string> = {
+  gray: "#e5e0d8",
+  orange: "#ffd9c9",
+  green: "#c9efd8",
+  red: "#ffd2cd",
+  blue: "#cfe0ff",
+  yellow: "#fbeec2",
+};
+
+/**
+ * Color de fondo de una fila según la opción elegida en el campo de color de la
+ * vista (`rowColorFieldId`). Devuelve undefined si no aplica.
+ */
+export function rowColor(field: FieldLite | undefined, cells: Record<string, unknown> | null | undefined): string | undefined {
+  if (!field) return undefined;
+  const value = cells?.[field.id];
+  const id = Array.isArray(value) ? value[0] : value;
+  if (!id) return undefined;
+  const opt = optionsOf(field).find((o) => o.id === id);
+  return opt ? OPTION_COLORS[opt.color ?? "gray"] : undefined;
+}
+
 export function optionsOf(field: FieldLite): Option[] {
   const cfg = field.config as { options?: Option[] } | null;
   return cfg?.options ?? [];

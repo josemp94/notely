@@ -4,7 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
 import { usePeople } from "./Cell";
-import { displayValue, type FieldLite } from "@/lib/cellText";
+import { displayValue, rowColor, type FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
@@ -21,6 +21,7 @@ export function GalleryView({
   records,
   cardSize,
   cardPreview,
+  colorFieldId,
 }: {
   pageId: string;
   collectionId: string;
@@ -28,12 +29,14 @@ export function GalleryView({
   records: Rec[];
   cardSize?: string;
   cardPreview?: string;
+  colorFieldId?: string;
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const [openRec, setOpenRec] = useState<Rec | null>(null);
   const people = usePeople();
+  const colorField = fields.find((f) => f.id === colorFieldId);
 
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
   const size = SIZES[cardSize ?? "medium"] ?? SIZES.medium;
@@ -52,6 +55,7 @@ export function GalleryView({
           <button
             key={r.id}
             onClick={() => setOpenRec(r)}
+            style={{ background: rowColor(colorField, r.cells) }}
             className={`flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] ${size.card} text-left shadow-sm transition hover:border-brand hover:shadow-md`}
           >
             <div className={`font-display truncate font-semibold ${size.title}`}>{recTitle(r)}</div>

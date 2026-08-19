@@ -3,16 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Check, Paperclip, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import { dateValue, formatNumber, optionsOf, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
-
-const COLORS: Record<string, string> = {
-  gray: "#e5e0d8",
-  orange: "#ffd9c9",
-  green: "#c9efd8",
-  red: "#ffd2cd",
-  blue: "#cfe0ff",
-  yellow: "#fbeec2",
-};
+import { dateValue, formatNumber, OPTION_COLORS, optionsOf, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
 
 
 /** Mapa userId -> nombre de los miembros del espacio (para pintar campos "person"). */
@@ -192,7 +183,7 @@ function NumberCell({ field, value, onCommit }: { field: FieldLite; value: unkno
   );
 }
 
-const OPTION_COLORS = ["gray", "orange", "green", "blue", "red", "yellow"];
+const COLOR_NAMES = ["gray", "orange", "green", "blue", "red", "yellow"];
 
 function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown; onCommit: (v: unknown) => void }) {
   const utils = trpc.useUtils();
@@ -240,7 +231,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
       return;
     }
     const id = "opt_" + Math.random().toString(36).slice(2, 9);
-    const color = OPTION_COLORS[opts.length % OPTION_COLORS.length];
+    const color = COLOR_NAMES[opts.length % COLOR_NAMES.length];
     const cfg = (field.config as { options?: Option[] }) ?? {};
     updateField.mutate({ id: field.id, config: { ...cfg, options: [...opts, { id, label, color }] } });
     commit(multi ? [...selected, id] : [id]);
@@ -249,7 +240,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
   };
 
   const pill = (o: Option) => (
-    <span key={o.id} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs" style={{ background: COLORS[o.color ?? "gray"] }}>
+    <span key={o.id} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"] }}>
       {o.label}
       {multi && (
         <button onClick={(e) => { e.stopPropagation(); toggle(o.id); }} className="opacity-60 hover:opacity-100">
@@ -293,7 +284,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
                 onClick={() => toggle(o.id)}
                 className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--border)]/40"
               >
-                <span className="rounded px-1.5 py-0.5 text-xs" style={{ background: COLORS[o.color ?? "gray"] }}>
+                <span className="rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"] }}>
                   {o.label}
                 </span>
                 {selected.includes(o.id) && <span className="ml-auto text-brand"><Check size={14} /></span>}

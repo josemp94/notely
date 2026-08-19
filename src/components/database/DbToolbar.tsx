@@ -320,6 +320,25 @@ export function DbToolbar({
                 </label>
               </div>
             )}
+            {(view.type === "table" || view.type === "gallery") && (
+              <div className="my-1 border-t border-[var(--border)] pt-1">
+                <label className="flex items-center justify-between gap-2 px-2 py-1 text-sm">
+                  <span>Color por</span>
+                  <select
+                    value={view.config?.rowColorFieldId ?? ""}
+                    onChange={(e) => saveConfig({ rowColorFieldId: e.target.value || null })}
+                    className="max-w-[150px] rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+                  >
+                    <option value="">Sin color</option>
+                    {fields
+                      .filter((f) => f.type === "select" || f.type === "status" || f.type === "multiselect")
+                      .map((f) => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                  </select>
+                </label>
+              </div>
+            )}
             {(view.type === "kanban" || view.type === "gallery") && (
               <div className="my-1 border-t border-[var(--border)] pt-1">
                 <div className="px-2 pb-1 text-[11px] font-medium text-[var(--muted)]">Tarjetas</div>

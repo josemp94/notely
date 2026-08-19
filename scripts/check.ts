@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { applyViewConfig, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
-import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, groupBy } from "../src/lib/cellText";
+import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, groupBy, rowColor } from "../src/lib/cellText";
 
 const f = (id: string, type: string, config: unknown = {}): DbField => ({ id, name: id, type, config });
 const r = (id: string, cells: Record<string, unknown>): DbRecord => ({ id, cells, order: id });
@@ -137,4 +137,13 @@ assert.equal(
   "solapa,justo",
 );
 
-console.log("OK — filtros, orden, texto de celdas, agrupación, formatos y fechas");
+// --- Color de fila por la opción elegida ---
+const estado = fields[3];
+assert.equal(rowColor(estado, { estado: "done" }), "#e5e0d8"); // opción sin color asignado: gris
+const conColor = f("prio", "status", { options: [{ id: "alta", label: "Alta", color: "red" }] });
+assert.equal(rowColor(conColor, { prio: "alta" }), "#ffd2cd");
+assert.equal(rowColor(estado, {}), undefined); // sin valor, sin color
+assert.equal(rowColor(undefined, { estado: "done" }), undefined); // sin campo de color configurado
+assert.equal(rowColor(fields[1], { tags: ["t1"] }), undefined); // opción inexistente: sin color
+
+console.log("OK — filtros, orden, texto de celdas, agrupación, formatos, fechas y colores");

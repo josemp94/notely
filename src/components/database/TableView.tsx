@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
-import { formatNumber, groupBy, NUMBER_FORMATS, type FieldLite } from "@/lib/cellText";
+import { formatNumber, groupBy, NUMBER_FORMATS, rowColor, type FieldLite } from "@/lib/cellText";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
 import { Popover } from "./DbToolbar";
 import { RelationCell } from "./RelationCell";
@@ -136,6 +136,7 @@ export function TableView({
   // subtareas: cada fila cae en el grupo de su propio valor, sin sangría.
   const groupField = fields.find((f) => f.id === cfg.groupByFieldId);
   const canReorder = !groupField && !(cfg.sorts?.length > 0);
+  const colorField = fields.find((f) => f.id === cfg.rowColorFieldId);
   const groups = groupBy(records, groupField, people);
   const hasCalcs = fields.some((f) => calcs[f.id]);
 
@@ -143,6 +144,7 @@ export function TableView({
   const renderRow = ({ rec: r, depth, hasChildren }: { rec: Rec; depth: number; hasChildren: boolean }) => (
     <tr
       key={r.id}
+      style={rowColor(colorField, r.cells) ? { background: rowColor(colorField, r.cells) } : undefined}
       className={`group border-b border-[var(--border)] hover:bg-[var(--border)]/20 ${
         dropRow?.id === r.id
           ? dropRow.pos === "before"

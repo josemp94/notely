@@ -210,6 +210,7 @@ export function Database({
           records={asAny(shownRecords)}
           cardSize={asAny(active.config)?.cardSize}
           cardPreview={asAny(active.config)?.cardPreview}
+          colorFieldId={asAny(active.config)?.rowColorFieldId}
         />
       ) : active?.type === "list" ? (
         <ListView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(shownRecords)} />
