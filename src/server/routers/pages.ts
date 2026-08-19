@@ -6,6 +6,7 @@ import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { TEMPLATES } from "@/lib/templates";
 import { fetchLinkPreview } from "../linkPreview";
+import { createCollabToken } from "../collabToken";
 
 /** Días que aguanta una página en la papelera antes de la auto-purga (también en /trash). */
 const TRASH_TTL_DAYS = 30;
@@ -99,6 +100,52 @@ export const pagesRouter = router({
         ORDER BY "updatedAt" DESC
         LIMIT 50
       `);
+    }),
+
+  /** Permiso de corta vida para entrar en la sala de edición simultánea de la página. */
+  collabToken: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const page = await ctx.db.page.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspace.id, archivedAt: null },
+        select: { id: true },
+      });
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      return { token: createCollabToken(page.id, ctx.user.id, ctx.role ?? "editor") };
+    }),
+
+  /**
+   * Prepara la página para la edición simultánea: si aún no tiene estado Yjs,
+   * lo crea a partir de su contenido actual. Sin esto, el primer usuario que
+   * entrase en modo colaborativo vería el documento vacío.
+   */
+  ensureYdoc: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const page = await ctx.db.page.findFirst({
+        where: { id: input.id, workspaceId: ctx.workspace.id },
+        select: { id: true, ydoc: true, content: true },
+      });
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      if (page.ydoc) return { ok: true, seeded: false };
+
+      const { ServerBlockNoteEditor } = await import("@blocknote/server-util");
+      const { editorSchema } = await import("@/components/editor/mention");
+      const Y = await import("yjs");
+
+      const editor = ServerBlockNoteEditor.create({ schema: editorSchema });
+      const doc = new Y.Doc();
+      const blocks = Array.isArray(page.content) ? page.content : [];
+      if (blocks.length) {
+        editor.blocksToYXmlFragment(blocks as never, doc.getXmlFragment("document-store"));
+      }
+      const state = Buffer.from(Y.encodeStateAsUpdate(doc));
+      // Si dos pestañas entran a la vez, solo siembra la primera.
+      const done = await ctx.db.page.updateMany({
+        where: { id: page.id, ydoc: null },
+        data: { ydoc: state },
+      });
+      return { ok: true, seeded: done.count > 0 };
     }),
 
   /** Vista previa de un enlace (OpenGraph) para el bloque "bookmark" del editor. */

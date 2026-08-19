@@ -6,6 +6,8 @@ import { Check, Database, Download, FileText, Lightbulb, Link as LinkIcon, Link2
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { es } from "@blocknote/core/locales";
+import { withCollaboration } from "@blocknote/core/yjs";
+import { useCollaboration } from "./useCollaboration";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -59,10 +61,34 @@ export function Editor({
     return Array.isArray(c) && c.length > 0 ? c : undefined;
   }, [initialContent]);
 
-  const editor = useCreateBlockNote({ dictionary: es, schema: editorSchema, initialContent: initial });
+  // Edición simultánea: si la instalación tiene servidor de colaboración, el
+  // documento se sincroniza en vivo; si no, el editor funciona como siempre.
+  const { data: me } = trpc.auth.me.useQuery();
+  const collab = useCollaboration(pageId, me);
+
+  const editor = useCreateBlockNote(
+    collab
+      ? withCollaboration({
+          dictionary: es,
+          schema: editorSchema,
+          collaboration: {
+            // El proveedor expone awareness como null hasta conectar; el tipo de
+            // BlockNote lo espera opcional.
+            provider: collab.provider as unknown as { awareness: undefined },
+            fragment: collab.fragment,
+            user: collab.user,
+            showCursorLabels: "activity",
+          },
+        })
+      : { dictionary: es, schema: editorSchema, initialContent: initial },
+    [collab],
+  );
 
   function scheduleSave() {
     if (!canEdit) return;
+    // En modo colaborativo el estado vive en el servidor de Yjs; aquí solo se
+    // refresca la copia legible (Page.content) que usan búsqueda, publicación y
+    // export. Todos los editores abiertos guardan lo mismo, así que es inocuo.
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {

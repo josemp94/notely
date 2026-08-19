@@ -12,6 +12,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# URL pública del servidor de edición simultánea. Las variables NEXT_PUBLIC_ se
+# incrustan al compilar, así que tiene que llegar aquí, no solo al arrancar.
+ARG NEXT_PUBLIC_COLLAB_URL=""
+ENV NEXT_PUBLIC_COLLAB_URL=$NEXT_PUBLIC_COLLAB_URL
 RUN npx prisma generate && npm run build
 
 # ---- runner ----
