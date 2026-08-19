@@ -79,6 +79,27 @@ export const pagesRouter = router({
       `);
     }),
 
+  /**
+   * Enlaces entrantes: páginas cuyo contenido menciona a esta (chips @página).
+   * Las menciones viven dentro del JSON de bloques, así que se busca el id ahí:
+   * un cuid es único, no hay falsos positivos realistas.
+   */
+  backlinks: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.$queryRaw<{ id: string; title: string; icon: string | null; type: string }[]>(Prisma.sql`
+        SELECT id, title, icon, type
+        FROM "Page"
+        WHERE "workspaceId" = ${ctx.workspace.id}
+          AND "archivedAt" IS NULL
+          AND embedded = false
+          AND id <> ${input.id}
+          AND content::text LIKE ${"%" + input.id + "%"}
+        ORDER BY "updatedAt" DESC
+        LIMIT 50
+      `);
+    }),
+
   /** Contenido de una página. */
   get: workspaceProcedure
     .input(z.object({ id: z.string() }))

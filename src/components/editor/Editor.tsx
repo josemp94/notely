@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Database, Download, Lightbulb, ListTree } from "lucide-react";
+import Link from "next/link";
+import { Check, Database, Download, FileText, Lightbulb, ListTree } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -192,7 +193,33 @@ export function Editor({
           }
         />
       </BlockNoteView>
+      <Backlinks pageId={pageId} />
       </div>
+    </div>
+  );
+}
+
+/** "Enlaces entrantes": otras páginas que mencionan a esta. Oculto si no hay ninguna. */
+function Backlinks({ pageId }: { pageId: string }) {
+  const { data } = trpc.pages.backlinks.useQuery({ id: pageId });
+  if (!data?.length) return null;
+  return (
+    <div className="mt-10 border-t border-[var(--border)] pt-3">
+      <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
+        {data.length} enlace{data.length > 1 ? "s" : ""} entrante{data.length > 1 ? "s" : ""}
+      </div>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1">
+        {data.map((p) => (
+          <li key={p.id}>
+            <Link href={`/p/${p.id}`} className="flex items-center gap-1.5 py-0.5 text-sm hover:text-brand">
+              <span className="flex items-center text-[var(--muted)]">
+                {p.icon ?? (p.type === "database" ? <Database size={14} /> : <FileText size={14} />)}
+              </span>
+              {p.title || "Sin título"}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
