@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Check, Paperclip, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import { formatNumber, optionsOf, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
+import { dateValue, formatNumber, optionsOf, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
 
 const COLORS: Record<string, string> = {
   gray: "#e5e0d8",
@@ -114,14 +114,7 @@ export function Cell({
   }
 
   if (field.type === "date") {
-    return (
-      <input
-        type="date"
-        defaultValue={typeof value === "string" ? value : ""}
-        onBlur={(e) => onCommit(e.target.value || null)}
-        className="w-full bg-transparent px-1 py-0.5 text-sm outline-none"
-      />
-    );
+    return <DateCell field={field} value={value} onCommit={onCommit} />;
   }
 
   // url / email / phone: input con tipo adecuado + enlace clicable si hay valor
@@ -500,5 +493,45 @@ function AuthorCell({ userId }: { userId?: string | null }) {
         "—"
       )}
     </span>
+  );
+}
+
+/**
+ * Campo Fecha. Según su configuración: día suelto, con hora (`time`) o rango
+ * (`range`, que guarda { start, end } en vez de una cadena).
+ */
+function DateCell({ field, value, onCommit }: { field: FieldLite; value: unknown; onCommit: (v: unknown) => void }) {
+  const cfg = (field.config as { time?: boolean; range?: boolean } | null) ?? {};
+  const d = dateValue(value);
+  const type = cfg.time ? "datetime-local" : "date";
+  // Sin hora, el input date no admite la parte "T…": se recorta.
+  const cut = (iso?: string) => (iso ? (cfg.time ? iso.slice(0, 16) : iso.slice(0, 10)) : "");
+
+  const commit = (start: string, end: string) => {
+    if (!start) return onCommit(null);
+    if (!cfg.range) return onCommit(start);
+    onCommit(end ? { start, end } : { start });
+  };
+
+  return (
+    <div className="flex w-full items-center gap-1">
+      <input
+        type={type}
+        value={cut(d?.start)}
+        onChange={(e) => commit(e.target.value, cut(d?.end))}
+        className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
+      />
+      {cfg.range && (
+        <>
+          <span className="shrink-0 text-xs text-[var(--muted)]">→</span>
+          <input
+            type={type}
+            value={cut(d?.end)}
+            onChange={(e) => commit(cut(d?.start), e.target.value)}
+            className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
+          />
+        </>
+      )}
+    </div>
   );
 }

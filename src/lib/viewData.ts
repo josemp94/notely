@@ -1,5 +1,6 @@
 // Aplica filtros y orden (guardados en view.config) a los registros, en cliente.
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { dayOf, endDayOf } from "./cellText";
 
 export type DbField = { id: string; name: string; type: string; config: any };
 export type DbRecord = { id: string; cells: Record<string, unknown>; order: string };
@@ -25,16 +26,15 @@ const s = (v: unknown): string => {
 };
 const n = (v: unknown) => (typeof v === "number" ? v : parseFloat(s(v)));
 const t = (v: unknown) => {
-  const d = new Date(s(v));
+  const d = new Date(dayOf(v) ?? s(v));
   return isNaN(d.getTime()) ? null : d.getTime();
 };
 
-/** "YYYY-MM-DD" de una celda de fecha; null si no hay fecha reconocible. */
+/** "YYYY-MM-DD" de una celda de fecha (día suelto, con hora o rango); null si no hay. */
 const day = (v: unknown): string | null => {
-  const raw = s(v);
-  const iso = raw.match(/^\d{4}-\d{2}-\d{2}/);
-  if (iso) return iso[0];
-  const d = new Date(raw);
+  const start = dayOf(v);
+  if (start && /^\d{4}-\d{2}-\d{2}$/.test(start)) return start;
+  const d = new Date(s(v));
   return isNaN(d.getTime()) ? null : localDay(d);
 };
 
@@ -134,8 +134,11 @@ const isEmpty = (cell: unknown) =>
 function matchFilter(cell: unknown, field: DbField, op: string, value: any): boolean {
   const range = relativeRange(op);
   if (range) {
-    const d = day(cell);
-    return d != null && d >= range[0] && d <= range[1];
+    // Con rango de fechas basta con que solape el periodo.
+    const from = day(cell);
+    if (from == null) return false;
+    const to = endDayOf(cell) ?? from;
+    return from <= range[1] && to >= range[0];
   }
   switch (op) {
     case "is_empty":

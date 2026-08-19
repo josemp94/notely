@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { applyViewConfig, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
-import { displayValue, formatNumber, groupBy } from "../src/lib/cellText";
+import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, groupBy } from "../src/lib/cellText";
 
 const f = (id: string, type: string, config: unknown = {}): DbField => ({ id, name: id, type, config });
 const r = (id: string, cells: Record<string, unknown>): DbRecord => ({ id, cells, order: id });
@@ -110,4 +110,31 @@ assert.equal(formatNumber(30, f("pct", "number", { format: "percent" })), "30 %"
 assert.equal(formatNumber(1234.5, f("n", "number")), "1234,5");
 assert.equal(displayValue(euros, 12), "12 €"); // el formato también manda en tarjetas y listas
 
-console.log("OK — filtros, orden, texto de celdas, agrupación y formatos");
+// --- Fechas: día suelto (formato antiguo), con hora y rango ---
+assert.deepEqual(dateValue("2026-08-05"), { start: "2026-08-05" }); // sigue leyéndose lo ya guardado
+assert.deepEqual(dateValue({ start: "2026-08-05", end: "2026-08-08" }), { start: "2026-08-05", end: "2026-08-08" });
+assert.equal(dateValue(null), null);
+assert.equal(dayOf({ start: "2026-08-05T14:30", end: "2026-08-08" }), "2026-08-05");
+assert.equal(endDayOf({ start: "2026-08-05", end: "2026-08-08" }), "2026-08-08");
+assert.equal(endDayOf("2026-08-05"), "2026-08-05"); // sin rango, el fin es el inicio
+assert.equal(formatDate("2026-08-05"), "5 ago 2026");
+assert.equal(formatDate("2026-08-05T14:30"), "5 ago 2026 14:30");
+assert.equal(formatDate({ start: "2026-08-05", end: "2026-08-08" }), "5 ago 2026 → 8 ago 2026");
+
+// Un filtro relativo debe coger la fila cuyo rango solapa el periodo, no solo la que empieza dentro.
+const hoyISO = relativeRange("today")![0];
+const ayer = relativeRange("last_7_days")![0];
+const fechas: DbField[] = [f("cuando", "date")];
+const filas: DbRecord[] = [
+  r("solapa", { cuando: { start: ayer, end: relativeRange("next_7_days")![1] } }),
+  r("fuera", { cuando: "1999-01-01" }),
+  r("justo", { cuando: hoyISO }),
+];
+assert.equal(
+  applyViewConfig(filas, fechas, { filters: [{ fieldId: "cuando", op: "today", value: null }] })
+    .map((x) => x.id)
+    .join(","),
+  "solapa,justo",
+);
+
+console.log("OK — filtros, orden, texto de celdas, agrupación, formatos y fechas");

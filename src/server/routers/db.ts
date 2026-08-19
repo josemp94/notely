@@ -5,6 +5,7 @@ import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
+import { dateValue, dayOf } from "@/lib/cellText";
 
 // Tipos de campo soportados en Fase 2
 export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "person", "files", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "created_by", "last_edited_by", "id"] as const;
@@ -33,6 +34,11 @@ export function cellToText(
     return (Array.isArray(v) ? v : []).map((x) => (x as { name?: string })?.name ?? "").filter(Boolean).join(", ");
   if (f.type === "person")
     return (Array.isArray(v) ? v : [v]).map((x) => people?.get(String(x)) ?? String(x)).join(", ");
+  // ISO a propósito: el CSV debe poder reimportarse y abrirse en una hoja de cálculo.
+  if (f.type === "date") {
+    const d = dateValue(v);
+    return d ? (d.end ? `${d.start} → ${d.end}` : d.start) : "";
+  }
   if (f.type === "checkbox") return v ? "true" : "false";
   if (Array.isArray(v)) return v.map(String).join(", ");
   return String(v);
@@ -888,7 +894,7 @@ export const dbRouter = router({
           const opts = ((xField.config as { options?: { id: string; label: string }[] }).options) ?? [];
           return opts.find((o) => o.id === val)?.label ?? String(val);
         }
-        if (xField?.type === "date") return String(val).slice(0, 7); // agrupa por mes YYYY-MM
+        if (xField?.type === "date") return (dayOf(val) ?? String(val)).slice(0, 7); // agrupa por mes YYYY-MM
         if (xField?.type === "checkbox") return val ? "Sí" : "No";
         return String(val);
       };

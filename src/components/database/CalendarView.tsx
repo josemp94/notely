@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
+import { dayOf, endDayOf } from "@/lib/cellText";
 import type { FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
@@ -53,11 +54,14 @@ export function CalendarView({
     if (!dateFieldId) return map;
     for (const r of records) {
       const v = r.cells?.[dateFieldId];
-      if (typeof v !== "string" || !v) continue;
-      const key = v.slice(0, 10);
-      const arr = map.get(key) ?? [];
-      arr.push(r);
-      map.set(key, arr);
+      const from = dayOf(v);
+      if (!from) continue;
+      // Con rango, la fila aparece en todos sus días (tope de un año, por si el dato viene raro).
+      const to = endDayOf(v) ?? from;
+      for (let d = new Date(`${from}T00:00:00`), i = 0; d <= new Date(`${to}T00:00:00`) && i < 366; d.setDate(d.getDate() + 1), i++) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        map.set(key, [...(map.get(key) ?? []), r]);
+      }
     }
     return map;
   }, [records, dateFieldId]);

@@ -499,7 +499,7 @@ function FieldMenu({
   onConfig: (config: Record<string, unknown>) => void;
   onDelete: () => void;
 }) {
-  const cfg = (field.config as { prefix?: string; format?: string; max?: number } | null) ?? {};
+  const cfg = (field.config as { prefix?: string; format?: string; max?: number; time?: boolean; range?: boolean } | null) ?? {};
   const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40";
   return (
     <Popover onClose={onClose} className="left-0 w-64 p-2 font-normal normal-case">
@@ -517,6 +517,29 @@ function FieldMenu({
             className="w-24 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
           />
         </label>
+      )}
+
+      {field.type === "date" && (
+        <>
+          <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
+            <span>Incluir hora</span>
+            <input
+              type="checkbox"
+              defaultChecked={Boolean(cfg.time)}
+              onChange={(e) => onConfig({ time: e.target.checked })}
+              className="size-4 accent-[var(--color-brand,#ff5c28)]"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
+            <span>Rango de fechas</span>
+            <input
+              type="checkbox"
+              defaultChecked={Boolean(cfg.range)}
+              onChange={(e) => onConfig({ range: e.target.checked })}
+              className="size-4 accent-[var(--color-brand,#ff5c28)]"
+            />
+          </label>
+        </>
       )}
 
       {field.type === "number" && (

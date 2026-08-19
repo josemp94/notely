@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
+import { dayOf, endDayOf } from "@/lib/cellText";
 import type { FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
@@ -14,9 +15,9 @@ const MONTHS = [
 ];
 const DAY_W = 34;
 
-function parseDay(v: unknown): Date | null {
-  if (typeof v !== "string" || !v) return null;
-  const d = new Date(v.slice(0, 10));
+function parseDay(day: string | null): Date | null {
+  if (!day) return null;
+  const d = new Date(day);
   return isNaN(d.getTime()) ? null : d;
 }
 
@@ -55,9 +56,12 @@ export function TimelineView({
     if (!startFieldId) return [];
     const out: { rec: Rec; startDay: number; span: number }[] = [];
     for (const r of records) {
-      const s = parseDay(r.cells?.[startFieldId]);
+      const cell = r.cells?.[startFieldId];
+      const s = parseDay(dayOf(cell));
       if (!s) continue;
-      const e = endFieldId ? parseDay(r.cells?.[endFieldId]) ?? s : s;
+      // El fin sale del campo elegido o, si el propio campo es un rango, de su final.
+      const e =
+        (endFieldId ? parseDay(dayOf(r.cells?.[endFieldId])) : parseDay(endDayOf(cell))) ?? s;
       // ¿solapa el mes visible?
       if (e < monthStart || s > monthEnd) continue;
       const clampS = s < monthStart ? monthStart : s;

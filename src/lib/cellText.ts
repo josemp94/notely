@@ -7,6 +7,53 @@ export type FieldLite = { id: string; name: string; type: string; config: unknow
 export type Attachment = { id: string; url: string; name?: string | null; mime?: string | null };
 export type RecordLite = { id: string; cells?: Record<string, unknown> | null };
 
+/**
+ * Valor de una celda de fecha. Retrocompatible: durante mucho tiempo se guardó
+ * como una cadena suelta "YYYY-MM-DD"; con hora es "YYYY-MM-DDTHH:mm" y con
+ * rango un objeto { start, end }.
+ */
+export type DateValue = { start: string; end?: string };
+
+export function dateValue(v: unknown): DateValue | null {
+  if (!v) return null;
+  if (typeof v === "string") return { start: v };
+  if (typeof v === "object") {
+    const o = v as { start?: unknown; end?: unknown };
+    if (typeof o.start === "string" && o.start) {
+      return { start: o.start, end: typeof o.end === "string" && o.end ? o.end : undefined };
+    }
+  }
+  return null;
+}
+
+/** Día "YYYY-MM-DD" del inicio de una celda de fecha (null si no hay fecha). */
+export function dayOf(v: unknown): string | null {
+  const d = dateValue(v);
+  return d ? d.start.slice(0, 10) : null;
+}
+
+/** Día "YYYY-MM-DD" del final (el inicio si no hay rango). */
+export function endDayOf(v: unknown): string | null {
+  const d = dateValue(v);
+  return d ? (d.end ?? d.start).slice(0, 10) : null;
+}
+
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** "5 ago 2026", "5 ago 2026 14:30" o "5 ago 2026 → 8 ago 2026". */
+export function formatDate(v: unknown): string {
+  const d = dateValue(v);
+  if (!d) return "";
+  const one = (iso: string) => {
+    const [date, time] = iso.split("T");
+    const [y, m, day] = date.split("-");
+    if (!y || !m || !day) return iso;
+    const txt = `${Number(day)} ${MONTHS[Number(m) - 1] ?? m} ${y}`;
+    return time ? `${txt} ${time.slice(0, 5)}` : txt;
+  };
+  return d.end ? `${one(d.start)} → ${one(d.end)}` : one(d.start);
+}
+
 /** Formatos del campo Número, como en Notion. */
 export const NUMBER_FORMATS: [string, string][] = [
   ["plain", "Normal"],
@@ -56,6 +103,7 @@ export function displayValue(field: FieldLite, value: unknown, people?: Map<stri
     return (Array.isArray(value) ? (value as Attachment[]) : []).map((a) => a.name || "archivo").join(", ");
   }
   if (field.type === "number") return formatNumber(value, field);
+  if (field.type === "date") return formatDate(value);
   if (field.type === "checkbox") return value ? "Sí" : "No";
   if (field.type === "relation") {
     const n = Array.isArray(value) ? value.length : 0;
