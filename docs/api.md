@@ -61,3 +61,42 @@ Solo cambia las celdas incluidas; `null` o `""` borra la celda.
 curl -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/v1/records/<recordId>
 # → { "ok": true }  (borra también sus sub-elementos)
 ```
+
+
+---
+
+## Avisos salientes (webhooks)
+
+En **Ajustes → Avisos salientes** (solo el propietario del espacio) puedes registrar una URL.
+Notiono enviará un `POST` cada vez que se cree, edite o borre una fila de cualquier base de
+datos del espacio.
+
+Cuerpo:
+
+```json
+{
+  "event": "record.created",
+  "workspaceId": "cl…",
+  "at": "2026-08-19T18:20:00.000Z",
+  "data": { "recordId": "cl…", "collectionId": "cl…", "cells": { "…": "…" } }
+}
+```
+
+Eventos: `record.created`, `record.updated` (incluye `fieldId`) y `record.deleted`.
+
+Cabeceras:
+
+| Cabecera | Contenido |
+|---|---|
+| `X-Notiono-Event` | nombre del evento |
+| `X-Notiono-Signature` | `HMAC-SHA256(secreto, cuerpo)` en hexadecimal |
+
+Comprobar la firma en Node:
+
+```js
+const esperado = crypto.createHmac("sha256", SECRETO).update(cuerpoCrudo).digest("hex");
+const valido = esperado === req.headers["x-notiono-signature"];
+```
+
+El secreto se muestra **una sola vez** al crear el aviso. Notiono no reintenta los envíos
+fallidos: en Ajustes se ve el código del último intento (`0` = no respondió).

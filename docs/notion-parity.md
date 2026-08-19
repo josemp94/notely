@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~0cbbbdf). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~577494c). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -83,7 +83,8 @@ Falta:
 - ✅ **Vistas enlazadas**: el menú `/` inserta una base de datos que ya existe en cualquier página.
 - ✅ **Color condicional por reglas** («si vence antes de hoy, en rojo»), además del color por etiqueta.
 - ✅ **Borrar fila es reversible** (se archiva y hay «Deshacer»).
-- ❌ Bloquear esquema; papelera de filas con listado (hoy solo el deshacer inmediato).
+- ✅ **Papelera de filas** con listado, restaurar, borrar para siempre y purga a los 30 días.
+- ❌ Bloquear esquema.
 
 ### 1.4 Relaciones, rollups y fórmulas
 
@@ -166,14 +167,15 @@ el panel de registro, el historial y las páginas publicadas.
 > Galería · vistas enlazadas (que recuerdan su vista) · congelar la primera columna ·
 > bloque «Enlace web» con vista previa y vídeo incrustado · editor en español.
 
-> Hecho también el 19-ago-2026 (cuarta tanda): reglas de color · borrado reversible de filas.
+> Hecho también el 19-ago-2026 (cuarta tanda): reglas de color · borrado reversible de filas ·
+> papelera de filas · webhooks salientes.
 
 **A — Lo siguiente, barato y visible**
 1. **Subagrupar** (segundo nivel) y fila de cálculos fuera de la Tabla.
 2. Envolver texto en celdas y elegir hasta qué columna congelar (necesita anchos conocidos).
-3. Papelera de filas con listado, aprovechando que ya se archivan.
+3. **Notificaciones push** reales (el service worker ya está; falta VAPID y suscripciones).
 4. **Columnas** en el editor (a mano: el paquete oficial de BlockNote es de pago).
-5. **Webhooks salientes** y **notificaciones push** (roadmap C).
+5. Más eventos de webhook (páginas, comentarios) y reintentos.
 
 **B — Editor**
 6. **Toggle heading** y **embeds/bookmark** (tarjeta OpenGraph).
