@@ -1,149 +1,169 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> Basado en investigación (agosto 2026) de la documentación oficial de Notion por 4 agentes.
-> Leyenda de estado: ✅ hecho · 🟡 parcial · ❌ falta.
+> **Inventario verificado leyendo el código el 19-ago-2026** (commit ~e2bc516). Sustituye al
+> gap-analysis de agosto-2026, que se había quedado muy desfasado.
+> Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
+>
+> Regla al actualizar este doc: marca ✅ solo lo que exista en el código, con el nombre real
+> del fichero o del símbolo. Si dudas, ábrelo y míralo.
 
 ---
 
-## 0. Estado actual de Notiono (agosto 2026)
+## 0. Retrato del estado actual
 
-- ✅ Editor de bloques (BlockNote), autosave.
-- ✅ Árbol de páginas en sidebar (crear, subpágina, menú ⋯, papelera con jerarquía).
-- ✅ Icono de página (emoji) editable; título grande.
-- ✅ Bases de datos: 7 vistas (Tabla, Kanban, Lista, Galería, Calendario, Gráfica, Formulario); empieza solo con columna "Nombre" + filas vacías.
-- ✅ Tipos de campo: texto, número, selección, casilla, fecha, URL, correo, teléfono, relación, rollup, fórmula.
-- ✅ Filtros y orden por vista; añadir/renombrar/borrar vista; "Mostrar como" (cambiar tipo).
-- ✅ Auth SSO (Synology OIDC), compartir espacios + roles (owner/editor/viewer), viewer solo-lectura.
-- ✅ Modelo Version (BD) — sin UI todavía.
+Notiono es hoy un Notion self-hosted funcional para una familia: páginas de bloques con
+autosave, árbol de páginas, 8 tipos de vista de base de datos, 18 tipos de campo, comentarios,
+menciones, notificaciones, historial de versiones, publicación web, plantillas, import/export,
+API REST y PWA instalable. Lo que falta es, sobre todo, **colaboración simultánea**, **bloques
+avanzados** (columnas, embeds, toc, callout) y **permisos por página**.
 
 ---
 
 ## 1. BASES DE DATOS
 
-### 1.1 Tipos de propiedad (Notion tiene ~24)
+### 1.1 Tipos de propiedad
+
+Lista real: `FIELD_TYPES` en `src/server/routers/db.ts` y `TYPES`/`FIELD_LABELS` en
+`src/components/database/shared.tsx`.
+
 | Tipo | Notion | Notiono |
 |---|---|---|
-| Título / Texto / Número / Selección / Multi-selección / Fecha / Casilla / URL / Correo / Teléfono | ✅ | ✅ (multi-selección ❌; número sin formatos moneda/%/barra/anillo 🟡; fecha sin rango/hora/recordatorio 🟡) |
-| Relación / Rollup / Fórmula | ✅ | ✅ (fórmula básica; relación unidireccional 🟡) |
-| **Estado (grupos To-do/In Progress/Complete)** | ✅ | ❌ (usamos select) |
-| **Persona** (miembros del espacio) | ✅ | ❌ |
-| **Archivos y multimedia** | ✅ | ❌ (necesita subida de ficheros) |
-| **Fecha de creación / Última edición / Creado por / Editado por** | ✅ | ❌ (createdAt/updatedAt existen en BD; falta exponerlos) |
-| **ID único** (con prefijo) | ✅ | ❌ |
+| Título / Texto | ✅ | 🟡 no hay tipo "título": el título es el primer campo `text` |
+| Número | ✅ | 🟡 sin formatos (moneda, %, barra, anillo) |
+| Selección / Selección múltiple | ✅ | ✅ `select`, `multiselect` (editor de etiquetas con 6 colores, crear al vuelo) |
+| Estado | ✅ | 🟡 `status` existe y agrupa el Kanban; sus opciones se siembran con `group: todo/doing/done` pero la UI aún no muestra los tres grupos |
+| Fecha | ✅ | 🟡 `date` sin hora, sin rango, sin recordatorio |
+| Casilla / URL / Correo / Teléfono | ✅ | ✅ |
+| **Persona** | ✅ | ✅ `person` — varios miembros del espacio, avatar de iniciales, filtro por persona |
+| **Archivos y multimedia** | ✅ | ✅ `files` — adjuntos a `/api/upload` (máx. 8 MB), miniatura si es imagen |
+| Fecha de creación / Última edición | ✅ | ✅ `created_time`, `last_edited_time` |
+| **Creado por / Editado por** | ✅ | ❌ (`Record` no guarda autor) |
+| ID único | ✅ | 🟡 `id` con `seq` por colección; `config.prefix` se respeta pero no hay UI para editarlo |
+| Relación | ✅ | 🟡 `relation` unidireccional (sin campo espejo en la BD destino) |
+| Rollup | ✅ | 🟡 `count, sum, avg, min, max, values` |
+| Fórmula | ✅ | 🟡 evaluador propio, 13 funciones (ver 1.4) |
 | **Botón** (acciones) | ✅ | ❌ |
 | **Lugar** (mapa) | ✅ | ❌ |
 
-**Prioridad de tipos a añadir:** 1) Estado, Multi-selección, Fecha de creación/edición, ID (fáciles/útiles). 2) Persona (requiere lista de miembros). 3) Archivos (requiere almacenamiento). 4) Número con formatos (moneda/%/barra/anillo). 5) Botón, Lugar (nicho).
+**Siguiente en prioridad:** Creado por/Editado por (barato: falta guardar el autor en `Record`),
+formatos de número, hora y rango en fechas, prefijo de ID editable.
 
-### 1.2 Tipos de vista (Notion: 10)
-Tenemos ✅ Tabla, Kanban, Lista, Galería, Calendario, Gráfica, Formulario.
-Faltan: ❌ **Cronograma/Timeline** (Gantt con barras por rango de fechas), ❌ **Mapa** (pins, requiere campo Lugar), ❌ **Feed** (publicaciones tipo blog), ❌ **Panel de control/Dashboard** (rejilla de widgets con filtros globales).
+### 1.2 Tipos de vista
 
-### 1.3 Config de vistas (parcial)
-- 🟡 Filtros: tenemos simples; falta **AND/OR anidados** (hasta 3 niveles) y operadores completos por tipo (starts/ends with, is within para fechas, etc.).
-- 🟡 Orden: multi-nivel ✅; falta orden por opciones de select según su orden manual.
-- ❌ **Agrupar / sub-agrupar** en tabla (secciones plegables) — Kanban ya agrupa.
-- ❌ **Visibilidad de propiedades** por vista (mostrar/ocultar columnas con 👁️).
-- ❌ **Fila de cálculos** por columna (Suma/Media/Contar/Min/Max…) y subtotales por grupo.
-- ❌ **Congelar columnas**, ajuste de ancho persistente, wrap por columna.
-- ❌ **Color condicional** de fila/propiedad por reglas.
-- ❌ **Card size / card preview** (portada/contenido/imagen) en Kanban y Galería.
-- ❌ Abrir página como **side-peek / center-peek / full page** (panel lateral de registro).
+Notiono tiene 8 (`VIEW_TYPES` en `DbToolbar.tsx`): ✅ Tabla, Kanban, Lista, Galería, Calendario,
+**Cronograma/Timeline**, Gráfica, Formulario.
+Faltan de Notion: ❌ **Mapa** (requiere campo Lugar), ❌ **Feed**, ❌ **Panel/Dashboard** con
+widgets y filtros globales.
 
-### 1.4 Relaciones/Rollups/Fórmulas
-- 🟡 Relación: falta **bidireccional** ("Show on [BD]"), límite 1/∞, self-relation.
-- 🟡 Rollup: faltan cálculos de fecha (earliest/latest/range) y % checked.
-- 🟡 Fórmulas: tenemos evaluador propio básico; Notion tiene ~90 funciones (texto/número/fecha/lista/persona) y tipos de resultado. Ampliar catálogo.
+### 1.3 Configuración de vistas
 
-### 1.5 Otros de BD
-- ❌ **Plantillas de base de datos** (botón New ▾ → plantilla; plantilla por defecto; recurrentes).
-- ❌ **Sub-elementos** (jerarquía dentro de la BD) y **dependencias** (Timeline).
-- ❌ **Bloquear base de datos** (esquema).
-- ❌ **Bases de datos en línea (inline)** dentro de una página + **vistas enlazadas** (linked database).
-- ❌ Búsqueda interna de la BD (lupa).
-- ❌ Comentarios en filas/propiedades.
+Hecho:
+- ✅ **Filtros con grupos AND/OR anidados** (`FilterNodesEditor`, `viewData.ts`), hasta 2 niveles.
+- ✅ **Orden multi-campo**; Selección y Estado ordenan por el orden de sus opciones.
+- ✅ **Visibilidad de propiedades** por vista (botón «Propiedades», `hiddenFields`).
+- ✅ **Fila de cálculos** en Tabla: Contar todo, No vacías, Vacías, % no vacías, Suma, Media, Mín, Máx.
+- ✅ **Card size** (pequeña/media/grande) y **card preview** en Kanban y Galería.
+- ✅ **Panel de registro** lateral (`RecordPanel.tsx`) con propiedades editables + cuerpo de bloques, en Tabla, Calendario, Cronograma, Galería y Lista.
+- ✅ Renombrar/borrar vista, «Mostrar como», exportar CSV, campo de fecha del Calendario, inicio/fin del Cronograma, config de Gráfica (barras/líneas/tarta/donut × contar/sumar/media).
+
+Falta:
+- ❌ **Agrupar y subagrupar** en Tabla/Lista/Galería (solo Kanban agrupa).
+- ❌ **Panel de registro** en Kanban; modos side/center/full; navegar entre registros; comentarios de fila.
+- ❌ **Ancho de columna**, redimensionar, congelar, envolver texto.
+- ❌ **Color condicional** de filas o tarjetas.
+- ❌ **Búsqueda interna** de la base de datos (lupa).
+- ❌ Reordenar filas y columnas arrastrando.
+- ❌ Operadores `está vacío` / `no está vacío` y fechas relativas («esta semana»).
+- ❌ Fila de cálculos fuera de la Tabla; subtotales por grupo.
+- ❌ Plantillas de fila, bloquear esquema, vistas enlazadas (linked database).
+
+### 1.4 Relaciones, rollups y fórmulas
+
+- 🟡 **Relación**: unidireccional. Falta campo espejo («Mostrar en …»), límite 1/∞ y limpieza de referencias al borrar una fila.
+- 🟡 **Rollup**: `count, sum, avg, min, max, values`. Faltan `percent_empty`, `median`, `range`, fechas (`earliest`/`latest`) y % marcado.
+- 🟡 **Fórmulas** (`src/server/formula.ts`, parser propio sin `eval`): 13 funciones — `if, round, floor, ceil, abs, min, max, concat, length, upper, lower, contains, coalesce`; operadores aritméticos, comparaciones y `and/or/not`; `prop("Campo")` por nombre. Faltan todas las de fecha (`now`, `dateAdd`, `dateBetween`, `formatDate`), `replace`, `slice`, `join`, `test`, `format`, `toNumber`, `empty`, y referenciar una fórmula desde otra. La ayuda de la UI (`shared.tsx`) lista menos funciones de las que el motor soporta.
+
+### 1.5 Otros de base de datos
+
+- ✅ **Sub-elementos** (`Record.parentId`, árbol expandible, `db.addSubRecord`).
+- ✅ **Bases de datos embebidas** en una página (bloque `database`, `db.createInline`).
+- ✅ Fila como página (`Record.content` con editor de bloques completo).
+- ✅ Import/export CSV.
+- ❌ Dependencias en el Cronograma, bloquear base de datos, comentarios en fila o propiedad.
 
 ---
 
 ## 2. EDITOR Y BLOQUES
 
-BlockNote ya cubre bastantes bloques básicos. Gap vs Notion:
+Schema único en `src/components/editor/mention.tsx` (`editorSchema`), compartido por el editor,
+el panel de registro, el historial y las páginas publicadas.
 
-### 2.1 Bloques
-- ✅ (BlockNote): párrafo, H1-H3, listas (viñeta/numerada/to-do), cita, código, imagen, tabla simple, toggle.
-- 🟡 Callout, divisor, ecuación (según config de BlockNote — verificar/activar).
-- ❌ **Subpágina embebida** / link-to-page como bloque, **columnas/layout** (2-5 col con drag), **tabla de contenidos** (`/toc`), **breadcrumb**, **sync block** (bloque sincronizado), **toggle heading**, **botón** (acciones), **bookmark web** (tarjeta OpenGraph), **embeds** (Google Maps, Figma, PDF, tweet, YouTube…), **vídeo/audio/archivo**.
-
-### 2.2 Interacciones del editor
-- 🟡 Menú "/" (BlockNote lo trae; revisar categorías y traducción).
-- ❌ **Menciones** @persona / @página / @fecha; **comentarios en línea**; recordatorios.
-- ❌ Menú contextual de bloque completo (Turn into, Move to, Copy link to block, Color, Duplicate).
-- ❌ Arrastrar bloque a columnas; selección multi-bloque con acciones masivas.
-- ❌ **Portada (cover)** de página + reposicionar; "Añadir portada".
-- ❌ Estilo por página: tipografía (Default/Serif/Mono), texto pequeño, **ancho completo**.
-- ❌ Backlinks ("N enlaces entrantes").
+- ✅ De BlockNote 0.53: párrafo, encabezados 1-6, listas (viñeta, numerada, tareas, toggle), cita, código, divisor, imagen, vídeo, audio, fichero, tabla, enlaces.
+- ✅ Propios: bloque **`database`** (BD embebida) e inline **`mention`** (@página) y **`personMention`** (@persona, que notifica).
+- ✅ Autosave (800 ms contenido / 600 ms título), export a Markdown, portada, icono emoji, ancho completo, solo-lectura para `viewer`.
+- ❌ **Callout**, **columnas/layout**, **tabla de contenidos**, **sync block**, **breadcrumb block**, **toggle heading**, **botón**, **bookmark web** (tarjeta OpenGraph), **embeds** (YouTube, Maps, Figma, PDF), **ecuación**, **subpágina embebida** como bloque.
+- ❌ **Comentarios en línea** (los comentarios son de página), **@fecha**, recordatorios.
+- ❌ Menú contextual de bloque completo (Convertir en, Mover a, Copiar enlace al bloque, Color), selección multibloque con acciones masivas.
+- ❌ Estilo por página (tipografía Default/Serif/Mono, texto pequeño).
+- ❌ **Backlinks** / «N enlaces entrantes»: no hay índice de enlaces ni UI.
 
 ---
 
 ## 3. COLABORACIÓN, PERMISOS Y ORGANIZACIÓN
 
-- ✅ Compartir espacio + roles owner/editor/viewer.
-- 🟡 Permisos: Notion tiene más niveles (Full access, Can edit, Can comment, Can view, y en BD "Can edit content"/"Can create"). Falta **compartir por PÁGINA** (no solo por espacio) y herencia padre→hijo.
-- ❌ **Comentarios** (página, en línea, hilos, resolver, reacciones, menciones).
-- ❌ **Colaboración en tiempo real** (cursores/presencia, edición simultánea).
-- ❌ **Historial de versiones** (UI de ver/restaurar; el modelo Version ya existe).
-- ❌ **Buscador global** (Ctrl/Cmd+K) con recientes y filtros.
-- ❌ **Bandeja de entrada / notificaciones** (menciones, cambios, asignaciones).
-- ❌ **Favoritos**, páginas recientes, seguir página.
-- ❌ **Publicar página en web** (pública, con opciones).
-- 🟡 Sidebar: falta sección **Favoritos**, **Compartidas**, arrastrar-para-reordenar/mover páginas.
-- ❌ **Papelera**: tenemos jerarquía; falta retención 30 días automática, filtros.
+- ✅ Espacios compartidos con roles `owner` / `editor` / `viewer` (`viewer` no puede mutar nada: se bloquea en `workspaceProcedure`, no solo en la UI).
+- ✅ **Comentarios** de página con resolver y borrar (`CommentsPanel.tsx`).
+- ✅ **Menciones** @página y @persona + **bandeja de notificaciones** con contador.
+- ✅ **Historial de versiones** con UI (snapshot con throttle de 2 min, últimas 50, restaurar). Solo páginas `doc`.
+- ✅ **Buscador global Ctrl+K** (solo por título, no busca en el contenido).
+- ✅ **Favoritos** y **Recientes** en el sidebar; arrastrar para reordenar y mover.
+- ✅ **Papelera** con jerarquía, retención de 30 días con purga perezosa, vaciar y buscar.
+- ✅ **Publicar página en la web** (`/s/<token>`, solo lectura, resuelve también las BD embebidas).
+- ❌ **Colaboración en tiempo real** (cursores, presencia, edición simultánea) — la gran pieza que falta.
+- ❌ **Compartir por página** con herencia padre→hijo; niveles «puede comentar» / «acceso total».
+- ❌ Hilos anidados y reacciones en comentarios; seguir página.
+- ❌ Publicación con contraseña, caducidad o control de indexación.
 
 ---
 
-## 4. UX, NAVEGACIÓN Y DISEÑO ("sensación Notion")
+## 4. UX, NAVEGACIÓN Y DISEÑO
 
-- ❌ **Barra superior**: breadcrumbs, atrás/adelante, botón Compartir, 💬, historial, ⭐ favorito, menú ⋯ de página.
-- ❌ **Panel de registro (peek)**: side/center/full; navegar entre registros; propiedades editables + comentarios + cuerpo.
-- ❌ **Atajos de teclado** (crear página, /, formato, mover bloque, Ctrl+K, etc.).
-- ❌ **Plantillas** (galería + duplicar).
-- ❌ **Importar/Exportar** (Markdown, CSV, PDF, HTML).
-- ❌ **API pública** (para que Dobby/crons metan datos; hay `ApiToken` en el modelo).
-- 🟡 **Tema claro/oscuro**: seguimos `prefers-color-scheme`; falta selector manual.
-- 🟡 **Diseño visual**: dirección correcta (minimalista, acento naranja). Afinar hacia paleta Notion: fondo `#fff`, sidebar gris cálido, texto `#37352F`, colores de bloque (10), tipografía 16px/1.5, controles en hover (⋮⋮ + `+`), radios pequeños, sombras suaves, estados vacíos discretos, microinteracciones 100-200ms.
-- ❌ **Home/Inicio** personalizable, **Mis tareas** (agrega tareas asignadas).
+- ✅ **Barra superior**: miga de pan, ⭐ favorito, menú ⋯, publicar, comentarios, historial.
+- ✅ **Mover a…** con buscador de páginas; **Duplicar** con copia profunda.
+- ✅ **Portada** de página (degradados, URL o imagen subida) e icono emoji.
+- ✅ **Tema claro/oscuro manual** (`data-theme`, sin parpadeo al cargar).
+- ✅ **Plantillas**: galería con 6 (tareas, notas de reunión, CRM, presupuesto, diario, wiki).
+- ✅ **Import/Export**: Markdown ↔ página, CSV ↔ base de datos. ❌ PDF y HTML.
+- ✅ **PWA instalable** + responsive con drawer; iconos y favicon de marca; iconos de interfaz lucide.
+- ✅ **API REST v1** con tokens por espacio (`docs/api.md`).
+- 🟡 **Atajos de teclado**: solo Ctrl+K. Faltan nueva página, favorito, plegar sidebar, cambiar de vista, mover bloque.
+- ❌ **Home/Inicio** personalizable y **Mis tareas** (agregado de lo asignado a mí — ahora es posible con el campo Persona).
+- ❌ Reposicionar la portada; galería de imágenes de portada.
 
 ---
 
-## 5. HOJA DE RUTA PRIORIZADA (propuesta)
+## 5. HOJA DE RUTA
 
-**Fase A — Rematar bases de datos (alto impacto, visible):**
-1. Tipos de campo: **Estado, Multi-selección, Fecha creación/edición, ID**. (Persona y Archivos después.)
-2. **Visibilidad de propiedades** por vista + **fila de cálculos** por columna.
-3. **Agrupar** en tabla; **card size/preview** en Kanban/Galería.
-4. **Panel de registro (peek)** lateral con propiedades + cuerpo de la fila.
-5. **Vista Timeline** (con rango de fechas y, luego, dependencias).
-6. Filtros avanzados AND/OR; color condicional.
+**A — Lo siguiente, barato y visible**
+1. **Creado por / Editado por** (guardar autor en `Record`) y **Mis tareas** apoyado en el campo Persona.
+2. **Agrupar en Tabla** (secciones plegables) + subtotales por grupo.
+3. Operadores `está vacío` / `no está vacío` y fechas relativas en filtros.
+4. **Búsqueda interna** de la base de datos y **búsqueda global por contenido**.
+5. Prefijo editable del campo ID; formatos de número; hora y rango en fechas.
 
-**Fase B — Navegación y organización estilo Notion:**
-7. **Barra superior** (breadcrumbs, favorito, menú ⋯, compartir).
-8. **Buscador global** (Ctrl+K).
-9. **Portada de página** + estilo por página (tipografía, ancho completo) + tema claro/oscuro manual.
-10. Sidebar: **Favoritos**, **Compartidas**, arrastrar para reordenar/mover.
-11. **Historial de versiones** (UI sobre el modelo existente).
+**B — Editor**
+6. **Callout**, **tabla de contenidos** y **toggle heading** (baratos con BlockNote).
+7. **Columnas/layout** y **embeds/bookmark** (más caros).
+8. **Backlinks**: índice de menciones por página.
+9. **Comentarios en línea** sobre selección de texto.
 
-**Fase C — Colaboración avanzada:**
-12. **Comentarios** (página + en línea + hilos).
-13. **Menciones** y **bandeja de entrada** / notificaciones.
-14. **Compartir por página** + herencia de permisos.
-15. **Publicar página en web**.
-16. **Edición en tiempo real** (cursores/presencia) — la más costosa.
+**C — Colaboración**
+10. **Tiempo real con Yjs** (Hocuspocus en el compose + auth por sala + persistencia + `wss` en el proxy DSM). Requiere a Jose delante.
+11. **Compartir por página** con herencia.
+12. **Notificaciones push reales** (el service worker ya existe; falta VAPID y suscripciones) y **webhooks salientes**.
 
-**Fase D — Ecosistema:**
-17. **Plantillas** (galería + plantillas de BD + por defecto).
-18. **Importar/Exportar** (MD/CSV/PDF/HTML).
-19. **API pública** (para Dobby/crons; token ya modelado).
-20. Bloques avanzados (columnas, embeds, sync block, botón, toc).
-
-> Nota: esto es un roadmap grande (meses de trabajo iterativo). Se avanza por incrementos desplegables, priorizando lo más visible y usado por la familia.
+**D — Redondeo**
+13. Relación bidireccional; más rollups; funciones de fecha en fórmulas.
+14. Export a PDF/HTML; plantillas de fila; color condicional; ancho de columna.
+15. Atajos de teclado y Home personalizable.
