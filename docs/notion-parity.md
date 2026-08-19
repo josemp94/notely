@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~0dcd88c). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~3d1486b). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -104,10 +104,10 @@ Falta:
 Schema único en `src/components/editor/mention.tsx` (`editorSchema`), compartido por el editor,
 el panel de registro, el historial y las páginas publicadas.
 
-- ✅ De BlockNote 0.53: párrafo, encabezados 1-6, listas (viñeta, numerada, tareas, toggle), cita, código, divisor, imagen, vídeo, audio, fichero, tabla, enlaces.
-- ✅ Propios: bloques **`database`** (BD embebida), **`callout`** («Llamada», con icono y color) y **`toc`** (tabla de contenidos clicable); inline **`mention`** (@página) y **`personMention`** (@persona, que notifica).
+- ✅ De BlockNote 0.53 (**ahora en español**: el diccionario `es` estaba sin usar): párrafo, encabezados 1-6 y **encabezado plegable**, listas (viñeta, numerada, tareas, toggle), cita, código, divisor, imagen, vídeo, audio, fichero, tabla, enlaces.
+- ✅ Propios: bloques **`database`** (BD embebida o enlazada, que recuerda su vista), **`callout`** («Llamada»), **`toc`** (tabla de contenidos) y **`bookmark`** («Enlace web»: tarjeta OpenGraph o reproductor de YouTube/Vimeo); inline **`mention`** (@página) y **`personMention`** (@persona, que notifica).
 - ✅ Autosave (800 ms contenido / 600 ms título), export a Markdown, portada, icono emoji, ancho completo, solo-lectura para `viewer`.
-- ❌ **Columnas/layout**, **sync block**, **breadcrumb block**, **toggle heading**, **botón**, **bookmark web** (tarjeta OpenGraph), **embeds** (YouTube, Maps, Figma, PDF), **ecuación**, **subpágina embebida** como bloque.
+- ❌ **Columnas/layout** (BlockNote solo las trae en su paquete de pago `xl-multi-column`: habría que implementarlas a mano), **sync block**, **breadcrumb block**, **botón**, embeds de Maps/Figma/PDF, **ecuación**, **subpágina embebida** como bloque.
 - ❌ **Comentarios en línea** (los comentarios son de página), **@fecha**, recordatorios.
 - ❌ Menú contextual de bloque completo (Convertir en, Mover a, Copiar enlace al bloque, Color), selección multibloque con acciones masivas.
 - ❌ Estilo por página (tipografía Default/Serif/Mono, texto pequeño).
@@ -160,14 +160,15 @@ el panel de registro, el historial y las páginas publicadas.
 > una columna · color por etiqueta · plantillas de fila · grupos del campo Estado.
 
 > Hecho también el 19-ago-2026 (tercera tanda): recordatorios de fecha · agrupar en Lista y
-> Galería · vistas enlazadas · congelar la primera columna.
+> Galería · vistas enlazadas (que recuerdan su vista) · congelar la primera columna ·
+> bloque «Enlace web» con vista previa y vídeo incrustado · editor en español.
 
 **A — Lo siguiente, barato y visible**
 1. **Subagrupar** (segundo nivel) y fila de cálculos fuera de la Tabla.
 2. Color condicional por reglas («si la fecha ya pasó, en rojo»).
-3. **Filtros y orden propios de una vista enlazada** (hoy muestra la base con sus vistas).
-4. Envolver texto en celdas y elegir hasta qué columna congelar.
-5. **Toggle heading** y **embeds/bookmark** en el editor.
+3. Envolver texto en celdas y elegir hasta qué columna congelar.
+4. **Columnas** en el editor (a mano: el paquete oficial es de pago).
+5. **Comentarios en línea** (BlockNote expone `@blocknote/core/comments`: merece mirarlo antes de construirlo).
 
 **B — Editor**
 6. **Toggle heading** y **embeds/bookmark** (tarjeta OpenGraph).
