@@ -12,7 +12,7 @@ export function openSearchPalette() {
   window.dispatchEvent(new Event(OPEN_SEARCH_EVENT));
 }
 
-/** Paleta de comandos estilo Notion: Ctrl/Cmd+K, búsqueda por título. */
+/** Paleta de comandos estilo Notion: Ctrl/Cmd+K, busca en títulos y en el contenido. */
 export function SearchPalette() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -56,7 +56,7 @@ export function SearchPalette() {
   }, [query]);
 
   const { data: results } = trpc.pages.search.useQuery(
-    { query: debounced },
+    { query: debounced, inContent: true },
     { enabled: open && debounced.trim().length > 0 },
   );
   const items = debounced.trim() ? results ?? [] : [];
@@ -93,7 +93,7 @@ export function SearchPalette() {
               go(items[selIdx].id);
             }
           }}
-          placeholder="Buscar páginas por título…"
+          placeholder="Buscar en títulos y contenido…"
           className="w-full border-b border-[var(--border)] bg-transparent px-4 py-3 text-sm outline-none placeholder:text-[var(--muted)]"
         />
         <div className="max-h-80 overflow-y-auto p-1">
@@ -111,7 +111,7 @@ export function SearchPalette() {
               </span>
               <span className="min-w-0 flex-1 truncate">{p.title || "Sin título"}</span>
               <span className="shrink-0 text-[11px] text-[var(--muted)]">
-                {p.type === "database" ? "Base de datos" : "Página"}
+                {p.inTitle ? (p.type === "database" ? "Base de datos" : "Página") : "En el contenido"}
               </span>
             </button>
           ))}

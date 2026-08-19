@@ -35,22 +35,48 @@ export const pagesRouter = router({
   }),
 
   /** Búsqueda por título para la paleta de comandos (Ctrl+K). */
+  /**
+   * Busca páginas por título y, si `inContent`, también dentro del texto de los bloques.
+   * Las coincidencias de título van primero; `inContent: false` (el menú "@") solo mira títulos.
+   */
   search: workspaceProcedure
-    .input(z.object({ query: z.string() }))
+    .input(z.object({ query: z.string(), inContent: z.boolean().default(false) }))
     .query(async ({ ctx, input }) => {
       const q = input.query.trim();
       if (!q) return [];
-      return ctx.db.page.findMany({
-        where: {
-          workspaceId: ctx.workspace.id,
-          archivedAt: null,
-          embedded: false,
-          title: { contains: q, mode: "insensitive" },
-        },
-        select: { id: true, title: true, icon: true, type: true },
-        orderBy: { updatedAt: "desc" },
-        take: 20,
-      });
+      const like = `%${q}%`;
+      if (!input.inContent) {
+        const rows = await ctx.db.page.findMany({
+          where: {
+            workspaceId: ctx.workspace.id,
+            archivedAt: null,
+            embedded: false,
+            title: { contains: q, mode: "insensitive" },
+          },
+          select: { id: true, title: true, icon: true, type: true },
+          orderBy: { updatedAt: "desc" },
+          take: 20,
+        });
+        return rows.map((r) => ({ ...r, inTitle: true }));
+      }
+      // jsonb_path_query_array saca solo los textos de los bloques: buscar sobre content::text
+      // en crudo daría falsos positivos con las claves del JSON ("text", "table", "styles"…).
+      // ponytail: escaneo secuencial por espacio; si algún día se nota, índice GIN sobre tsvector.
+      return ctx.db.$queryRaw<
+        { id: string; title: string; icon: string | null; type: string; inTitle: boolean }[]
+      >(Prisma.sql`
+        SELECT id, title, icon, type, (title ILIKE ${like}) AS "inTitle"
+        FROM "Page"
+        WHERE "workspaceId" = ${ctx.workspace.id}
+          AND "archivedAt" IS NULL
+          AND embedded = false
+          AND (
+            title ILIKE ${like}
+            OR jsonb_path_query_array(content, '$.**.text')::text ILIKE ${like}
+          )
+        ORDER BY (title ILIKE ${like}) DESC, "updatedAt" DESC
+        LIMIT 20
+      `);
     }),
 
   /** Contenido de una página. */
