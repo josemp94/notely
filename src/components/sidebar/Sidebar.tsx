@@ -25,12 +25,14 @@ import {
   Star,
   Sun,
   CircleCheck,
+  PanelLeftClose,
   Trash2,
   Upload,
   Users,
   X,
 } from "lucide-react";
 import { trpc } from "@/trpc/react";
+import { NEW_PAGE_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
 import { parseCsv } from "@/lib/csv";
 import { TEMPLATES } from "@/lib/templates";
 import { getRecents, RECENTS_EVENT, type Recent } from "@/lib/recents";
@@ -74,6 +76,15 @@ export function Sidebar() {
       router.push(`/p/${page.id}`);
     },
   });
+  // Atajo Ctrl/Cmd+Alt+N: reutiliza esta misma mutación en vez de duplicarla en el shell.
+  const createMutate = create.mutate;
+  useEffect(() => {
+    if (!canEdit) return;
+    const h = () => createMutate({ parentId: null });
+    window.addEventListener(NEW_PAGE_EVENT, h);
+    return () => window.removeEventListener(NEW_PAGE_EVENT, h);
+  }, [canEdit, createMutate]);
+
   const createDb = trpc.db.create.useMutation({
     onSuccess: async (page) => {
       await utils.pages.tree.invalidate();
@@ -141,6 +152,13 @@ export function Sidebar() {
                 title="Nueva página"
               >
                 <FilePlus size={16} />
+              </button>
+              <button
+                onClick={() => window.dispatchEvent(new Event(TOGGLE_SIDEBAR_EVENT))}
+                className="hidden rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand md:block"
+                title="Plegar el panel (Ctrl+\\)"
+              >
+                <PanelLeftClose size={16} />
               </button>
               <button
                 onClick={() => createDb.mutate({ parentId: null })}
