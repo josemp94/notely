@@ -54,7 +54,15 @@ export function ViewIcon({ type, size = 14 }: { type: string; size?: number }) {
   return <I size={size} />;
 }
 
-function Popover({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+export function Popover({
+  children,
+  onClose,
+  className = "right-0 w-80 p-3",
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+  className?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -64,7 +72,10 @@ function Popover({ children, onClose }: { children: React.ReactNode; onClose: ()
     return () => document.removeEventListener("mousedown", h);
   }, [onClose]);
   return (
-    <div ref={ref} className="absolute right-0 top-full z-30 mt-1 w-80 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 shadow-xl">
+    <div
+      ref={ref}
+      className={`absolute top-full z-30 mt-1 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl ${className}`}
+    >
       {children}
     </div>
   );

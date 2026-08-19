@@ -7,6 +7,26 @@ export type FieldLite = { id: string; name: string; type: string; config: unknow
 export type Attachment = { id: string; url: string; name?: string | null; mime?: string | null };
 export type RecordLite = { id: string; cells?: Record<string, unknown> | null };
 
+/** Formatos del campo Número, como en Notion. */
+export const NUMBER_FORMATS: [string, string][] = [
+  ["plain", "Normal"],
+  ["euro", "Euros (€)"],
+  ["percent", "Porcentaje (%)"],
+  ["bar", "Barra"],
+];
+
+/** Texto de un número según el formato del campo (es-ES: 1.234,5). */
+export function formatNumber(value: unknown, field: FieldLite): string {
+  if (value === null || value === undefined || value === "") return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  const format = (field.config as { format?: string } | null)?.format ?? "plain";
+  const es = (x: number) => x.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+  if (format === "euro") return `${es(n)} €`;
+  if (format === "percent") return `${es(n)} %`;
+  return es(n);
+}
+
 export function optionsOf(field: FieldLite): Option[] {
   const cfg = field.config as { options?: Option[] } | null;
   return cfg?.options ?? [];
@@ -35,6 +55,7 @@ export function displayValue(field: FieldLite, value: unknown, people?: Map<stri
   if (field.type === "files") {
     return (Array.isArray(value) ? (value as Attachment[]) : []).map((a) => a.name || "archivo").join(", ");
   }
+  if (field.type === "number") return formatNumber(value, field);
   if (field.type === "checkbox") return value ? "Sí" : "No";
   if (field.type === "relation") {
     const n = Array.isArray(value) ? value.length : 0;

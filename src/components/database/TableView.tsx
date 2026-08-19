@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Maximize2, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Maximize2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
-import { groupBy, type FieldLite } from "@/lib/cellText";
+import { formatNumber, groupBy, NUMBER_FORMATS, type FieldLite } from "@/lib/cellText";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
+import { Popover } from "./DbToolbar";
 import { RelationCell } from "./RelationCell";
 import { RecordPanel } from "./RecordPanel";
 
@@ -47,6 +48,7 @@ export function TableView({
   const { data: computed } = trpc.db.computed.useQuery({ pageId });
 
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [menuField, setMenuField] = useState<string | null>(null);
   const [openRec, setOpenRec] = useState<Rec | null>(null);
 
   // El filtrado y el orden se aplican en Database (barra de herramientas superior).
@@ -180,7 +182,7 @@ export function TableView({
           <tr className="border-y border-[var(--border)] text-left text-[var(--muted)]">
             <th className="w-8" />
             {fields.map((f) => (
-              <th key={f.id} className="group min-w-40 px-2 py-1 font-medium">
+              <th key={f.id} className="group relative min-w-40 px-2 py-1 font-medium">
                 <span className="flex items-center gap-1">
                   {editingField === f.id ? (
                     <input
@@ -199,15 +201,25 @@ export function TableView({
                   )}
                   <span className="text-[10px] uppercase opacity-50">{FIELD_LABELS[f.type] ?? f.type}</span>
                   <button
-                    onClick={() => {
-                      if (confirm(`¿Borrar la columna "${f.name}"?`)) deleteField.mutate({ id: f.id });
-                    }}
+                    onClick={() => setMenuField(menuField === f.id ? null : f.id)}
                     className="ml-auto opacity-0 transition-opacity group-hover:opacity-100"
-                    title="Borrar columna"
+                    title="Opciones de la columna"
                   >
-                    <X size={14} />
+                    <MoreHorizontal size={14} />
                   </button>
                 </span>
+                {menuField === f.id && (
+                  <FieldMenu
+                    field={f}
+                    onClose={() => setMenuField(null)}
+                    onRename={() => { setMenuField(null); setEditingField(f.id); }}
+                    onConfig={(config) => updateField.mutate({ id: f.id, config: { ...(f.config as object), ...config } })}
+                    onDelete={() => {
+                      if (confirm(`¿Borrar la columna "${f.name}"?`)) deleteField.mutate({ id: f.id });
+                      setMenuField(null);
+                    }}
+                  />
+                )}
               </th>
             ))}
             <th className="px-2 py-1">
@@ -310,6 +322,8 @@ function computeCalc(calc: string, field: FieldLite, records: Rec[]): string {
     (v) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && v.length === 0),
   );
   const nums = nonEmpty.map((v) => Number(v)).filter((n) => Number.isFinite(n));
+  // Los cálculos de un campo Número se muestran con su formato (€, %, miles).
+  const num = (n: number) => (field.type === "number" ? formatNumber(n, field) : String(round2(n)));
   switch (calc) {
     case "count":
       return String(records.length);
@@ -320,13 +334,13 @@ function computeCalc(calc: string, field: FieldLite, records: Rec[]): string {
     case "percent_filled":
       return records.length ? Math.round((nonEmpty.length / records.length) * 100) + "%" : "0%";
     case "sum":
-      return nums.length ? String(round2(nums.reduce((a, b) => a + b, 0))) : "—";
+      return nums.length ? num(round2(nums.reduce((a, b) => a + b, 0))) : "—";
     case "avg":
-      return nums.length ? String(round2(nums.reduce((a, b) => a + b, 0) / nums.length)) : "—";
+      return nums.length ? num(round2(nums.reduce((a, b) => a + b, 0) / nums.length)) : "—";
     case "min":
-      return nums.length ? String(Math.min(...nums)) : "—";
+      return nums.length ? num(Math.min(...nums)) : "—";
     case "max":
-      return nums.length ? String(Math.max(...nums)) : "—";
+      return nums.length ? num(Math.max(...nums)) : "—";
     default:
       return "";
   }
@@ -368,3 +382,72 @@ function CalcCell({
   );
 }
 
+
+/** Menú ⋯ de una columna: renombrar, ajustes propios del tipo y borrar. */
+function FieldMenu({
+  field,
+  onClose,
+  onRename,
+  onConfig,
+  onDelete,
+}: {
+  field: FieldLite;
+  onClose: () => void;
+  onRename: () => void;
+  onConfig: (config: Record<string, unknown>) => void;
+  onDelete: () => void;
+}) {
+  const cfg = (field.config as { prefix?: string; format?: string; max?: number } | null) ?? {};
+  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40";
+  return (
+    <Popover onClose={onClose} className="left-0 w-64 p-2 font-normal normal-case">
+      <button onClick={onRename} className={item}>
+        Renombrar
+      </button>
+
+      {field.type === "id" && (
+        <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
+          <span>Prefijo</span>
+          <input
+            defaultValue={cfg.prefix ?? ""}
+            placeholder="TAREA-"
+            onBlur={(e) => onConfig({ prefix: e.target.value })}
+            className="w-24 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+          />
+        </label>
+      )}
+
+      {field.type === "number" && (
+        <>
+          <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
+            <span>Formato</span>
+            <select
+              value={cfg.format ?? "plain"}
+              onChange={(e) => onConfig({ format: e.target.value })}
+              className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+            >
+              {NUMBER_FORMATS.map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+          </label>
+          {cfg.format === "bar" && (
+            <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
+              <span>Máximo de la barra</span>
+              <input
+                type="number"
+                defaultValue={cfg.max ?? 100}
+                onBlur={(e) => onConfig({ max: Number(e.target.value) || 100 })}
+                className="w-20 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+              />
+            </label>
+          )}
+        </>
+      )}
+
+      <button onClick={onDelete} className={`${item} text-red-500`}>
+        <Trash2 size={14} /> Borrar columna
+      </button>
+    </Popover>
+  );
+}

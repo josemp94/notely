@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { applyViewConfig, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
-import { displayValue, groupBy } from "../src/lib/cellText";
+import { displayValue, formatNumber, groupBy } from "../src/lib/cellText";
 
 const f = (id: string, type: string, config: unknown = {}): DbField => ({ id, name: id, type, config });
 const r = (id: string, cells: Record<string, unknown>): DbRecord => ({ id, cells, order: id });
@@ -99,4 +99,15 @@ const sinValor = groupBy(
 );
 assert.equal(sinValor.at(-1)!.label, "Sin estado");
 
-console.log("OK — filtros, orden, texto de celdas y agrupación");
+// --- Formatos del campo Número ---
+const euros = f("precio", "number", { format: "euro" });
+// En es-ES no se agrupan los miles hasta 5 dígitos (regla CLDR): 1234,5 pero 12.345,6.
+assert.equal(formatNumber(1234.5, euros), "1234,5 €");
+assert.equal(formatNumber(12345.6, euros), "12.345,6 €");
+assert.equal(formatNumber(0, euros), "0 €");
+assert.equal(formatNumber(null, euros), "");
+assert.equal(formatNumber(30, f("pct", "number", { format: "percent" })), "30 %");
+assert.equal(formatNumber(1234.5, f("n", "number")), "1234,5");
+assert.equal(displayValue(euros, 12), "12 €"); // el formato también manda en tarjetas y listas
+
+console.log("OK — filtros, orden, texto de celdas, agrupación y formatos");

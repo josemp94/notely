@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Check, Paperclip, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import { optionsOf, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
+import { formatNumber, optionsOf, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
 
 const COLORS: Record<string, string> = {
   gray: "#e5e0d8",
@@ -146,18 +146,56 @@ export function Cell({
     );
   }
 
-  // text / number (no controlado; commit al salir)
+  if (field.type === "number") {
+    return <NumberCell field={field} value={value} onCommit={onCommit} />;
+  }
+
+  // text (no controlado; commit al salir)
   return (
     <input
-      type={field.type === "number" ? "number" : "text"}
+      type="text"
       defaultValue={value == null ? "" : String(value)}
-      onBlur={(e) => {
-        const raw = e.target.value;
-        if (field.type === "number") onCommit(raw === "" ? null : Number(raw));
-        else onCommit(raw === "" ? null : raw);
-      }}
+      onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
       className="w-full bg-transparent px-1 py-0.5 text-sm outline-none"
     />
+  );
+}
+
+/**
+ * Campo Número: muestra el valor con su formato (1.234,5 · € · % · barra) y, al
+ * enfocarlo, el número crudo para poder editarlo.
+ */
+function NumberCell({ field, value, onCommit }: { field: FieldLite; value: unknown; onCommit: (v: unknown) => void }) {
+  const cfg = (field.config as { format?: string; max?: number } | null) ?? {};
+  const raw = value == null ? "" : String(value);
+  const n = Number(value);
+  const max = Number(cfg.max) > 0 ? Number(cfg.max) : 100;
+
+  return (
+    <div className="w-full">
+      <input
+        type="text"
+        inputMode="decimal"
+        key={raw}
+        defaultValue={formatNumber(value, field)}
+        onFocus={(e) => (e.target.value = raw)}
+        onBlur={(e) => {
+          const text = e.target.value.trim().replace(/[€%\s.]/g, "").replace(",", ".");
+          const next = text === "" ? null : Number(text);
+          e.target.value = formatNumber(next, field);
+          onCommit(next === null || Number.isNaN(next) ? null : next);
+        }}
+        className="w-full bg-transparent px-1 py-0.5 text-sm outline-none"
+      />
+      {cfg.format === "bar" && Number.isFinite(n) && (
+        <div className="mx-1 mb-0.5 h-1 rounded-full bg-[var(--border)]">
+          <div
+            className="h-1 rounded-full bg-brand"
+            style={{ width: `${Math.max(0, Math.min(100, (n / max) * 100))}%` }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
