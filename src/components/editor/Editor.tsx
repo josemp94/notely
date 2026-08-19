@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Database, Download, FileText, Lightbulb, Link as LinkIcon, Link2, ListTree } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
+import { es } from "@blocknote/core/locales";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -58,7 +59,7 @@ export function Editor({
     return Array.isArray(c) && c.length > 0 ? c : undefined;
   }, [initialContent]);
 
-  const editor = useCreateBlockNote({ schema: editorSchema, initialContent: initial });
+  const editor = useCreateBlockNote({ dictionary: es, schema: editorSchema, initialContent: initial });
 
   function scheduleSave() {
     if (!canEdit) return;

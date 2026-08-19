@@ -1,5 +1,6 @@
 "use client";
 
+import { es } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
@@ -53,6 +54,7 @@ function PublicDoc({ content }: { content: unknown }) {
   const theme = useTheme();
   const blocks = content as NotionoPartialBlock[] | undefined;
   const editor = useCreateBlockNote({
+    dictionary: es,
     schema: editorSchema,
     initialContent: Array.isArray(blocks) && blocks.length > 0 ? blocks : undefined,
   });

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { History, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import { es } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { editorSchema, type NotionoPartialBlock } from "@/components/editor/mention";
@@ -124,6 +125,7 @@ function Preview({ content }: { content: unknown }) {
   const theme = useTheme();
   const blocks = content as NotionoPartialBlock[];
   const editor = useCreateBlockNote({
+    dictionary: es,
     schema: editorSchema,
     initialContent: Array.isArray(blocks) && blocks.length > 0 ? blocks : undefined,
   });

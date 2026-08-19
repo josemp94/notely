@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Trash2, X } from "lucide-react";
+import { es } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
@@ -67,7 +68,7 @@ export function RecordPanel({
     return Array.isArray(c) && c.length > 0 ? c : undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record.id]);
-  const editor = useCreateBlockNote({ schema: editorSchema, initialContent: initial });
+  const editor = useCreateBlockNote({ dictionary: es, schema: editorSchema, initialContent: initial });
 
   const onBodyChange = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
