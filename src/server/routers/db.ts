@@ -418,6 +418,39 @@ export const dbRouter = router({
       });
     }),
 
+  /** Reordena una fila entre sus hermanas (arrastrar y soltar en la Tabla). */
+  moveRecord: workspaceProcedure
+    .input(z.object({ id: z.string(), beforeId: z.string().optional(), afterId: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const rec = await ctx.db.record.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+        select: { id: true, collectionId: true, parentId: true },
+      });
+      if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Solo se reordena entre hermanas: soltar sobre una fila de otro nivel no cambia el padre.
+      const siblings = await ctx.db.record.findMany({
+        where: { collectionId: rec.collectionId, parentId: rec.parentId, id: { not: rec.id } },
+        select: { id: true, order: true },
+        orderBy: { order: "asc" },
+      });
+      const anchorId = input.beforeId ?? input.afterId;
+      const at = anchorId ? siblings.findIndex((s) => s.id === anchorId) : -1;
+      let a: string | null = siblings.at(-1)?.order ?? null; // por defecto, al final
+      let b: string | null = null;
+      if (at !== -1) {
+        if (input.beforeId) {
+          a = siblings[at - 1]?.order ?? null;
+          b = siblings[at].order;
+        } else {
+          a = siblings[at].order;
+          b = siblings[at + 1]?.order ?? null;
+        }
+      }
+      await ctx.db.record.update({ where: { id: rec.id }, data: { order: rankBetween(a, b) } });
+      return { ok: true };
+    }),
+
   /** Duplica una fila justo debajo, con sus subtareas. */
   duplicateRecord: workspaceProcedure
     .input(z.object({ id: z.string() }))

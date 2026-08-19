@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Maximize2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
 import { formatNumber, groupBy, NUMBER_FORMATS, type FieldLite } from "@/lib/cellText";
@@ -43,6 +43,7 @@ export function TableView({
   const addSubRecord = trpc.db.addSubRecord.useMutation({ onSuccess: invalidate });
   const deleteRecord = trpc.db.deleteRecord.useMutation({ onSuccess: invalidate });
   const duplicateRecord = trpc.db.duplicateRecord.useMutation({ onSuccess: invalidate });
+  const moveRecord = trpc.db.moveRecord.useMutation({ onSuccess: invalidate });
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
@@ -52,6 +53,9 @@ export function TableView({
   const [menuField, setMenuField] = useState<string | null>(null);
   // Ancho de columna: se arrastra en local y se guarda en la vista al soltar.
   const [drag, setDrag] = useState<{ fieldId: string; startX: number; startW: number; w: number } | null>(null);
+  // Arrastre de filas: solo con el orden natural (sin orden ni agrupación activos).
+  const [dragRow, setDragRow] = useState<string | null>(null);
+  const [dropRow, setDropRow] = useState<{ id: string; pos: "before" | "after" } | null>(null);
   const [openRec, setOpenRec] = useState<Rec | null>(null);
 
   // El filtrado y el orden se aplican en Database (barra de herramientas superior).
@@ -130,20 +134,66 @@ export function TableView({
   // Agrupar en secciones plegables. Como en Notion, agrupar aplana la jerarquía de
   // subtareas: cada fila cae en el grupo de su propio valor, sin sangría.
   const groupField = fields.find((f) => f.id === cfg.groupByFieldId);
+  const canReorder = !groupField && !(cfg.sorts?.length > 0);
   const groups = groupBy(records, groupField, people);
   const hasCalcs = fields.some((f) => calcs[f.id]);
 
   /** Una fila de la tabla; `depth`/`hasChildren` solo se usan sin agrupar (árbol de subtareas). */
   const renderRow = ({ rec: r, depth, hasChildren }: { rec: Rec; depth: number; hasChildren: boolean }) => (
-    <tr key={r.id} className="group border-b border-[var(--border)] hover:bg-[var(--border)]/20">
+    <tr
+      key={r.id}
+      className={`group border-b border-[var(--border)] hover:bg-[var(--border)]/20 ${
+        dropRow?.id === r.id
+          ? dropRow.pos === "before"
+            ? "border-t-2 border-t-brand"
+            : "border-b-2 border-b-brand"
+          : ""
+      }`}
+      onDragOver={(e) => {
+        if (!canReorder || !dragRow || dragRow === r.id) return;
+        e.preventDefault();
+        const rect = e.currentTarget.getBoundingClientRect();
+        setDropRow({ id: r.id, pos: e.clientY - rect.top < rect.height / 2 ? "before" : "after" });
+      }}
+      onDragLeave={() => setDropRow((d) => (d?.id === r.id ? null : d))}
+      onDrop={(e) => {
+        e.preventDefault();
+        const target = dropRow;
+        setDropRow(null);
+        if (!canReorder || !dragRow || !target || dragRow === target.id) return;
+        moveRecord.mutate(
+          target.pos === "before" ? { id: dragRow, beforeId: target.id } : { id: dragRow, afterId: target.id },
+        );
+        setDragRow(null);
+      }}
+    >
       <td className="px-1 py-1 text-center">
-        <button
-          onClick={() => setOpenRec(r)}
-          className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
-          title="Abrir ficha"
-        >
-          <Maximize2 size={14} />
-        </button>
+        <div className="flex items-center">
+          {canReorder && (
+            <span
+              draggable
+              onDragStart={(e) => {
+                setDragRow(r.id);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              onDragEnd={() => {
+                setDragRow(null);
+                setDropRow(null);
+              }}
+              className="cursor-grab text-[var(--muted)] opacity-0 transition-opacity group-hover:opacity-100"
+              title="Arrastra para reordenar"
+            >
+              <GripVertical size={13} />
+            </span>
+          )}
+          <button
+            onClick={() => setOpenRec(r)}
+            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
+            title="Abrir ficha"
+          >
+            <Maximize2 size={14} />
+          </button>
+        </div>
       </td>
       {fields.map((f, i) => {
         const cell =
@@ -213,7 +263,7 @@ export function TableView({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-y border-[var(--border)] text-left text-[var(--muted)]">
-            <th className="w-8" />
+            <th className="w-14" />
             {fields.map((f) => (
               <th
                 key={f.id}
