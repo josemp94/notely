@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~07a1398). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~0dcd88c). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -33,7 +33,7 @@ Lista real: `FIELD_TYPES` en `src/server/routers/db.ts` y `TYPES`/`FIELD_LABELS`
 | Número | ✅ | ✅ formatos normal, euros, porcentaje y barra (con máximo configurable); falta anillo |
 | Selección / Selección múltiple | ✅ | ✅ `select`, `multiselect` (editor de etiquetas con 6 colores, crear al vuelo) |
 | Estado | ✅ | ✅ `status` con grupos Por hacer / En curso / Hecho y opciones movibles entre grupos |
-| Fecha | ✅ | 🟡 `date` con hora y rango (`{start,end}`); falta recordatorio |
+| Fecha | ✅ | ✅ `date` con hora, rango y recordatorio en la bandeja al llegar el día |
 | Casilla / URL / Correo / Teléfono | ✅ | ✅ |
 | **Persona** | ✅ | ✅ `person` — varios miembros del espacio, avatar de iniciales, filtro por persona |
 | **Archivos y multimedia** | ✅ | ✅ `files` — adjuntos a `/api/upload` (máx. 8 MB), miniatura si es imagen |
@@ -70,17 +70,18 @@ Hecho:
 - ✅ Renombrar/borrar vista, «Mostrar como», exportar CSV, campo de fecha del Calendario, inicio/fin del Cronograma, config de Gráfica (barras/líneas/tarta/donut × contar/sumar/media).
 
 Falta:
-- ❌ **Subagrupar** (segundo nivel), y agrupar en Lista/Galería.
+- ✅ **Agrupar** en Tabla, Kanban, Lista y Galería. ❌ Subagrupar (segundo nivel).
 - ❌ **Panel de registro** en Kanban; modos side/center/full; navegar entre registros; comentarios de fila.
 - ✅ **Ancho de columna** ajustable arrastrando y persistente por vista (doble clic vuelve al automático).
-- ❌ Congelar columnas y envolver texto.
+- ✅ **Primera columna congelada** al desplazar en horizontal. ❌ Envolver texto y elegir hasta qué columna congelar.
 - ✅ **Reordenar filas arrastrando** (cuando la vista no tiene orden ni agrupación) y **duplicar fila** con sus subtareas.
 - ❌ Reordenar columnas arrastrando.
 - ❌ Fila de cálculos fuera de la Tabla.
 - ✅ **Plantillas de fila** («Nueva fila ▾», guardadas desde la ficha de una fila).
 - ✅ **Color de fila y de tarjeta** por la opción de una etiqueta («Color por»).
 - ✅ **Cambiar el tipo** de una columna ya creada, convirtiendo los valores.
-- ❌ Color condicional por reglas (hoy solo por etiqueta), bloquear esquema, vistas enlazadas (linked database).
+- ✅ **Vistas enlazadas**: el menú `/` inserta una base de datos que ya existe en cualquier página.
+- ❌ Color condicional por reglas (hoy solo por etiqueta) y bloquear esquema.
 
 ### 1.4 Relaciones, rollups y fórmulas
 
@@ -124,6 +125,7 @@ el panel de registro, el historial y las páginas publicadas.
 - ✅ **Favoritos** y **Recientes** en el sidebar; arrastrar para reordenar y mover.
 - ✅ **Papelera** con jerarquía, retención de 30 días con purga perezosa, vaciar y buscar.
 - ✅ **Publicar página en la web** (`/s/<token>`, solo lectura, resuelve también las BD embebidas).
+- ✅ **Recordatorios**: al abrir la app avisa en la bandeja de lo que tienes asignado y ya vence.
 - ❌ **Colaboración en tiempo real** (cursores, presencia, edición simultánea) — la gran pieza que falta.
 - ❌ **Compartir por página** con herencia padre→hijo; niveles «puede comentar» / «acceso total».
 - ❌ Hilos anidados y reacciones en comentarios; seguir página.
@@ -157,12 +159,15 @@ el panel de registro, el historial y las páginas publicadas.
 > Hecho también el 19-ago-2026 (segunda mitad): fechas con hora y rango · cambiar el tipo de
 > una columna · color por etiqueta · plantillas de fila · grupos del campo Estado.
 
+> Hecho también el 19-ago-2026 (tercera tanda): recordatorios de fecha · agrupar en Lista y
+> Galería · vistas enlazadas · congelar la primera columna.
+
 **A — Lo siguiente, barato y visible**
-1. **Agrupar en Lista y Galería** y subagrupar (hoy agrupan Tabla y Kanban).
-2. **Fila de cálculos** fuera de la Tabla; **congelar columnas** y envolver texto.
-3. **Recordatorios** de fecha (avisar en la bandeja cuando llega el día).
-4. **Vistas enlazadas** (una vista de otra base de datos dentro de una página).
-5. Color condicional por reglas («si la fecha ya pasó, en rojo»).
+1. **Subagrupar** (segundo nivel) y fila de cálculos fuera de la Tabla.
+2. Color condicional por reglas («si la fecha ya pasó, en rojo»).
+3. **Filtros y orden propios de una vista enlazada** (hoy muestra la base con sus vistas).
+4. Envolver texto en celdas y elegir hasta qué columna congelar.
+5. **Toggle heading** y **embeds/bookmark** en el editor.
 
 **B — Editor**
 6. **Toggle heading** y **embeds/bookmark** (tarjeta OpenGraph).
