@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~40ce6f8). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~fefb206). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -111,7 +111,7 @@ el panel de registro, el historial y las páginas publicadas.
 - ✅ Propios: bloques **`database`** (BD embebida o enlazada, que recuerda su vista), **`callout`** («Llamada»), **`toc`** (tabla de contenidos) y **`bookmark`** («Enlace web»: tarjeta OpenGraph o reproductor de YouTube/Vimeo); inline **`mention`** (@página) y **`personMention`** (@persona, que notifica).
 - ✅ Autosave (800 ms contenido / 600 ms título), export a Markdown, portada, icono emoji, ancho completo, solo-lectura para `viewer`.
 - ❌ **Columnas/layout** (BlockNote solo las trae en su paquete de pago `xl-multi-column`: habría que implementarlas a mano), **sync block**, **breadcrumb block**, **botón**, embeds de Maps/Figma/PDF, **ecuación**, **subpágina embebida** como bloque.
-- ❌ **Comentarios en línea**: BlockNote trae toda la maquinaria (marca, plugin y UI en `@blocknote/react`), pero sus almacenes de hilos listos (`YjsThreadStore`, `RESTYjsThreadStore`) van sobre Yjs y el de Tiptap exige su servicio de pago. **Conviene hacerlos junto con el tiempo real**: entonces salen casi gratis, en vez de escribir ahora un `ThreadStore` propio que habría que tirar.
+- ❌ **Comentarios en línea**: ahora que Yjs está montado, `YjsThreadStore` (`@blocknote/core/y/comments`) los deja casi hechos. Es lo siguiente natural del editor.
 - ❌ **@fecha** en el editor.
 - ❌ Menú contextual de bloque completo (Convertir en, Mover a, Copiar enlace al bloque, Color), selección multibloque con acciones masivas.
 - ❌ Estilo por página (tipografía Default/Serif/Mono, texto pequeño).
@@ -130,7 +130,7 @@ el panel de registro, el historial y las páginas publicadas.
 - ✅ **Papelera** con jerarquía, retención de 30 días con purga perezosa, vaciar y buscar.
 - ✅ **Publicar página en la web** (`/s/<token>`, solo lectura, resuelve también las BD embebidas).
 - ✅ **Recordatorios**: al abrir la app avisa en la bandeja de lo que tienes asignado y ya vence.
-- ❌ **Colaboración en tiempo real** (cursores, presencia, edición simultánea) — la gran pieza que falta.
+- ✅ **Colaboración en tiempo real** (cursores y edición simultánea) — falta activar el proxy del NAS, ver `docs/colaboracion.md`.
 - ❌ **Compartir por página** con herencia padre→hijo; niveles «puede comentar» / «acceso total».
 - ❌ Hilos anidados y reacciones en comentarios; seguir página.
 - ❌ Publicación con contraseña, caducidad o control de indexación.
@@ -171,7 +171,7 @@ el panel de registro, el historial y las páginas publicadas.
 > papelera de filas · webhooks salientes · **notificaciones push reales**.
 
 **A — Lo siguiente, barato y visible**
-1. **Subagrupar** (segundo nivel) y fila de cálculos fuera de la Tabla.
+1. **Comentarios en línea** sobre Yjs (`YjsThreadStore`) y **subagrupar** (segundo nivel).
 2. Envolver texto en celdas y elegir hasta qué columna congelar (necesita anchos conocidos).
 3. **Columnas** en el editor (a mano: el paquete oficial de BlockNote es de pago).
 4. Más eventos de webhook (páginas, comentarios) y reintentos con espera.
