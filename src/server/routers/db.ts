@@ -7,19 +7,23 @@ import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
 
 // Tipos de campo soportados en Fase 2
-export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "person", "files", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
+export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "person", "files", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "created_by", "last_edited_by", "id"] as const;
 
 /** Valor de una celda como texto plano (export CSV y vista pública). */
 export function cellToText(
   f: { type: string; config: unknown },
   v: unknown,
-  r: { createdAt: Date; updatedAt: Date; seq: number | null },
+  r: { createdAt: Date; updatedAt: Date; seq: number | null; createdById?: string | null; updatedById?: string | null },
   /** userId -> nombre, para los campos de tipo "person" (ver peopleOf). */
   people?: Map<string, string>,
 ): string {
   if (f.type === "created_time") return r.createdAt.toISOString();
   if (f.type === "last_edited_time") return r.updatedAt.toISOString();
   if (f.type === "id") return r.seq == null ? "" : String(r.seq);
+  if (f.type === "created_by" || f.type === "last_edited_by") {
+    const uid = f.type === "created_by" ? r.createdById : r.updatedById;
+    return uid ? (people?.get(uid) ?? uid) : "";
+  }
   if (v === undefined || v === null || v === "") return "";
   const opts = ((f.config as { options?: { id: string; label: string }[] })?.options) ?? [];
   if (f.type === "select" || f.type === "status") return opts.find((o) => o.id === v)?.label ?? String(v);
@@ -40,7 +44,7 @@ export async function peopleOf(
   workspaceId: string,
   fields: { type: string }[],
 ): Promise<Map<string, string>> {
-  if (!fields.some((f) => f.type === "person")) return new Map();
+  if (!fields.some((f) => ["person", "created_by", "last_edited_by"].includes(f.type))) return new Map();
   const ms = await db.member.findMany({
     where: { workspaceId },
     select: { user: { select: { id: true, name: true, email: true } } },
@@ -204,7 +208,7 @@ export const dbRouter = router({
             fieldIds.forEach((fid, j) => {
               if (row[j]) cells[fid] = row[j];
             });
-            return { collectionId: collection.id, order: rOrd, seq: i + 1, cells };
+            return { collectionId: collection.id, order: rOrd, seq: i + 1, cells, createdById: ctx.user.id, updatedById: ctx.user.id };
           });
           if (records.length) await tx.record.createMany({ data: records });
           return page;
@@ -309,6 +313,8 @@ export const dbRouter = router({
           order: rankAtEnd(last?.order ?? null),
           seq: (maxSeq._max.seq ?? 0) + 1,
           cells: input.cells ?? {},
+          createdById: ctx.user.id,
+          updatedById: ctx.user.id,
         },
       });
     }),
@@ -338,6 +344,8 @@ export const dbRouter = router({
           order: rankAtEnd(last?.order ?? null),
           seq: (maxSeq._max.seq ?? 0) + 1,
           cells: {},
+          createdById: ctx.user.id,
+          updatedById: ctx.user.id,
         },
       });
     }),
@@ -353,7 +361,7 @@ export const dbRouter = router({
       if (input.value === null || input.value === "") delete cells[input.fieldId];
       return ctx.db.record.update({
         where: { id: input.recordId },
-        data: { cells: cells as Prisma.InputJsonValue },
+        data: { cells: cells as Prisma.InputJsonValue, updatedById: ctx.user.id },
         select: { id: true, cells: true },
       });
     }),
@@ -381,7 +389,7 @@ export const dbRouter = router({
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db.record.update({
         where: { id: input.id },
-        data: { content: input.content as Prisma.InputJsonValue },
+        data: { content: input.content as Prisma.InputJsonValue, updatedById: ctx.user.id },
         select: { id: true },
       });
     }),

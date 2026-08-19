@@ -40,7 +40,9 @@ export function displayValue(field: FieldLite, value: unknown, people?: Map<stri
     const n = Array.isArray(value) ? value.length : 0;
     return n ? `${n} vinculado${n > 1 ? "s" : ""}` : "";
   }
-  if (field.type === "rollup" || field.type === "formula") return ""; // calculado; no vive en la celda
+  // Calculados y automáticos: no viven en la celda (el autor y las fechas salen del propio registro).
+  if (["rollup", "formula", "created_by", "last_edited_by", "created_time", "last_edited_time"].includes(field.type))
+    return "";
   return String(value);
 }
 

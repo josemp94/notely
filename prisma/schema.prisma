@@ -144,6 +144,8 @@ model Record {
   parent       Record?    @relation("subitems", fields: [parentId], references: [id], onDelete: Cascade)
   children     Record[]   @relation("subitems")
   cells        Json       @default("{}") // { fieldId: value }
+  createdById  String? // quién creó la fila (campo "Creado por"); sin FK, ver migración
+  updatedById  String? // quién la editó por última vez (campo "Editado por")
   content      Json?      // cuerpo de bloques (BlockNote) de la fila (fila = página)
   seq          Int?       // ID incremental por colección (tipo de campo "id")
   order        String

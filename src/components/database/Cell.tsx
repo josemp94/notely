@@ -32,6 +32,8 @@ export function Cell({
   rollupValue,
   createdAt,
   updatedAt,
+  createdById,
+  updatedById,
   seq,
 }: {
   field: FieldLite;
@@ -40,6 +42,8 @@ export function Cell({
   rollupValue?: string | number;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+  createdById?: string | null;
+  updatedById?: string | null;
   seq?: number;
 }) {
   // ID incremental (solo lectura), con prefijo opcional
@@ -50,6 +54,11 @@ export function Cell({
         {seq == null ? "—" : `${prefix}${seq}`}
       </span>
     );
+  }
+
+  // Auto (solo lectura): quién creó o editó la fila
+  if (field.type === "created_by" || field.type === "last_edited_by") {
+    return <AuthorCell userId={field.type === "created_by" ? createdById : updatedById} />;
   }
 
   // Auto (solo lectura): fecha de creación / última edición
@@ -435,5 +444,23 @@ function FilesCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown)
       <input ref={inputRef} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
       {error && <span className="w-full text-[11px] text-red-600">{error}</span>}
     </div>
+  );
+}
+
+/** Campo "Creado por" / "Editado por": solo lectura, resuelto contra los miembros del espacio. */
+function AuthorCell({ userId }: { userId?: string | null }) {
+  const people = usePeople();
+  const name = userId ? (people.get(userId) ?? "Desconocido") : null;
+  return (
+    <span className="flex items-center gap-1 px-1 py-0.5 text-sm text-[var(--muted)]">
+      {name ? (
+        <>
+          <Avatar name={name} />
+          {name}
+        </>
+      ) : (
+        "—"
+      )}
+    </span>
   );
 }

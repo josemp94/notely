@@ -21,6 +21,8 @@ type Rec = {
   content?: unknown;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+  createdById?: string | null;
+  updatedById?: string | null;
   seq?: number;
 };
 
@@ -111,6 +113,8 @@ export function RecordPanel({
                       rollupValue={computed?.rollups?.[record.id]?.[f.id]}
                       createdAt={record.createdAt}
                       updatedAt={record.updatedAt}
+                      createdById={record.createdById}
+                      updatedById={record.updatedById}
                       seq={record.seq}
                       onCommit={(value) => updateCell.mutate({ recordId: record.id, fieldId: f.id, value })}
                     />

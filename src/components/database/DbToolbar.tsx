@@ -298,7 +298,9 @@ export function DbToolbar({
                       .filter((f) =>
                         view.type === "kanban"
                           ? f.type === "select" || f.type === "status"
-                          : !["rollup", "formula", "relation", "files"].includes(f.type),
+                          : !["rollup", "formula", "relation", "files", "created_by", "last_edited_by", "created_time", "last_edited_time"].includes(
+                              f.type,
+                            ),
                       )
                       .map((f) => (
                         <option key={f.id} value={f.id}>{f.name}</option>
