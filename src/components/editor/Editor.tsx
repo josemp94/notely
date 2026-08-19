@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Database, Download, FileText, Lightbulb, Link2, ListTree } from "lucide-react";
+import { Check, Database, Download, FileText, Lightbulb, Link as LinkIcon, Link2, ListTree } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -51,6 +51,7 @@ export function Editor({
   });
   const setCoverM = trpc.pages.setCover.useMutation();
   const createInlineDb = trpc.db.createInline.useMutation();
+  const linkPreview = trpc.pages.linkPreview.useMutation();
 
   const initial = useMemo<NotionoPartialBlock[] | undefined>(() => {
     const c = initialContent as NotionoPartialBlock[] | undefined;
@@ -164,6 +165,22 @@ export function Editor({
                   group: "Bloques básicos",
                   icon: <Lightbulb size={18} />,
                   onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: "callout" }),
+                },
+                {
+                  title: "Enlace web",
+                  subtext: "Tarjeta con la vista previa, o el vídeo incrustado",
+                  aliases: ["enlace", "link", "bookmark", "marcador", "youtube", "video", "vídeo", "embed"],
+                  group: "Bloques básicos",
+                  icon: <LinkIcon size={18} />,
+                  onItemClick: async () => {
+                    const url = prompt("Pega la dirección del enlace o del vídeo");
+                    if (!url?.trim()) return;
+                    // Si la vista previa falla (sitio caído o que bloquea bots), se inserta igual con la URL.
+                    const preview = await linkPreview
+                      .mutateAsync({ url: url.trim() })
+                      .catch(() => ({ url: url.trim(), title: url.trim(), description: "", image: "", siteName: "" }));
+                    insertOrUpdateBlockForSlashMenu(editor, { type: "bookmark", props: preview });
+                  },
                 },
                 {
                   title: "Tabla de contenidos",

@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { TEMPLATES } from "@/lib/templates";
+import { fetchLinkPreview } from "../linkPreview";
 
 /** Días que aguanta una página en la papelera antes de la auto-purga (también en /trash). */
 const TRASH_TTL_DAYS = 30;
@@ -99,6 +100,11 @@ export const pagesRouter = router({
         LIMIT 50
       `);
     }),
+
+  /** Vista previa de un enlace (OpenGraph) para el bloque "bookmark" del editor. */
+  linkPreview: workspaceProcedure
+    .input(z.object({ url: z.string().min(4).max(2000) }))
+    .mutation(({ input }) => fetchLinkPreview(input.url)),
 
   /** Contenido de una página. */
   get: workspaceProcedure

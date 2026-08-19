@@ -4,6 +4,7 @@ import { FileText } from "lucide-react";
 import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs } from "@blocknote/core";
 import { createReactInlineContentSpec, SuggestionMenuController } from "@blocknote/react";
 import { trpc } from "@/trpc/react";
+import { BookmarkBlock } from "./bookmarkBlock";
 import { CalloutBlock } from "./calloutBlock";
 import { DatabaseBlock } from "./databaseBlock";
 import { TocBlock } from "./tocBlock";
@@ -53,7 +54,7 @@ const PersonMention = createReactInlineContentSpec(
 
 /** Schema compartido por todos los editores BlockNote de la app (registra "mention", "personMention" y el bloque "database"). */
 export const editorSchema = BlockNoteSchema.create({
-  blockSpecs: { ...defaultBlockSpecs, database: DatabaseBlock(), callout: CalloutBlock(), toc: TocBlock() },
+  blockSpecs: { ...defaultBlockSpecs, database: DatabaseBlock(), callout: CalloutBlock(), toc: TocBlock(), bookmark: BookmarkBlock() },
   inlineContentSpecs: { ...defaultInlineContentSpecs, mention: Mention, personMention: PersonMention },
 });
 

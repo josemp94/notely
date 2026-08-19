@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { applyViewConfig, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
 import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, groupBy, rowColor } from "../src/lib/cellText";
+import { embedUrl } from "../src/lib/embed";
 
 const f = (id: string, type: string, config: unknown = {}): DbField => ({ id, name: id, type, config });
 const r = (id: string, cells: Record<string, unknown>): DbRecord => ({ id, cells, order: id });
@@ -146,4 +147,11 @@ assert.equal(rowColor(estado, {}), undefined); // sin valor, sin color
 assert.equal(rowColor(undefined, { estado: "done" }), undefined); // sin campo de color configurado
 assert.equal(rowColor(fields[1], { tags: ["t1"] }), undefined); // opción inexistente: sin color
 
-console.log("OK — filtros, orden, texto de celdas, agrupación, formatos, fechas y colores");
+// --- Enlaces de vídeo que se incrustan como reproductor ---
+assert.equal(embedUrl("https://www.youtube.com/watch?v=abc123"), "https://www.youtube.com/embed/abc123");
+assert.equal(embedUrl("https://youtu.be/xyz789"), "https://www.youtube.com/embed/xyz789");
+assert.equal(embedUrl("https://vimeo.com/123456"), "https://player.vimeo.com/video/123456");
+assert.equal(embedUrl("https://elpais.com/receta"), null); // una web normal es tarjeta, no reproductor
+assert.equal(embedUrl("no es una url"), null);
+
+console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores y enlaces");
