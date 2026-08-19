@@ -217,6 +217,58 @@ export const dbRouter = router({
       );
     }),
 
+  /**
+   * "Mis tareas": filas de cualquier base de datos del espacio en las que un campo
+   * de tipo Persona me incluye. Devuelve también el estado y la fecha si la BD los tiene.
+   */
+  myTasks: workspaceProcedure.query(async ({ ctx }) => {
+    const personFields = await ctx.db.field.findMany({
+      where: { type: "person", collection: { page: { workspaceId: ctx.workspace.id, archivedAt: null } } },
+      select: { id: true, collectionId: true },
+    });
+    if (!personFields.length) return [];
+
+    const records = await ctx.db.record.findMany({
+      where: {
+        OR: personFields.map((f) => ({
+          collectionId: f.collectionId,
+          cells: { path: [f.id], array_contains: ctx.user.id },
+        })),
+      },
+      include: {
+        collection: {
+          include: {
+            page: { select: { id: true, title: true, icon: true } },
+            fields: { orderBy: { order: "asc" } },
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 200,
+    });
+
+    return records.map((r) => {
+      const fields = r.collection.fields;
+      const cells = (r.cells ?? {}) as Record<string, unknown>;
+      const first = (type: string) => fields.find((f) => f.type === type);
+      const titleField = first("text");
+      const statusField = first("status") ?? first("select");
+      const dateField = first("date");
+      const label = (f: (typeof fields)[number] | undefined) =>
+        f ? cellToText(f, cells[f.id], r) : "";
+      return {
+        recordId: r.id,
+        pageId: r.collection.page.id,
+        dbTitle: r.collection.page.title || r.collection.name,
+        dbIcon: r.collection.page.icon,
+        title: titleField ? String(cells[titleField.id] ?? "") : "",
+        status: label(statusField),
+        date: dateField ? String(cells[dateField.id] ?? "") : "",
+        updatedAt: r.updatedAt,
+      };
+    });
+  }),
+
   /** Devuelve todo lo necesario para renderizar la base de datos de una página. */
   get: workspaceProcedure
     .input(z.object({ pageId: z.string() }))

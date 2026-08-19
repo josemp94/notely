@@ -24,6 +24,7 @@ import {
   Sparkles,
   Star,
   Sun,
+  CircleCheck,
   Trash2,
   Upload,
   Users,
@@ -199,6 +200,12 @@ export function Sidebar() {
         <Recents workspaceId={me?.workspace?.id} pages={pages} />
         <Tree nodes={byParent.get(null) ?? []} byParent={byParent} parentById={parentById} depth={0} canEdit={canEdit} />
       </nav>
+      <Link
+        href="/my-tasks"
+        className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted)] hover:text-brand"
+      >
+        <CircleCheck size={16} /> Mis tareas
+      </Link>
       <Link
         href="/trash"
         className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)] hover:text-brand"
