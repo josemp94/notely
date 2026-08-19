@@ -7,6 +7,9 @@ import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
 import { dateValue, dayOf } from "@/lib/cellText";
 
+/** Días que sobreviven las filas borradas antes de desaparecer para siempre. */
+export const RECORD_TRASH_TTL_DAYS = 30;
+
 // Tipos de campo soportados en Fase 2
 export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "person", "files", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "created_by", "last_edited_by", "id"] as const;
 
@@ -508,6 +511,57 @@ export const dbRouter = router({
         data: { cells: cells as Prisma.InputJsonValue, updatedById: ctx.user.id },
         select: { id: true, cells: true },
       });
+    }),
+
+  /** Filas archivadas de una base de datos (papelera de filas). */
+  archivedRecords: workspaceProcedure
+    .input(z.object({ collectionId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const col = await ctx.db.collection.findUnique({
+        where: { id: input.collectionId },
+        select: { fields: { orderBy: { order: "asc" } } },
+      });
+      const titleField = col?.fields.find((f) => f.type === "text");
+      const records = await ctx.db.record.findMany({
+        where: { collectionId: input.collectionId, archivedAt: { not: null } },
+        orderBy: { archivedAt: "desc" },
+        take: 100,
+      });
+      return records.map((r) => ({
+        id: r.id,
+        title: (titleField ? cellToText(titleField, (r.cells as Record<string, unknown>)[titleField.id], r) : "") || "Sin título",
+        archivedAt: r.archivedAt!,
+        isSubtask: r.parentId != null,
+      }));
+    }),
+
+  /** Borrado definitivo de una fila archivada (y de sus subtareas). */
+  purgeRecord: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const rec = await ctx.db.record.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } }, archivedAt: { not: null } },
+        select: { id: true },
+      });
+      if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      await ctx.db.record.delete({ where: { id: input.id } }); // las subtareas caen por la FK en cascada
+      return { ok: true };
+    }),
+
+  /**
+   * Purga perezosa de la papelera de filas: se invoca al abrirla, como la de páginas.
+   * Mismo plazo que las páginas (30 días).
+   */
+  purgeExpiredRecords: workspaceProcedure
+    .input(z.object({ collectionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const cutoff = new Date(Date.now() - RECORD_TRASH_TTL_DAYS * 864e5);
+      const r = await ctx.db.record.deleteMany({
+        where: { collectionId: input.collectionId, archivedAt: { lt: cutoff } },
+      });
+      return { purged: r.count };
     }),
 
   /** Reordena una fila entre sus hermanas (arrastrar y soltar en la Tabla). */

@@ -67,6 +67,7 @@ export function TableView({
   const [newMenu, setNewMenu] = useState(false);
   // Borrar una fila es reversible: se guarda cuál fue para poder deshacerlo.
   const [deleted, setDeleted] = useState<string | null>(null);
+  const [trashOpen, setTrashOpen] = useState(false);
   // Ancho de columna: se arrastra en local y se guarda en la vista al soltar.
   const [drag, setDrag] = useState<{ fieldId: string; startX: number; startW: number; w: number } | null>(null);
   // Arrastre de filas: solo con el orden natural (sin orden ni agrupación activos).
@@ -473,7 +474,13 @@ export function TableView({
           </div>
         )}
       </div>
-      <div className="mt-1 px-2 text-xs text-[var(--muted)]">{rows.length} de {records.length} filas</div>
+      <div className="mt-1 flex items-center gap-3 px-2 text-xs text-[var(--muted)]">
+        <span>{rows.length} de {records.length} filas</span>
+        <button onClick={() => setTrashOpen(true)} className="flex items-center gap-1 hover:text-brand">
+          <Trash2 size={12} /> Papelera
+        </button>
+      </div>
+      {trashOpen && <RecordTrash collectionId={collectionId} onClose={() => setTrashOpen(false)} onChange={invalidate} />}
 
       {deleted && (
         <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-sm shadow-xl">
@@ -697,5 +704,81 @@ function FieldMenu({
         <Trash2 size={14} /> Borrar columna
       </button>
     </Popover>
+  );
+}
+
+/** Papelera de filas: lo borrado en los últimos 30 días, para restaurar o rematar. */
+function RecordTrash({
+  collectionId,
+  onClose,
+  onChange,
+}: {
+  collectionId: string;
+  onClose: () => void;
+  onChange: () => void;
+}) {
+  const utils = trpc.useUtils();
+  const { data: items, isLoading } = trpc.db.archivedRecords.useQuery({ collectionId });
+  const refresh = () => {
+    utils.db.archivedRecords.invalidate({ collectionId });
+    onChange();
+  };
+  const restore = trpc.db.restoreRecord.useMutation({ onSuccess: refresh });
+  const purge = trpc.db.purgeRecord.useMutation({ onSuccess: refresh });
+
+  // Purga perezosa al abrir, como la papelera de páginas.
+  const purgeExpired = trpc.db.purgeExpiredRecords.useMutation({
+    onSuccess: (r) => {
+      if (r.purged > 0) refresh();
+    },
+    onError: () => {},
+  });
+  const purgeExpiredMutate = purgeExpired.mutate;
+  useEffect(() => purgeExpiredMutate({ collectionId }), [purgeExpiredMutate, collectionId]);
+
+  const daysLeft = (archivedAt: string | Date) =>
+    Math.max(1, Math.ceil(30 - (Date.now() - new Date(archivedAt).getTime()) / 864e5));
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 p-4" onClick={onClose}>
+      <div
+        className="max-h-[70vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-display font-bold">Papelera de filas</h3>
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+            <X size={16} />
+          </button>
+        </div>
+        {isLoading && <p className="py-6 text-center text-sm text-[var(--muted)]">Cargando…</p>}
+        {!isLoading && !items?.length && (
+          <p className="py-6 text-center text-sm text-[var(--muted)]">No has borrado ninguna fila.</p>
+        )}
+        <ul className="divide-y divide-[var(--border)]">
+          {(items ?? []).map((it) => (
+            <li key={it.id} className="flex items-center gap-2 py-2 text-sm">
+              <span className="min-w-0 flex-1 truncate">
+                {it.title}
+                {it.isSubtask && <span className="ml-1 text-xs text-[var(--muted)]">(subtarea)</span>}
+              </span>
+              <span className="shrink-0 text-xs text-[var(--muted)]">se borra en {daysLeft(it.archivedAt)} días</span>
+              <button onClick={() => restore.mutate({ id: it.id })} className="shrink-0 text-brand hover:underline">
+                Restaurar
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm(`¿Borrar «${it.title}» para siempre?`)) purge.mutate({ id: it.id });
+                }}
+                className="shrink-0 text-[var(--muted)] hover:text-red-500"
+                title="Borrar para siempre"
+              >
+                <Trash2 size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
