@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (commit ~e2bc516). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~d14e1fa). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -13,10 +13,10 @@
 ## 0. Retrato del estado actual
 
 Notiono es hoy un Notion self-hosted funcional para una familia: páginas de bloques con
-autosave, árbol de páginas, 8 tipos de vista de base de datos, 18 tipos de campo, comentarios,
+autosave, árbol de páginas, 8 tipos de vista de base de datos, 20 tipos de campo, comentarios,
 menciones, notificaciones, historial de versiones, publicación web, plantillas, import/export,
 API REST y PWA instalable. Lo que falta es, sobre todo, **colaboración simultánea**, **bloques
-avanzados** (columnas, embeds, toc, callout) y **permisos por página**.
+avanzados** (columnas, embeds) y **permisos por página**.
 
 ---
 
@@ -38,7 +38,7 @@ Lista real: `FIELD_TYPES` en `src/server/routers/db.ts` y `TYPES`/`FIELD_LABELS`
 | **Persona** | ✅ | ✅ `person` — varios miembros del espacio, avatar de iniciales, filtro por persona |
 | **Archivos y multimedia** | ✅ | ✅ `files` — adjuntos a `/api/upload` (máx. 8 MB), miniatura si es imagen |
 | Fecha de creación / Última edición | ✅ | ✅ `created_time`, `last_edited_time` |
-| **Creado por / Editado por** | ✅ | ❌ (`Record` no guarda autor) |
+| **Creado por / Editado por** | ✅ | ✅ `created_by`, `last_edited_by` (`Record.createdById/updatedById`) |
 | ID único | ✅ | 🟡 `id` con `seq` por colección; `config.prefix` se respeta pero no hay UI para editarlo |
 | Relación | ✅ | 🟡 `relation` unidireccional (sin campo espejo en la BD destino) |
 | Rollup | ✅ | 🟡 `count, sum, avg, min, max, values` |
@@ -46,8 +46,8 @@ Lista real: `FIELD_TYPES` en `src/server/routers/db.ts` y `TYPES`/`FIELD_LABELS`
 | **Botón** (acciones) | ✅ | ❌ |
 | **Lugar** (mapa) | ✅ | ❌ |
 
-**Siguiente en prioridad:** Creado por/Editado por (barato: falta guardar el autor en `Record`),
-formatos de número, hora y rango en fechas, prefijo de ID editable.
+**Siguiente en prioridad:** formatos de número (moneda, %, barra), hora y rango en fechas,
+prefijo de ID editable, grupos To-do/In Progress/Complete en el campo Estado.
 
 ### 1.2 Tipos de vista
 
@@ -59,7 +59,9 @@ widgets y filtros globales.
 ### 1.3 Configuración de vistas
 
 Hecho:
-- ✅ **Filtros con grupos AND/OR anidados** (`FilterNodesEditor`, `viewData.ts`), hasta 2 niveles.
+- ✅ **Filtros con grupos AND/OR anidados** (`FilterNodesEditor`, `viewData.ts`), hasta 2 niveles, con `está vacío` / `no está vacío` en todos los tipos y **fechas relativas** (hoy, esta semana, este mes, últimos/próximos 7 días).
+- ✅ **Agrupar en Tabla** en secciones plegables con contador y subtotales por grupo; selector de campo de agrupación también para el Kanban.
+- ✅ **Búsqueda interna** de la base de datos (lupa en la barra de vistas).
 - ✅ **Orden multi-campo**; Selección y Estado ordenan por el orden de sus opciones.
 - ✅ **Visibilidad de propiedades** por vista (botón «Propiedades», `hiddenFields`).
 - ✅ **Fila de cálculos** en Tabla: Contar todo, No vacías, Vacías, % no vacías, Suma, Media, Mín, Máx.
@@ -68,14 +70,12 @@ Hecho:
 - ✅ Renombrar/borrar vista, «Mostrar como», exportar CSV, campo de fecha del Calendario, inicio/fin del Cronograma, config de Gráfica (barras/líneas/tarta/donut × contar/sumar/media).
 
 Falta:
-- ❌ **Agrupar y subagrupar** en Tabla/Lista/Galería (solo Kanban agrupa).
+- ❌ **Subagrupar** (segundo nivel), y agrupar en Lista/Galería.
 - ❌ **Panel de registro** en Kanban; modos side/center/full; navegar entre registros; comentarios de fila.
 - ❌ **Ancho de columna**, redimensionar, congelar, envolver texto.
 - ❌ **Color condicional** de filas o tarjetas.
-- ❌ **Búsqueda interna** de la base de datos (lupa).
 - ❌ Reordenar filas y columnas arrastrando.
-- ❌ Operadores `está vacío` / `no está vacío` y fechas relativas («esta semana»).
-- ❌ Fila de cálculos fuera de la Tabla; subtotales por grupo.
+- ❌ Fila de cálculos fuera de la Tabla.
 - ❌ Plantillas de fila, bloquear esquema, vistas enlazadas (linked database).
 
 ### 1.4 Relaciones, rollups y fórmulas
@@ -100,9 +100,9 @@ Schema único en `src/components/editor/mention.tsx` (`editorSchema`), compartid
 el panel de registro, el historial y las páginas publicadas.
 
 - ✅ De BlockNote 0.53: párrafo, encabezados 1-6, listas (viñeta, numerada, tareas, toggle), cita, código, divisor, imagen, vídeo, audio, fichero, tabla, enlaces.
-- ✅ Propios: bloque **`database`** (BD embebida) e inline **`mention`** (@página) y **`personMention`** (@persona, que notifica).
+- ✅ Propios: bloques **`database`** (BD embebida), **`callout`** («Llamada», con icono y color) y **`toc`** (tabla de contenidos clicable); inline **`mention`** (@página) y **`personMention`** (@persona, que notifica).
 - ✅ Autosave (800 ms contenido / 600 ms título), export a Markdown, portada, icono emoji, ancho completo, solo-lectura para `viewer`.
-- ❌ **Callout**, **columnas/layout**, **tabla de contenidos**, **sync block**, **breadcrumb block**, **toggle heading**, **botón**, **bookmark web** (tarjeta OpenGraph), **embeds** (YouTube, Maps, Figma, PDF), **ecuación**, **subpágina embebida** como bloque.
+- ❌ **Columnas/layout**, **sync block**, **breadcrumb block**, **toggle heading**, **botón**, **bookmark web** (tarjeta OpenGraph), **embeds** (YouTube, Maps, Figma, PDF), **ecuación**, **subpágina embebida** como bloque.
 - ❌ **Comentarios en línea** (los comentarios son de página), **@fecha**, recordatorios.
 - ❌ Menú contextual de bloque completo (Convertir en, Mover a, Copiar enlace al bloque, Color), selección multibloque con acciones masivas.
 - ❌ Estilo por página (tipografía Default/Serif/Mono, texto pequeño).
@@ -116,7 +116,7 @@ el panel de registro, el historial y las páginas publicadas.
 - ✅ **Comentarios** de página con resolver y borrar (`CommentsPanel.tsx`).
 - ✅ **Menciones** @página y @persona + **bandeja de notificaciones** con contador.
 - ✅ **Historial de versiones** con UI (snapshot con throttle de 2 min, últimas 50, restaurar). Solo páginas `doc`.
-- ✅ **Buscador global Ctrl+K** (solo por título, no busca en el contenido).
+- ✅ **Buscador global Ctrl+K**, que busca por título y **dentro del texto de los bloques**.
 - ✅ **Favoritos** y **Recientes** en el sidebar; arrastrar para reordenar y mover.
 - ✅ **Papelera** con jerarquía, retención de 30 días con purga perezosa, vaciar y buscar.
 - ✅ **Publicar página en la web** (`/s/<token>`, solo lectura, resuelve también las BD embebidas).
@@ -138,25 +138,29 @@ el panel de registro, el historial y las páginas publicadas.
 - ✅ **PWA instalable** + responsive con drawer; iconos y favicon de marca; iconos de interfaz lucide.
 - ✅ **API REST v1** con tokens por espacio (`docs/api.md`).
 - 🟡 **Atajos de teclado**: solo Ctrl+K. Faltan nueva página, favorito, plegar sidebar, cambiar de vista, mover bloque.
-- ❌ **Home/Inicio** personalizable y **Mis tareas** (agregado de lo asignado a mí — ahora es posible con el campo Persona).
+- ✅ **Mis tareas** (`/my-tasks`): lo que tengo asignado por un campo Persona en cualquier base de datos.
+- ❌ **Home/Inicio** personalizable.
 - ❌ Reposicionar la portada; galería de imágenes de portada.
 
 ---
 
 ## 5. HOJA DE RUTA
 
+> Hecho el 19-ago-2026: campos Persona, Archivos, Creado por/Editado por · agrupar en Tabla ·
+> filtros de vacío y fechas relativas · buscador interno de BD · búsqueda global por contenido ·
+> Mis tareas · bloques Llamada y Tabla de contenidos.
+
 **A — Lo siguiente, barato y visible**
-1. **Creado por / Editado por** (guardar autor en `Record`) y **Mis tareas** apoyado en el campo Persona.
-2. **Agrupar en Tabla** (secciones plegables) + subtotales por grupo.
-3. Operadores `está vacío` / `no está vacío` y fechas relativas en filtros.
-4. **Búsqueda interna** de la base de datos y **búsqueda global por contenido**.
-5. Prefijo editable del campo ID; formatos de número; hora y rango en fechas.
+1. Prefijo editable del campo ID; formatos de número (moneda, %, barra); hora y rango en fechas.
+2. Grupos To-do / In Progress / Complete en el campo Estado (el dato ya se siembra, falta la UI).
+3. **Ancho de columna** persistente y **color condicional** de filas.
+4. **Atajos de teclado** (nueva página, favorito, plegar sidebar): hoy solo existe Ctrl+K.
+5. **Backlinks**: índice de menciones entrantes por página.
 
 **B — Editor**
-6. **Callout**, **tabla de contenidos** y **toggle heading** (baratos con BlockNote).
-7. **Columnas/layout** y **embeds/bookmark** (más caros).
-8. **Backlinks**: índice de menciones por página.
-9. **Comentarios en línea** sobre selección de texto.
+6. **Toggle heading** y **embeds/bookmark** (tarjeta OpenGraph).
+7. **Columnas/layout** (el más caro de los bloques).
+8. **Comentarios en línea** sobre selección de texto.
 
 **C — Colaboración**
 10. **Tiempo real con Yjs** (Hocuspocus en el compose + auth por sala + persistencia + `wss` en el proxy DSM). Requiere a Jose delante.
