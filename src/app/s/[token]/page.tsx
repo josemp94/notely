@@ -11,7 +11,7 @@ function loadCollection(where: { pageId: string } | { id: string; page: { worksp
     where,
     include: {
       fields: { orderBy: { order: "asc" } },
-      records: { orderBy: { order: "asc" } },
+      records: { where: { archivedAt: null }, orderBy: { order: "asc" } },
     },
   });
 }

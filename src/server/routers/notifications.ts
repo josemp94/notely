@@ -79,6 +79,7 @@ export const notificationsRouter = router({
       const records = await ctx.db.record.findMany({
         where: {
           collectionId,
+          archivedAt: null,
           OR: personFields.map((f) => ({ cells: { path: [f.id], array_contains: ctx.user.id } })),
         },
         include: {

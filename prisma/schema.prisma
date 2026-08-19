@@ -149,11 +149,13 @@ model Record {
   updatedById  String? // quién la editó por última vez (campo "Editado por")
   content      Json?      // cuerpo de bloques (BlockNote) de la fila (fila = página)
   seq          Int?       // ID incremental por colección (tipo de campo "id")
+  archivedAt   DateTime? // borrado reversible: la fila desaparece de las vistas pero se puede deshacer
   order        String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
   @@index([collectionId])
+  @@index([collectionId, archivedAt])
   @@index([parentId])
 }
 

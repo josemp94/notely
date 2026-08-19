@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
 import { formatNumber, groupBy, NUMBER_FORMATS, rowColor, type FieldLite } from "@/lib/cellText";
@@ -47,6 +47,12 @@ export function TableView({
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const addSubRecord = trpc.db.addSubRecord.useMutation({ onSuccess: invalidate });
   const deleteRecord = trpc.db.deleteRecord.useMutation({ onSuccess: invalidate });
+  const restoreRecord = trpc.db.restoreRecord.useMutation({
+    onSuccess: () => {
+      setDeleted(null);
+      invalidate();
+    },
+  });
   const duplicateRecord = trpc.db.duplicateRecord.useMutation({ onSuccess: invalidate });
   const moveRecord = trpc.db.moveRecord.useMutation({ onSuccess: invalidate });
   const deleteTemplate = trpc.db.deleteTemplate.useMutation({ onSuccess: invalidate });
@@ -59,6 +65,8 @@ export function TableView({
   const [editingField, setEditingField] = useState<string | null>(null);
   const [menuField, setMenuField] = useState<string | null>(null);
   const [newMenu, setNewMenu] = useState(false);
+  // Borrar una fila es reversible: se guarda cuál fue para poder deshacerlo.
+  const [deleted, setDeleted] = useState<string | null>(null);
   // Ancho de columna: se arrastra en local y se guarda en la vista al soltar.
   const [drag, setDrag] = useState<{ fieldId: string; startX: number; startW: number; w: number } | null>(null);
   // Arrastre de filas: solo con el orden natural (sin orden ni agrupación activos).
@@ -276,7 +284,10 @@ export function TableView({
             <Plus size={14} />
           </button>
           <button
-            onClick={() => deleteRecord.mutate({ id: r.id })}
+            onClick={() => {
+              deleteRecord.mutate({ id: r.id });
+              setDeleted(r.id);
+            }}
             className="text-[var(--muted)] opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
             title="Borrar fila"
           >
@@ -463,6 +474,21 @@ export function TableView({
         )}
       </div>
       <div className="mt-1 px-2 text-xs text-[var(--muted)]">{rows.length} de {records.length} filas</div>
+
+      {deleted && (
+        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-sm shadow-xl">
+          <span>Fila borrada</span>
+          <button
+            onClick={() => restoreRecord.mutate({ id: deleted })}
+            className="font-medium text-brand hover:underline"
+          >
+            Deshacer
+          </button>
+          <button onClick={() => setDeleted(null)} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {openRec &&
         (() => {

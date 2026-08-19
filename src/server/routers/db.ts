@@ -152,7 +152,7 @@ export const dbRouter = router({
         include: {
           page: { select: { title: true } },
           fields: { orderBy: { order: "asc" } },
-          records: { orderBy: { order: "asc" } },
+          records: { where: { archivedAt: null }, orderBy: { order: "asc" } },
         },
       });
       if (!col) throw new TRPCError({ code: "NOT_FOUND" });
@@ -236,6 +236,7 @@ export const dbRouter = router({
 
     const records = await ctx.db.record.findMany({
       where: {
+        archivedAt: null,
         OR: personFields.map((f) => ({
           collectionId: f.collectionId,
           cells: { path: [f.id], array_contains: ctx.user.id },
@@ -285,7 +286,7 @@ export const dbRouter = router({
         include: {
           fields: { orderBy: { order: "asc" } },
           views: { orderBy: { id: "asc" } },
-          records: { orderBy: { order: "asc" } },
+          records: { where: { archivedAt: null }, orderBy: { order: "asc" } },
         },
       });
       if (!collection) throw new TRPCError({ code: "NOT_FOUND" });
@@ -357,7 +358,7 @@ export const dbRouter = router({
       if (field.type === input.type) return { ok: true };
 
       const records = await ctx.db.record.findMany({
-        where: { collectionId: field.collectionId },
+        where: { collectionId: field.collectionId, archivedAt: null },
         select: { id: true, cells: true, createdAt: true, updatedAt: true, seq: true },
       });
 
@@ -521,7 +522,7 @@ export const dbRouter = router({
 
       // Solo se reordena entre hermanas: soltar sobre una fila de otro nivel no cambia el padre.
       const siblings = await ctx.db.record.findMany({
-        where: { collectionId: rec.collectionId, parentId: rec.parentId, id: { not: rec.id } },
+        where: { collectionId: rec.collectionId, parentId: rec.parentId, id: { not: rec.id }, archivedAt: null },
         select: { id: true, order: true },
         orderBy: { order: "asc" },
       });
@@ -619,7 +620,7 @@ export const dbRouter = router({
           select: { id: true },
         });
         const children = await ctx.db.record.findMany({
-          where: { parentId: rec.id },
+          where: { parentId: rec.id, archivedAt: null },
           orderBy: { order: "asc" },
         });
         let childOrder: string | null = null;
@@ -634,6 +635,10 @@ export const dbRouter = router({
       return { id };
     }),
 
+  /**
+   * Borrar una fila la archiva en vez de destruirla: desaparece de vistas, cálculos,
+   * exportaciones y API, pero se puede deshacer con restoreRecord.
+   */
   deleteRecord: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -642,7 +647,29 @@ export const dbRouter = router({
         select: { id: true },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
-      await ctx.db.record.delete({ where: { id: input.id } });
+      const now = new Date();
+      // Las subtareas se van con su padre, como al borrar una página con hijas.
+      await ctx.db.record.updateMany({ where: { parentId: input.id }, data: { archivedAt: now } });
+      await ctx.db.record.update({ where: { id: input.id }, data: { archivedAt: now } });
+      return { ok: true };
+    }),
+
+  /** Deshacer el borrado de una fila (y de las subtareas que se archivaron con ella). */
+  restoreRecord: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const rec = await ctx.db.record.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+        select: { id: true, archivedAt: true },
+      });
+      if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      if (rec.archivedAt) {
+        await ctx.db.record.updateMany({
+          where: { parentId: input.id, archivedAt: rec.archivedAt },
+          data: { archivedAt: null },
+        });
+      }
+      await ctx.db.record.update({ where: { id: input.id }, data: { archivedAt: null } });
       return { ok: true };
     }),
 
@@ -772,7 +799,7 @@ export const dbRouter = router({
       await assertCollection(ctx, input.collectionId);
       const col = await ctx.db.collection.findUnique({
         where: { id: input.collectionId },
-        include: { fields: { orderBy: { order: "asc" } }, records: { orderBy: { order: "asc" } } },
+        include: { fields: { orderBy: { order: "asc" } }, records: { where: { archivedAt: null }, orderBy: { order: "asc" } } },
       });
       if (!col) throw new TRPCError({ code: "NOT_FOUND" });
       const titleField = col.fields.find((f) => f.type === "text") ?? col.fields[0];
@@ -870,7 +897,7 @@ export const dbRouter = router({
       await assertPage(ctx, input.pageId);
       const col = await ctx.db.collection.findUnique({
         where: { pageId: input.pageId },
-        include: { fields: true, records: { orderBy: { order: "asc" } } },
+        include: { fields: true, records: { where: { archivedAt: null }, orderBy: { order: "asc" } } },
       });
       if (!col) throw new TRPCError({ code: "NOT_FOUND" });
 

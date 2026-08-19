@@ -15,7 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       id: true,
       page: { select: { title: true, icon: true } },
       fields: { select: { id: true, name: true, type: true }, orderBy: { order: "asc" } },
-      records: { select: { id: true, cells: true, parentId: true }, orderBy: { order: "asc" } },
+      records: { where: { archivedAt: null }, select: { id: true, cells: true, parentId: true }, orderBy: { order: "asc" } },
     },
   });
   if (!col) return jsonError(404, "Base de datos no encontrada.");
