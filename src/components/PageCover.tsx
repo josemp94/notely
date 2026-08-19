@@ -57,7 +57,7 @@ function CoverPicker({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const res = await fetch("/api/upload?kind=image", { method: "POST", body: fd });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) throw new Error(data.error ?? "No se pudo subir la imagen.");
       onPick(`url:${data.url}`);

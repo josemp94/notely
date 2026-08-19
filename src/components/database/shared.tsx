@@ -12,6 +12,7 @@ export const FIELD_LABELS: Record<string, string> = {
   multiselect: "Selección múltiple",
   status: "Estado",
   person: "Persona",
+  files: "Archivos y multimedia",
   checkbox: "Casilla",
   date: "Fecha",
   url: "URL",
@@ -25,7 +26,7 @@ export const FIELD_LABELS: Record<string, string> = {
   formula: "Fórmula",
 };
 
-const TYPES = ["text", "number", "select", "multiselect", "status", "person", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
+const TYPES = ["text", "number", "select", "multiselect", "status", "person", "files", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
 
 const AGGS: [string, string][] = [
   ["count", "Contar"],

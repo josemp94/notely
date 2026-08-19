@@ -17,7 +17,12 @@ export function countFilters(nodes: FilterNode[]): number {
   return nodes.reduce((acc, n) => acc + (isFilterGroup(n) ? countFilters(n.filters) : 1), 0);
 }
 
-const s = (v: unknown) => (v == null ? "" : String(v));
+const s = (v: unknown): string => {
+  if (v == null) return "";
+  // Celdas de varios valores: adjuntos ({name}), personas y etiquetas (ids).
+  if (Array.isArray(v)) return v.map((x) => (x && typeof x === "object" ? ((x as { name?: string }).name ?? "") : String(x))).join(", ");
+  return String(v);
+};
 const n = (v: unknown) => (typeof v === "number" ? v : parseFloat(s(v)));
 const t = (v: unknown) => {
   const d = new Date(s(v));

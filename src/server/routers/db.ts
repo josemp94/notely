@@ -7,7 +7,7 @@ import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
 
 // Tipos de campo soportados en Fase 2
-export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "person", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
+export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "person", "files", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "id"] as const;
 
 /** Valor de una celda como texto plano (export CSV y vista pública). */
 export function cellToText(
@@ -25,6 +25,8 @@ export function cellToText(
   if (f.type === "select" || f.type === "status") return opts.find((o) => o.id === v)?.label ?? String(v);
   if (f.type === "multiselect")
     return (Array.isArray(v) ? v : [v]).map((x) => opts.find((o) => o.id === x)?.label ?? String(x)).join(", ");
+  if (f.type === "files")
+    return (Array.isArray(v) ? v : []).map((x) => (x as { name?: string })?.name ?? "").filter(Boolean).join(", ");
   if (f.type === "person")
     return (Array.isArray(v) ? v : [v]).map((x) => people?.get(String(x)) ?? String(x)).join(", ");
   if (f.type === "checkbox") return v ? "true" : "false";

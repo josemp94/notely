@@ -204,6 +204,7 @@ model Asset {
   id          String   @id @default(cuid())
   workspaceId String
   mime        String
+  name        String? // nombre original del fichero (adjuntos); las portadas no lo usan
   bytes       Bytes
   createdById String?
   createdAt   DateTime @default(now())

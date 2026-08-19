@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Check, X } from "lucide-react";
+import { ArrowUpRight, Check, Paperclip, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 
 type Option = { id: string; label: string; color?: string };
+/** Adjunto del campo "Archivos y multimedia" (los bytes viven en el modelo Asset). */
+export type Attachment = { id: string; url: string; name?: string | null; mime?: string | null };
 export type FieldLite = { id: string; name: string; type: string; config: unknown };
 
 const COLORS: Record<string, string> = {
@@ -49,6 +51,9 @@ export function displayValue(field: FieldLite, value: unknown, people?: Map<stri
     return (Array.isArray(value) ? value : [value])
       .map((v) => people?.get(String(v)) ?? String(v))
       .join(", ");
+  }
+  if (field.type === "files") {
+    return (Array.isArray(value) ? (value as Attachment[]) : []).map((a) => a.name || "archivo").join(", ");
   }
   if (field.type === "checkbox") return value ? "Sí" : "No";
   if (field.type === "relation") {
@@ -128,6 +133,10 @@ export function Cell({
 
   if (field.type === "person") {
     return <PersonCell value={value} onCommit={onCommit} />;
+  }
+
+  if (field.type === "files") {
+    return <FilesCell value={value} onCommit={onCommit} />;
   }
 
   if (field.type === "select" || field.type === "status" || field.type === "multiselect") {
@@ -393,6 +402,77 @@ function PersonCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB (mismo límite que /api/upload)
+
+/** Campo "Archivos y multimedia": adjuntos subidos a /api/upload. Valor = Attachment[]. */
+function FilesCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const files: Attachment[] = Array.isArray(value) ? (value as Attachment[]) : [];
+
+  const upload = async (picked: FileList | null) => {
+    if (!picked?.length) return;
+    setError(null);
+    setBusy(true);
+    const added: Attachment[] = [];
+    try {
+      for (const file of Array.from(picked)) {
+        if (file.size > MAX_UPLOAD_BYTES) {
+          setError(`«${file.name}» supera los 8 MB.`);
+          continue;
+        }
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data?.error ?? "No se pudo subir el archivo.");
+          continue;
+        }
+        added.push({ id: data.id, url: data.url, name: data.name ?? file.name, mime: data.mime ?? file.type });
+      }
+      if (added.length) onCommit([...files, ...added]);
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  // Quitar solo desengancha el adjunto de la celda: el Asset puede quedar huérfano, como las portadas.
+  const remove = (id: string) => onCommit(files.filter((f) => f.id !== id));
+
+  return (
+    <div className="flex min-h-[26px] w-full flex-wrap items-center gap-1 px-1 py-0.5">
+      {files.map((f) => (
+        <span key={f.id} className="inline-flex max-w-[12rem] items-center gap-1 rounded bg-[var(--border)]/40 px-1.5 py-0.5 text-xs">
+          {f.mime?.startsWith("image/") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={f.url} alt="" className="size-4 shrink-0 rounded object-cover" />
+          ) : (
+            <Paperclip size={12} className="shrink-0" />
+          )}
+          <a href={f.url} target="_blank" rel="noreferrer" className="truncate hover:underline" title={f.name ?? "archivo"}>
+            {f.name || "archivo"}
+          </a>
+          <button onClick={() => remove(f.id)} className="shrink-0 opacity-60 hover:opacity-100" title="Quitar">
+            <X size={12} />
+          </button>
+        </span>
+      ))}
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="rounded px-1 text-xs text-[var(--muted)] hover:bg-[var(--border)]/40 disabled:opacity-60"
+      >
+        {busy ? "Subiendo…" : files.length ? "+" : "+ Adjuntar"}
+      </button>
+      <input ref={inputRef} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
+      {error && <span className="w-full text-[11px] text-red-600">{error}</span>}
     </div>
   );
 }
