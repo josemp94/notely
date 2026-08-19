@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~f963ad8). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~07a1398). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -32,8 +32,8 @@ Lista real: `FIELD_TYPES` en `src/server/routers/db.ts` y `TYPES`/`FIELD_LABELS`
 | Título / Texto | ✅ | 🟡 no hay tipo "título": el título es el primer campo `text` |
 | Número | ✅ | ✅ formatos normal, euros, porcentaje y barra (con máximo configurable); falta anillo |
 | Selección / Selección múltiple | ✅ | ✅ `select`, `multiselect` (editor de etiquetas con 6 colores, crear al vuelo) |
-| Estado | ✅ | 🟡 `status` existe y agrupa el Kanban; sus opciones se siembran con `group: todo/doing/done` pero la UI aún no muestra los tres grupos |
-| Fecha | ✅ | 🟡 `date` sin hora, sin rango, sin recordatorio |
+| Estado | ✅ | ✅ `status` con grupos Por hacer / En curso / Hecho y opciones movibles entre grupos |
+| Fecha | ✅ | 🟡 `date` con hora y rango (`{start,end}`); falta recordatorio |
 | Casilla / URL / Correo / Teléfono | ✅ | ✅ |
 | **Persona** | ✅ | ✅ `person` — varios miembros del espacio, avatar de iniciales, filtro por persona |
 | **Archivos y multimedia** | ✅ | ✅ `files` — adjuntos a `/api/upload` (máx. 8 MB), miniatura si es imagen |
@@ -46,8 +46,8 @@ Lista real: `FIELD_TYPES` en `src/server/routers/db.ts` y `TYPES`/`FIELD_LABELS`
 | **Botón** (acciones) | ✅ | ❌ |
 | **Lugar** (mapa) | ✅ | ❌ |
 
-**Siguiente en prioridad:** formatos de número (moneda, %, barra), hora y rango en fechas,
-prefijo de ID editable, grupos To-do/In Progress/Complete en el campo Estado.
+**Siguiente en prioridad:** Lugar (mapa) y Botón son los dos tipos que faltan de verdad;
+del resto solo quedan detalles (formato anillo en Número, recordatorios en Fecha).
 
 ### 1.2 Tipos de vista
 
@@ -77,8 +77,10 @@ Falta:
 - ✅ **Reordenar filas arrastrando** (cuando la vista no tiene orden ni agrupación) y **duplicar fila** con sus subtareas.
 - ❌ Reordenar columnas arrastrando.
 - ❌ Fila de cálculos fuera de la Tabla.
-- ❌ Plantillas de fila, bloquear esquema, vistas enlazadas (linked database).
-- ❌ **Color condicional** de filas por reglas.
+- ✅ **Plantillas de fila** («Nueva fila ▾», guardadas desde la ficha de una fila).
+- ✅ **Color de fila y de tarjeta** por la opción de una etiqueta («Color por»).
+- ✅ **Cambiar el tipo** de una columna ya creada, convirtiendo los valores.
+- ❌ Color condicional por reglas (hoy solo por etiqueta), bloquear esquema, vistas enlazadas (linked database).
 
 ### 1.4 Relaciones, rollups y fórmulas
 
@@ -152,12 +154,15 @@ el panel de registro, el historial y las páginas publicadas.
 > filtros de vacío y fechas relativas · buscador interno de BD · búsqueda global por contenido ·
 > Mis tareas · bloques Llamada y Tabla de contenidos.
 
+> Hecho también el 19-ago-2026 (segunda mitad): fechas con hora y rango · cambiar el tipo de
+> una columna · color por etiqueta · plantillas de fila · grupos del campo Estado.
+
 **A — Lo siguiente, barato y visible**
-1. Hora y rango en el campo Fecha (hoy es solo día suelto).
-2. Grupos To-do / In Progress / Complete en el campo Estado (el dato ya se siembra, falta la UI).
-3. **Color condicional** de filas por reglas, y colorear por la opción de Selección.
-4. **Plantillas de fila** («Nueva ▾» con campos precargados).
-5. Cambiar el **tipo** de un campo ya creado (hoy hay que borrarlo y recrearlo).
+1. **Agrupar en Lista y Galería** y subagrupar (hoy agrupan Tabla y Kanban).
+2. **Fila de cálculos** fuera de la Tabla; **congelar columnas** y envolver texto.
+3. **Recordatorios** de fecha (avisar en la bandeja cuando llega el día).
+4. **Vistas enlazadas** (una vista de otra base de datos dentro de una página).
+5. Color condicional por reglas («si la fecha ya pasó, en rojo»).
 
 **B — Editor**
 6. **Toggle heading** y **embeds/bookmark** (tarjeta OpenGraph).
