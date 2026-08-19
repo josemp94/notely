@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~d14e1fa). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~f963ad8). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -30,7 +30,7 @@ Lista real: `FIELD_TYPES` en `src/server/routers/db.ts` y `TYPES`/`FIELD_LABELS`
 | Tipo | Notion | Notiono |
 |---|---|---|
 | Título / Texto | ✅ | 🟡 no hay tipo "título": el título es el primer campo `text` |
-| Número | ✅ | 🟡 sin formatos (moneda, %, barra, anillo) |
+| Número | ✅ | ✅ formatos normal, euros, porcentaje y barra (con máximo configurable); falta anillo |
 | Selección / Selección múltiple | ✅ | ✅ `select`, `multiselect` (editor de etiquetas con 6 colores, crear al vuelo) |
 | Estado | ✅ | 🟡 `status` existe y agrupa el Kanban; sus opciones se siembran con `group: todo/doing/done` pero la UI aún no muestra los tres grupos |
 | Fecha | ✅ | 🟡 `date` sin hora, sin rango, sin recordatorio |
@@ -39,7 +39,7 @@ Lista real: `FIELD_TYPES` en `src/server/routers/db.ts` y `TYPES`/`FIELD_LABELS`
 | **Archivos y multimedia** | ✅ | ✅ `files` — adjuntos a `/api/upload` (máx. 8 MB), miniatura si es imagen |
 | Fecha de creación / Última edición | ✅ | ✅ `created_time`, `last_edited_time` |
 | **Creado por / Editado por** | ✅ | ✅ `created_by`, `last_edited_by` (`Record.createdById/updatedById`) |
-| ID único | ✅ | 🟡 `id` con `seq` por colección; `config.prefix` se respeta pero no hay UI para editarlo |
+| ID único | ✅ | ✅ `id` con `seq` por colección y prefijo editable desde el menú de la columna |
 | Relación | ✅ | 🟡 `relation` unidireccional (sin campo espejo en la BD destino) |
 | Rollup | ✅ | 🟡 `count, sum, avg, min, max, values` |
 | Fórmula | ✅ | 🟡 evaluador propio, 13 funciones (ver 1.4) |
@@ -72,11 +72,13 @@ Hecho:
 Falta:
 - ❌ **Subagrupar** (segundo nivel), y agrupar en Lista/Galería.
 - ❌ **Panel de registro** en Kanban; modos side/center/full; navegar entre registros; comentarios de fila.
-- ❌ **Ancho de columna**, redimensionar, congelar, envolver texto.
-- ❌ **Color condicional** de filas o tarjetas.
-- ❌ Reordenar filas y columnas arrastrando.
+- ✅ **Ancho de columna** ajustable arrastrando y persistente por vista (doble clic vuelve al automático).
+- ❌ Congelar columnas y envolver texto.
+- ✅ **Reordenar filas arrastrando** (cuando la vista no tiene orden ni agrupación) y **duplicar fila** con sus subtareas.
+- ❌ Reordenar columnas arrastrando.
 - ❌ Fila de cálculos fuera de la Tabla.
 - ❌ Plantillas de fila, bloquear esquema, vistas enlazadas (linked database).
+- ❌ **Color condicional** de filas por reglas.
 
 ### 1.4 Relaciones, rollups y fórmulas
 
@@ -106,7 +108,7 @@ el panel de registro, el historial y las páginas publicadas.
 - ❌ **Comentarios en línea** (los comentarios son de página), **@fecha**, recordatorios.
 - ❌ Menú contextual de bloque completo (Convertir en, Mover a, Copiar enlace al bloque, Color), selección multibloque con acciones masivas.
 - ❌ Estilo por página (tipografía Default/Serif/Mono, texto pequeño).
-- ❌ **Backlinks** / «N enlaces entrantes»: no hay índice de enlaces ni UI.
+- ✅ **Backlinks**: sección «N enlaces entrantes» al pie de la página (`pages.backlinks`).
 
 ---
 
@@ -137,7 +139,7 @@ el panel de registro, el historial y las páginas publicadas.
 - ✅ **Import/Export**: Markdown ↔ página, CSV ↔ base de datos. ❌ PDF y HTML.
 - ✅ **PWA instalable** + responsive con drawer; iconos y favicon de marca; iconos de interfaz lucide.
 - ✅ **API REST v1** con tokens por espacio (`docs/api.md`).
-- 🟡 **Atajos de teclado**: solo Ctrl+K. Faltan nueva página, favorito, plegar sidebar, cambiar de vista, mover bloque.
+- 🟡 **Atajos de teclado**: Ctrl+K (buscar), Ctrl+\ (plegar el panel) y Ctrl+Alt+N (nueva página). Faltan favorito, cambiar de vista y mover bloque.
 - ✅ **Mis tareas** (`/my-tasks`): lo que tengo asignado por un campo Persona en cualquier base de datos.
 - ❌ **Home/Inicio** personalizable.
 - ❌ Reposicionar la portada; galería de imágenes de portada.
@@ -151,11 +153,11 @@ el panel de registro, el historial y las páginas publicadas.
 > Mis tareas · bloques Llamada y Tabla de contenidos.
 
 **A — Lo siguiente, barato y visible**
-1. Prefijo editable del campo ID; formatos de número (moneda, %, barra); hora y rango en fechas.
+1. Hora y rango en el campo Fecha (hoy es solo día suelto).
 2. Grupos To-do / In Progress / Complete en el campo Estado (el dato ya se siembra, falta la UI).
-3. **Ancho de columna** persistente y **color condicional** de filas.
-4. **Atajos de teclado** (nueva página, favorito, plegar sidebar): hoy solo existe Ctrl+K.
-5. **Backlinks**: índice de menciones entrantes por página.
+3. **Color condicional** de filas por reglas, y colorear por la opción de Selección.
+4. **Plantillas de fila** («Nueva ▾» con campos precargados).
+5. Cambiar el **tipo** de un campo ya creado (hoy hay que borrarlo y recrearlo).
 
 **B — Editor**
 6. **Toggle heading** y **embeds/bookmark** (tarjeta OpenGraph).
