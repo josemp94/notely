@@ -327,6 +327,16 @@ function NotificationsBell() {
   const markRead = trpc.notifications.markRead.useMutation({ onSuccess: refresh });
   const markAll = trpc.notifications.markAllRead.useMutation({ onSuccess: refresh });
 
+  // Al abrir la app se buscan vencimientos (como la purga de la papelera: sin cron).
+  const checkDue = trpc.notifications.checkDue.useMutation({
+    onSuccess: (r) => {
+      if (r.created > 0) refresh();
+    },
+    onError: () => {},
+  });
+  const checkDueMutate = checkDue.mutate;
+  useEffect(() => checkDueMutate(), [checkDueMutate]);
+
   return (
     <>
       <button
@@ -371,7 +381,7 @@ function NotificationsBell() {
               </div>
               <div className="overflow-y-auto px-2 pb-3">
                 {(items ?? []).length === 0 && (
-                  <p className="px-3 py-6 text-center text-sm text-[var(--muted)]">Nada por aquí: nadie te ha mencionado aún.</p>
+                  <p className="px-3 py-6 text-center text-sm text-[var(--muted)]">Nada por aquí: ni menciones ni vencimientos.</p>
                 )}
                 {(items ?? []).map((n) => (
                   <button
@@ -386,8 +396,17 @@ function NotificationsBell() {
                     <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-brand"}`} />
                     <span className="min-w-0 flex-1">
                       <span className={n.read ? "text-[var(--muted)]" : ""}>
-                        <span className="font-medium">{n.actor?.name || n.actor?.email || "Alguien"}</span> te mencionó en «
-                        {n.page ? `${n.page.icon ? `${n.page.icon} ` : ""}${n.page.title || "Sin título"}` : "una página borrada"}»
+                        {n.type === "due" ? (
+                          <>
+                            Te toca: <span className="font-medium">{n.title || "una tarea"}</span> en «
+                            {n.page ? `${n.page.icon ? `${n.page.icon} ` : ""}${n.page.title || "Sin título"}` : "una base borrada"}»
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-medium">{n.actor?.name || n.actor?.email || "Alguien"}</span> te mencionó en «
+                            {n.page ? `${n.page.icon ? `${n.page.icon} ` : ""}${n.page.title || "Sin título"}` : "una página borrada"}»
+                          </>
+                        )}
                       </span>
                       <span className="block text-xs text-[var(--muted)]">{when(n.createdAt)}</span>
                     </span>

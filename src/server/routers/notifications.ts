@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { router, workspaceProcedure, authedProcedure } from "../trpc";
+import { cellToText } from "./db";
+import { dayOf } from "@/lib/cellText";
 
 export const notificationsRouter = router({
   /** Bandeja del usuario en el espacio activo (más recientes primero). */
@@ -37,6 +39,76 @@ export const notificationsRouter = router({
       data: { read: true },
     });
     return { ok: true };
+  }),
+
+  /**
+   * Recordatorios: crea un aviso por cada fila asignada a mí cuya fecha ya llegó.
+   * Se invoca al abrir la app (como la purga de la papelera): sin cron ni servicio aparte.
+   * Solo mira los últimos 30 días para no resucitar tareas viejísimas.
+   */
+  checkDue: authedProcedure.mutation(async ({ ctx }) => {
+    const workspaceId = ctx.workspace?.id;
+    if (!workspaceId) return { created: 0 };
+
+    const fields = await ctx.db.field.findMany({
+      where: {
+        type: { in: ["date", "person"] },
+        collection: { page: { workspaceId, archivedAt: null } },
+      },
+      select: { id: true, name: true, type: true, config: true, collectionId: true },
+    });
+    // Solo tiene sentido avisar en bases de datos que tengan fecha Y responsable.
+    const byCollection = new Map<string, typeof fields>();
+    for (const f of fields) byCollection.set(f.collectionId, [...(byCollection.get(f.collectionId) ?? []), f]);
+    const usable = [...byCollection.entries()].filter(
+      ([, fs]) => fs.some((f) => f.type === "date") && fs.some((f) => f.type === "person"),
+    );
+    if (!usable.length) return { created: 0 };
+
+    const today = new Date();
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const hoy = iso(today);
+    const desde = iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30));
+
+    const pending: { userId: string; workspaceId: string; type: string; key: string; title: string; pageId: string }[] = [];
+
+    for (const [collectionId, fs] of usable) {
+      const personFields = fs.filter((f) => f.type === "person");
+      const dateFields = fs.filter((f) => f.type === "date");
+      const records = await ctx.db.record.findMany({
+        where: {
+          collectionId,
+          OR: personFields.map((f) => ({ cells: { path: [f.id], array_contains: ctx.user.id } })),
+        },
+        include: {
+          collection: {
+            select: { pageId: true, fields: { orderBy: { order: "asc" } } },
+          },
+        },
+        take: 200,
+      });
+      for (const r of records) {
+        const cells = (r.cells ?? {}) as Record<string, unknown>;
+        for (const df of dateFields) {
+          const day = dayOf(cells[df.id]);
+          if (!day || day > hoy || day < desde) continue;
+          const titleField = r.collection.fields.find((f) => f.type === "text");
+          pending.push({
+            userId: ctx.user.id,
+            workspaceId,
+            type: "due",
+            key: `due:${r.id}:${df.id}:${day}`,
+            title: (titleField ? cellToText(titleField, cells[titleField.id], r) : "") || "Sin título",
+            pageId: r.collection.pageId,
+          });
+        }
+      }
+    }
+    if (!pending.length) return { created: 0 };
+    // skipDuplicates + índice único (userId, key): el mismo vencimiento no se avisa dos veces.
+    const res = await ctx.db.notification.createMany({ data: pending, skipDuplicates: true });
+    return { created: res.count };
   }),
 
   /** El editor llama aquí al insertar una mención @persona. */
