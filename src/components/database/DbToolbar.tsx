@@ -293,7 +293,7 @@ export function DbToolbar({
                 ))}
               </div>
             </div>
-            {(view.type === "table" || view.type === "kanban") && (
+            {["table", "kanban", "list", "gallery"].includes(view.type) && (
               <div className="my-1 border-t border-[var(--border)] pt-1">
                 <div className="px-2 pb-1 text-[11px] font-medium text-[var(--muted)]">Agrupar</div>
                 <label className="flex items-center justify-between gap-2 px-2 py-1 text-sm">

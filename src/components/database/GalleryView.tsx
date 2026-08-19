@@ -4,7 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
 import { usePeople } from "./Cell";
-import { displayValue, rowColor, type FieldLite } from "@/lib/cellText";
+import { displayValue, groupBy, rowColor, type FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
@@ -22,6 +22,7 @@ export function GalleryView({
   cardSize,
   cardPreview,
   colorFieldId,
+  groupByFieldId,
 }: {
   pageId: string;
   collectionId: string;
@@ -30,6 +31,7 @@ export function GalleryView({
   cardSize?: string;
   cardPreview?: string;
   colorFieldId?: string;
+  groupByFieldId?: string;
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
@@ -37,6 +39,7 @@ export function GalleryView({
   const [openRec, setOpenRec] = useState<Rec | null>(null);
   const people = usePeople();
   const colorField = fields.find((f) => f.id === colorFieldId);
+  const groupField = fields.find((f) => f.id === groupByFieldId);
 
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
   const size = SIZES[cardSize ?? "medium"] ?? SIZES.medium;
@@ -48,10 +51,20 @@ export function GalleryView({
     return (typeof t === "string" && t) || "Sin título";
   };
 
+  const groups = groupField ? groupBy(records, groupField, people) : [{ key: "", label: "", records }];
+
   return (
-    <div>
+    <div className="space-y-5">
+      {groups.map((g) => (
+      <div key={g.key}>
+      {groupField && (
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+          {g.label}
+          <span className="text-xs font-normal text-[var(--muted)]">{g.records.length}</span>
+        </div>
+      )}
       <div className={`grid gap-3 ${size.grid}`}>
-        {records.map((r) => (
+        {g.records.map((r) => (
           <button
             key={r.id}
             onClick={() => setOpenRec(r)}
@@ -81,13 +94,18 @@ export function GalleryView({
           </button>
         ))}
 
-        <button
-          onClick={() => addRecord.mutate({ collectionId })}
-          className="flex min-h-[92px] items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-sm text-[var(--muted)] transition hover:border-brand hover:text-brand"
-        >
-          + Nueva tarjeta
-        </button>
+        {/* El botón de añadir va solo en el último grupo, para no repetirlo por sección. */}
+        {g.key === groups.at(-1)?.key && (
+          <button
+            onClick={() => addRecord.mutate({ collectionId })}
+            className="flex min-h-[92px] items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-sm text-[var(--muted)] transition hover:border-brand hover:text-brand"
+          >
+            + Nueva tarjeta
+          </button>
+        )}
       </div>
+      </div>
+      ))}
 
       {openRec && (
         <RecordPanel

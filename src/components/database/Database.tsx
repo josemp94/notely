@@ -211,9 +211,16 @@ export function Database({
           cardSize={asAny(active.config)?.cardSize}
           cardPreview={asAny(active.config)?.cardPreview}
           colorFieldId={asAny(active.config)?.rowColorFieldId}
+          groupByFieldId={asAny(active.config)?.groupByFieldId}
         />
       ) : active?.type === "list" ? (
-        <ListView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(shownRecords)} />
+        <ListView
+          pageId={pageId}
+          collectionId={col.id}
+          fields={asAny(visibleFields)}
+          records={asAny(shownRecords)}
+          groupByFieldId={asAny(active.config)?.groupByFieldId}
+        />
       ) : active?.type === "form" ? (
         <FormView pageId={pageId} collectionId={col.id} fields={asAny(fields)} />
       ) : (

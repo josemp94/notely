@@ -5,7 +5,7 @@ import { FileText } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
 import { usePeople } from "./Cell";
-import { displayValue, type FieldLite } from "@/lib/cellText";
+import { displayValue, groupBy, type FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
@@ -14,11 +14,13 @@ export function ListView({
   collectionId,
   fields,
   records,
+  groupByFieldId,
 }: {
   pageId: string;
   collectionId: string;
   fields: FieldLite[];
   records: Rec[];
+  groupByFieldId?: string;
 }) {
   const utils = trpc.useUtils();
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: () => utils.db.get.invalidate({ pageId }) });
@@ -33,10 +35,23 @@ export function ListView({
     return (typeof t === "string" && t) || "Sin título";
   };
 
+  const groupField = fields.find((f) => f.id === groupByFieldId);
+  const groups = groupField
+    ? groupBy(records, groupField, people)
+    : [{ key: "", label: "", records }];
+
   return (
-    <div>
+    <div className="space-y-4">
+      {groups.map((g) => (
+      <div key={g.key}>
+      {groupField && (
+        <div className="mb-1 flex items-center gap-2 text-sm font-medium">
+          {g.label}
+          <span className="text-xs font-normal text-[var(--muted)]">{g.records.length}</span>
+        </div>
+      )}
       <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
-        {records.map((r) => (
+        {g.records.map((r) => (
           <li key={r.id}>
             <button
               onClick={() => setOpenRec(r)}
@@ -58,10 +73,12 @@ export function ListView({
             </button>
           </li>
         ))}
-        {records.length === 0 && (
+        {g.records.length === 0 && (
           <li className="px-3 py-4 text-sm text-[var(--muted)]">Sin registros.</li>
         )}
       </ul>
+      </div>
+      ))}
 
       <button
         onClick={() => addRecord.mutate({ collectionId })}
