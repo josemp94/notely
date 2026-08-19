@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Maximize2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
@@ -49,6 +49,8 @@ export function TableView({
 
   const [editingField, setEditingField] = useState<string | null>(null);
   const [menuField, setMenuField] = useState<string | null>(null);
+  // Ancho de columna: se arrastra en local y se guarda en la vista al soltar.
+  const [drag, setDrag] = useState<{ fieldId: string; startX: number; startW: number; w: number } | null>(null);
   const [openRec, setOpenRec] = useState<Rec | null>(null);
 
   // El filtrado y el orden se aplican en Database (barra de herramientas superior).
@@ -93,6 +95,36 @@ export function TableView({
   const calcs: Record<string, string> = cfg.calcs ?? {};
   const setCalc = (fieldId: string, calc: string) =>
     updateView.mutate({ id: view.id, config: { ...cfg, calcs: { ...calcs, [fieldId]: calc } } });
+
+  const widths: Record<string, number> = cfg.widths ?? {};
+
+  const widthOf = (fieldId: string) =>
+    drag?.fieldId === fieldId ? drag.w : widths[fieldId];
+
+  // El arrastre se sigue en window para que no se pierda al salir de la cabecera.
+  const dragRef = useRef(drag);
+  dragRef.current = drag;
+  useEffect(() => {
+    if (!drag) return;
+    const move = (e: MouseEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      setDrag({ ...d, w: Math.max(80, Math.round(d.startW + (e.clientX - d.startX))) });
+    };
+    const up = () => {
+      const d = dragRef.current;
+      setDrag(null);
+      if (d) updateView.mutate({ id: view.id, config: { ...cfg, widths: { ...widths, [d.fieldId]: d.w } } });
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    // Solo debe re-suscribirse al empezar o terminar el arrastre.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag?.fieldId]);
 
   // Agrupar en secciones plegables. Como en Notion, agrupar aplana la jerarquía de
   // subtareas: cada fila cae en el grupo de su propio valor, sin sangría.
@@ -182,7 +214,11 @@ export function TableView({
           <tr className="border-y border-[var(--border)] text-left text-[var(--muted)]">
             <th className="w-8" />
             {fields.map((f) => (
-              <th key={f.id} className="group relative min-w-40 px-2 py-1 font-medium">
+              <th
+                key={f.id}
+                className={`group relative px-2 py-1 font-medium ${widthOf(f.id) ? "" : "min-w-40"}`}
+                style={widthOf(f.id) ? { width: widthOf(f.id), minWidth: widthOf(f.id), maxWidth: widthOf(f.id) } : undefined}
+              >
                 <span className="flex items-center gap-1">
                   {editingField === f.id ? (
                     <input
@@ -208,6 +244,21 @@ export function TableView({
                     <MoreHorizontal size={14} />
                   </button>
                 </span>
+                {/* Tirador para ajustar el ancho (doble clic vuelve al automático). */}
+                <span
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const th = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                    setDrag({ fieldId: f.id, startX: e.clientX, startW: th.width, w: th.width });
+                  }}
+                  onDoubleClick={() => {
+                    const next = { ...widths };
+                    delete next[f.id];
+                    updateView.mutate({ id: view.id, config: { ...cfg, widths: next } });
+                  }}
+                  className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize opacity-0 hover:bg-brand/40 group-hover:opacity-100"
+                  title="Arrastra para ajustar el ancho"
+                />
                 {menuField === f.id && (
                   <FieldMenu
                     field={f}
