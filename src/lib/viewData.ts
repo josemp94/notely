@@ -29,6 +29,62 @@ const t = (v: unknown) => {
   return isNaN(d.getTime()) ? null : d.getTime();
 };
 
+/** "YYYY-MM-DD" de una celda de fecha; null si no hay fecha reconocible. */
+const day = (v: unknown): string | null => {
+  const raw = s(v);
+  const iso = raw.match(/^\d{4}-\d{2}-\d{2}/);
+  if (iso) return iso[0];
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : localDay(d);
+};
+
+/** Día local (no UTC: toISOString desplazaría la fecha según la zona horaria). */
+const localDay = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const shift = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+
+/** Rango [desde, hasta] en días locales de un operador de fecha relativo. */
+export function relativeRange(op: string, now = new Date()): [string, string] | null {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  switch (op) {
+    case "today":
+      return [localDay(today), localDay(today)];
+    case "this_week": {
+      // Semana de lunes a domingo (convención española).
+      const monday = shift(today, -((today.getDay() + 6) % 7));
+      return [localDay(monday), localDay(shift(monday, 6))];
+    }
+    case "this_month":
+      return [
+        localDay(new Date(today.getFullYear(), today.getMonth(), 1)),
+        localDay(new Date(today.getFullYear(), today.getMonth() + 1, 0)),
+      ];
+    case "last_7_days":
+      return [localDay(shift(today, -6)), localDay(today)];
+    case "next_7_days":
+      return [localDay(today), localDay(shift(today, 6))];
+    default:
+      return null;
+  }
+}
+
+/** Operadores que no piden valor: la UI no dibuja input y evalNode no los descarta por vacíos. */
+export const NO_VALUE_OPS = new Set([
+  "is_empty",
+  "not_empty",
+  "today",
+  "this_week",
+  "this_month",
+  "last_7_days",
+  "next_7_days",
+]);
+
+const EMPTY_OPS = [
+  { value: "is_empty", label: "está vacío" },
+  { value: "not_empty", label: "no está vacío" },
+];
+
 /** Operadores disponibles por tipo de campo. */
 export function opsFor(type: string): { value: string; label: string }[] {
   switch (type) {
@@ -37,6 +93,7 @@ export function opsFor(type: string): { value: string; label: string }[] {
         { value: "eq", label: "=" },
         { value: "gt", label: ">" },
         { value: "lt", label: "<" },
+        ...EMPTY_OPS,
       ];
     case "select":
     case "multiselect":
@@ -45,6 +102,7 @@ export function opsFor(type: string): { value: string; label: string }[] {
       return [
         { value: "is", label: "es" },
         { value: "isnot", label: "no es" },
+        ...EMPTY_OPS,
       ];
     case "checkbox":
       return [{ value: "is", label: "es" }];
@@ -53,17 +111,37 @@ export function opsFor(type: string): { value: string; label: string }[] {
         { value: "on", label: "el día" },
         { value: "before", label: "antes de" },
         { value: "after", label: "después de" },
+        { value: "today", label: "es hoy" },
+        { value: "this_week", label: "esta semana" },
+        { value: "this_month", label: "este mes" },
+        { value: "last_7_days", label: "últimos 7 días" },
+        { value: "next_7_days", label: "próximos 7 días" },
+        ...EMPTY_OPS,
       ];
     default:
       return [
         { value: "contains", label: "contiene" },
         { value: "eq", label: "es igual a" },
+        ...EMPTY_OPS,
       ];
   }
 }
 
+/** Vacío = sin valor, cadena vacía o lista sin elementos (una casilla sin marcar NO está vacía). */
+const isEmpty = (cell: unknown) =>
+  cell == null || cell === "" || (Array.isArray(cell) && cell.length === 0);
+
 function matchFilter(cell: unknown, field: DbField, op: string, value: any): boolean {
+  const range = relativeRange(op);
+  if (range) {
+    const d = day(cell);
+    return d != null && d >= range[0] && d <= range[1];
+  }
   switch (op) {
+    case "is_empty":
+      return isEmpty(cell);
+    case "not_empty":
+      return !isEmpty(cell);
     case "contains":
       return s(cell).toLowerCase().includes(s(value).toLowerCase());
     case "eq":
@@ -138,7 +216,8 @@ function evalNode(node: FilterNode, r: DbRecord, byId: Map<string, DbField>): bo
     return node.op === "or" ? results.some(Boolean) : results.every(Boolean);
   }
   const field = byId.get(node.fieldId);
-  if (!field || node.value === "" || node.value == null) return null;
+  if (!field) return null;
+  if (!NO_VALUE_OPS.has(node.op) && (node.value === "" || node.value == null)) return null;
   return matchFilter(r.cells[node.fieldId], field, node.op, node.value);
 }
 

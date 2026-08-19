@@ -27,6 +27,7 @@ import { downloadText } from "@/lib/download";
 import {
   countFilters,
   isFilterGroup,
+  NO_VALUE_OPS,
   opsFor,
   type DbField,
   type Filter,
@@ -489,7 +490,7 @@ function ConditionRow({
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
-      <FilterValue field={field} value={filter.value} onChange={(v) => onChange({ ...filter, value: v })} />
+      <FilterValue field={field} op={filter.op} value={filter.value} onChange={(v) => onChange({ ...filter, value: v })} />
       <button onClick={onRemove} className="shrink-0 px-1 text-[var(--muted)] hover:text-red-500">
         <X size={14} />
       </button>
@@ -497,8 +498,9 @@ function ConditionRow({
   );
 }
 
-function FilterValue({ field, value, onChange }: { field?: DbField; value: any; onChange: (v: any) => void }) {
+function FilterValue({ field, op, value, onChange }: { field?: DbField; op: string; value: any; onChange: (v: any) => void }) {
   if (!field) return null;
+  if (NO_VALUE_OPS.has(op)) return <span className="flex-1" />;
   if (field.type === "checkbox") {
     return (
       <select value={String(value)} onChange={(e) => onChange(e.target.value === "true")} className="rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs">
