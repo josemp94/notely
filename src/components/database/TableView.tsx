@@ -46,6 +46,7 @@ export function TableView({
   const moveRecord = trpc.db.moveRecord.useMutation({ onSuccess: invalidate });
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
+  const setFieldType = trpc.db.setFieldType.useMutation({ onSuccess: invalidate });
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
   const { data: computed } = trpc.db.computed.useQuery({ pageId });
 
@@ -316,6 +317,12 @@ export function TableView({
                     onClose={() => setMenuField(null)}
                     onRename={() => { setMenuField(null); setEditingField(f.id); }}
                     onConfig={(config) => updateField.mutate({ id: f.id, config: { ...(f.config as object), ...config } })}
+                    onType={(type) => {
+                      if (confirm(`Cambiar «${f.name}» a ${FIELD_LABELS[type] ?? type}. Los valores se convertirán y lo que no se pueda convertir se perderá. ¿Seguir?`)) {
+                        setFieldType.mutate({ id: f.id, type });
+                        setMenuField(null);
+                      }
+                    }}
                     onDelete={() => {
                       if (confirm(`¿Borrar la columna "${f.name}"?`)) deleteField.mutate({ id: f.id });
                       setMenuField(null);
@@ -485,18 +492,27 @@ function CalcCell({
 }
 
 
+/** Tipos a los que se puede convertir una columna (los que guardan su valor en la celda). */
+const CONVERTIBLE_TYPES = [
+  "text", "number", "select", "multiselect", "status", "person", "files", "checkbox",
+  "date", "url", "email", "phone", "created_time", "last_edited_time", "created_by", "last_edited_by", "id",
+] as const;
+type ConvertibleType = (typeof CONVERTIBLE_TYPES)[number];
+
 /** Menú ⋯ de una columna: renombrar, ajustes propios del tipo y borrar. */
 function FieldMenu({
   field,
   onClose,
   onRename,
   onConfig,
+  onType,
   onDelete,
 }: {
   field: FieldLite;
   onClose: () => void;
   onRename: () => void;
   onConfig: (config: Record<string, unknown>) => void;
+  onType: (type: ConvertibleType) => void;
   onDelete: () => void;
 }) {
   const cfg = (field.config as { prefix?: string; format?: string; max?: number; time?: boolean; range?: boolean } | null) ?? {};
@@ -506,6 +522,22 @@ function FieldMenu({
       <button onClick={onRename} className={item}>
         Renombrar
       </button>
+
+      {/* Los campos calculados no se pueden convertir: su valor no vive en la celda. */}
+      {!["relation", "rollup", "formula"].includes(field.type) && (
+        <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
+          <span>Tipo</span>
+          <select
+            value={field.type}
+            onChange={(e) => onType(e.target.value as ConvertibleType)}
+            className="max-w-[140px] rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+          >
+            {CONVERTIBLE_TYPES.map((t) => (
+              <option key={t} value={t}>{FIELD_LABELS[t] ?? t}</option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {field.type === "id" && (
         <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">

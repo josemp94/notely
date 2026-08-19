@@ -340,6 +340,91 @@ export const dbRouter = router({
       });
     }),
 
+  /**
+   * Cambia el tipo de un campo ya creado, convirtiendo lo que se pueda de cada celda.
+   * No se permite entrar ni salir de relation/rollup/formula: su valor no vive en la celda.
+   */
+  setFieldType: workspaceProcedure
+    .input(z.object({ id: z.string(), type: z.enum(FIELD_TYPES) }))
+    .mutation(async ({ ctx, input }) => {
+      const field = await ctx.db.field.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+      });
+      if (!field) throw new TRPCError({ code: "NOT_FOUND" });
+      if (["relation", "rollup", "formula"].includes(field.type)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Ese tipo de campo no se puede convertir." });
+      }
+      if (field.type === input.type) return { ok: true };
+
+      const records = await ctx.db.record.findMany({
+        where: { collectionId: field.collectionId },
+        select: { id: true, cells: true, createdAt: true, updatedAt: true, seq: true },
+      });
+
+      // Texto de partida de cada celda; de ahí se deriva el valor en el tipo nuevo.
+      const texts = new Map<string, string>();
+      for (const r of records) {
+        const cells = (r.cells ?? {}) as Record<string, unknown>;
+        texts.set(r.id, cellToText(field, cells[field.id], r));
+      }
+
+      // Al pasar a etiquetas, cada texto distinto se convierte en una opción.
+      const options: { id: string; label: string; color: string }[] = [];
+      const COLORS = ["gray", "orange", "green", "blue", "red", "yellow"];
+      const optionFor = (label: string) => {
+        const found = options.find((o) => o.label.toLowerCase() === label.toLowerCase());
+        if (found) return found.id;
+        const id = "opt_" + Math.random().toString(36).slice(2, 9);
+        options.push({ id, label, color: COLORS[options.length % COLORS.length] });
+        return id;
+      };
+
+      const convert = (text: string): unknown => {
+        if (!text) return null;
+        switch (input.type) {
+          case "text":
+          case "url":
+          case "email":
+          case "phone":
+            return text;
+          case "number": {
+            const n = Number(text.replace(/[^\d,.-]/g, "").replace(",", "."));
+            return Number.isFinite(n) ? n : null;
+          }
+          case "checkbox":
+            return !["", "false", "no", "0"].includes(text.trim().toLowerCase());
+          case "date": {
+            const iso = text.match(/\d{4}-\d{2}-\d{2}/);
+            return iso ? iso[0] : null;
+          }
+          case "select":
+          case "status":
+            return optionFor(text);
+          case "multiselect":
+            return text.split(",").map((part) => optionFor(part.trim())).filter(Boolean);
+          default:
+            // person, files, id, created_time/by, last_edited_time/by: se rellenan solos o no son convertibles.
+            return null;
+        }
+      };
+
+      await ctx.db.$transaction(async (tx) => {
+        for (const r of records) {
+          const cells = { ...((r.cells ?? {}) as Record<string, unknown>) };
+          const next = convert(texts.get(r.id) ?? "");
+          if (next === null || (Array.isArray(next) && !next.length)) delete cells[field.id];
+          else cells[field.id] = next;
+          await tx.record.update({ where: { id: r.id }, data: { cells: cells as Prisma.InputJsonValue } });
+        }
+        // La config vieja (opciones, formato, prefijo) no vale para el tipo nuevo.
+        await tx.field.update({
+          where: { id: field.id },
+          data: { type: input.type, config: options.length ? { options } : {} },
+        });
+      });
+      return { ok: true, converted: records.length };
+    }),
+
   deleteField: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
