@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Database, Download } from "lucide-react";
+import { Check, Database, Download, Lightbulb } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -156,6 +156,14 @@ export function Editor({
             filterSuggestionItems(
               [
                 ...getDefaultReactSlashMenuItems(editor),
+                {
+                  title: "Llamada",
+                  subtext: "Bloque destacado con icono",
+                  aliases: ["callout", "llamada", "destacado", "aviso", "nota"],
+                  group: "Bloques básicos",
+                  icon: <Lightbulb size={18} />,
+                  onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: "callout" }),
+                },
                 {
                   title: "Base de datos",
                   subtext: "Tabla embebida en esta página",
