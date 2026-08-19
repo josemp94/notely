@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 export type Theme = "light" | "dark";
 
-const EVENT = "notely:theme";
+const EVENT = "notiono:theme";
 
 /** Cambia el tema, lo persiste y avisa a los componentes suscritos (useTheme). */
 export function setTheme(t: Theme) {

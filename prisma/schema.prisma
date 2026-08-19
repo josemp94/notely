@@ -1,4 +1,4 @@
-// Notely — esquema de datos (Fase 0)
+// Notiono — esquema de datos (Fase 0)
 // Enfoque híbrido: páginas = documento JSON de bloques; bases de datos del usuario = filas reales.
 generator client {
   provider = "prisma-client-js"

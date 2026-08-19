@@ -1,9 +1,9 @@
 import crypto from "crypto";
 import { db } from "@/lib/db";
 
-// Notely es SSO-only: no hay contraseñas. Este módulo solo maneja sesiones (cookie).
+// Notiono es SSO-only: no hay contraseñas. Este módulo solo maneja sesiones (cookie).
 
-export const SESSION_COOKIE = "notely_session";
+export const SESSION_COOKIE = "notiono_session";
 const SESSION_DAYS = 30;
 export const SESSION_MAX_AGE = SESSION_DAYS * 24 * 60 * 60;
 

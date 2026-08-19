@@ -55,11 +55,11 @@ export const editorSchema = BlockNoteSchema.create({
   inlineContentSpecs: { ...defaultInlineContentSpecs, mention: Mention, personMention: PersonMention },
 });
 
-export type NotelyEditor = typeof editorSchema.BlockNoteEditor;
-export type NotelyPartialBlock = typeof editorSchema.PartialBlock;
+export type NotionoEditor = typeof editorSchema.BlockNoteEditor;
+export type NotionoPartialBlock = typeof editorSchema.PartialBlock;
 
 /** Menú "@": personas del espacio (workspace.members) y páginas (pages.search). */
-export function MentionMenu({ editor, pageId }: { editor: NotelyEditor; pageId: string }) {
+export function MentionMenu({ editor, pageId }: { editor: NotionoEditor; pageId: string }) {
   const utils = trpc.useUtils();
   const notify = trpc.notifications.notifyMention.useMutation();
   return (

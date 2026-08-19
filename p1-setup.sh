@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-cd ~/Projects/notely
+cd ~/Projects/notiono
 tar -xzf _p1.tgz && rm -f _p1.tgz
 echo 'DATABASE_URL="postgresql://notely:notely@localhost:5432/notely"' > .env
 echo 'AUTH_SECRET="dev-secret-cambiar-en-prod"' >> .env

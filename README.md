@@ -1,31 +1,29 @@
-# Notely
+# Notiono
 
-Clon de Notion **self-hosted a medida**: notas por bloques + bases de datos con vistas + **gráficas reales interactivas**. Gratis, en el NAS, y operable por API (para que el asistente lo mantenga solo).
+Clon de **Notion** self-hosted a medida: páginas con bloques + bases de datos con vistas + gráficas interactivas. Gratis, autoalojado en el NAS y operable por API.
 
 ## Stack
-- **Next.js 15** (App Router) + **TypeScript**
-- **tRPC** (API tipada) + **Prisma** + **PostgreSQL**
-- **BlockNote** (editor de bloques tipo Notion)
-- **Apache ECharts** (gráficas interactivas)
-- **Tailwind CSS** + **Auth.js**
-- Marca: `#ff5c28` · Bricolage Grotesque / Hanken Grotesk / IBM Plex Mono
+- **Next.js 16** (App Router) + **TypeScript** estricto
+- **tRPC** (API tipada) + **Prisma** + **PostgreSQL 16**
+- **BlockNote** (editor de bloques) + custom blocks propios
+- **Apache ECharts** (gráficas) · **lucide-react** (iconos de interfaz)
+- **Tailwind CSS v4** · Auth **SSO-only** (Synology OIDC)
+- Marca: `#ff5c28`
 
-## Roadmap
-- **Fase 0** — Andamiaje: stack, esquema, branding, despliegue. ← *en curso*
-- **Fase 1** — Editor de bloques + páginas
-- **Fase 2** — Bases de datos + vistas (tabla/kanban)
-- **Fase 3** — Gráficas / dashboards
-- **Fase 4** — Multiusuario / familia
-- **Fase 5** — Pulido + migración de datos
-
-Planteamiento completo: `PLANTEAMIENTO.md`.
+## Estado
+Ver `CLAUDE.md` (contexto y estado actual) y `docs/notion-parity.md` (inventario y gap-analysis frente a Notion).
+API REST v1 documentada en `docs/api.md`.
 
 ## Desarrollo
 ```bash
 npm install
 cp .env.example .env   # configurar DATABASE_URL
-npx prisma migrate dev
+npx prisma migrate deploy
 npm run dev
 ```
 
 Dev DB local (Postgres): `postgresql://notely:notely@localhost:5432/notely`
+(el rol/base de datos conserva el nombre original del proyecto; renombrarlo obligaría a migrar los datos sin ninguna ganancia).
+
+## Despliegue
+Docker Compose en el NAS: `notiono-app` (:3010), `notiono-db`, `notiono-migrate`, tras proxy inverso DSM → `notiono.monrealperez.com`.

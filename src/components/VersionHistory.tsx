@@ -5,7 +5,7 @@ import { History, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
-import { editorSchema, type NotelyPartialBlock } from "@/components/editor/mention";
+import { editorSchema, type NotionoPartialBlock } from "@/components/editor/mention";
 import { trpc } from "@/trpc/react";
 import { useTheme } from "@/lib/theme";
 
@@ -122,7 +122,7 @@ export function VersionHistoryModal({
 /** Render de solo lectura de un snapshot (remontar con `key` por versión). */
 function Preview({ content }: { content: unknown }) {
   const theme = useTheme();
-  const blocks = content as NotelyPartialBlock[];
+  const blocks = content as NotionoPartialBlock[];
   const editor = useCreateBlockNote({
     schema: editorSchema,
     initialContent: Array.isArray(blocks) && blocks.length > 0 ? blocks : undefined,

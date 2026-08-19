@@ -6,7 +6,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { editorSchema, MentionMenu, type NotelyPartialBlock } from "@/components/editor/mention";
+import { editorSchema, MentionMenu, type NotionoPartialBlock } from "@/components/editor/mention";
 import { trpc } from "@/trpc/react";
 import { useTheme } from "@/lib/theme";
 import { Cell, type FieldLite } from "./Cell";
@@ -56,8 +56,8 @@ export function RecordPanel({
   const propFields = fields.filter((f) => f.id !== titleField?.id);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initial = useMemo<NotelyPartialBlock[] | undefined>(() => {
-    const c = record.content as NotelyPartialBlock[] | undefined;
+  const initial = useMemo<NotionoPartialBlock[] | undefined>(() => {
+    const c = record.content as NotionoPartialBlock[] | undefined;
     return Array.isArray(c) && c.length > 0 ? c : undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record.id]);

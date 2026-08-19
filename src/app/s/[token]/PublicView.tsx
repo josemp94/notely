@@ -4,7 +4,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { editorSchema, type NotelyPartialBlock } from "@/components/editor/mention";
+import { editorSchema, type NotionoPartialBlock } from "@/components/editor/mention";
 import { PublicDbContext, StaticDbTable, type PublicDbTable } from "@/components/editor/databaseBlock";
 import { coverStyle } from "@/components/PageCover";
 import { useTheme } from "@/lib/theme";
@@ -51,7 +51,7 @@ export function PublicView({
 
 function PublicDoc({ content }: { content: unknown }) {
   const theme = useTheme();
-  const blocks = content as NotelyPartialBlock[] | undefined;
+  const blocks = content as NotionoPartialBlock[] | undefined;
   const editor = useCreateBlockNote({
     schema: editorSchema,
     initialContent: Array.isArray(blocks) && blocks.length > 0 ? blocks : undefined,

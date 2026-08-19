@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/react";
 
 /** Evento global para abrir la paleta desde cualquier botón (p. ej. el sidebar). */
-export const OPEN_SEARCH_EVENT = "notely:open-search";
+export const OPEN_SEARCH_EVENT = "notiono:open-search";
 
 export function openSearchPalette() {
   window.dispatchEvent(new Event(OPEN_SEARCH_EVENT));

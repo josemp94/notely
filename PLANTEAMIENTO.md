@@ -1,4 +1,4 @@
-# Notely — Planteamiento técnico maestro
+# Notiono — Planteamiento técnico maestro
 ### Clon de Notion self-hosted a medida para Jose · v2 (diseño multi-agente, Fable 5) · 2026-08-14
 
 > Este documento es el resultado de un diseño por subsistemas: 12 expertos (Fable 5), cada uno
@@ -8,11 +8,11 @@
 
 ## Resumen ejecutivo
 
-**Qué construimos.** Notely: un Notion privado en el NAS de Jose —páginas por bloques + bases de datos con vistas (tabla/kanban/calendario) + **gráficas interactivas reales ligadas a los datos**—, gratis, y **operable por IA**: Dobby crea y actualiza datos por API (p. ej. mete el extracto bancario y las gráficas se refrescan solas).
+**Qué construimos.** Notiono: un Notion privado en el NAS de Jose —páginas por bloques + bases de datos con vistas (tabla/kanban/calendario) + **gráficas interactivas reales ligadas a los datos**—, gratis, y **operable por IA**: Dobby crea y actualiza datos por API (p. ej. mete el extracto bancario y las gráficas se refrescan solas).
 
 **Stack, en una frase.** Monolito **Next.js 16 + TypeScript + tRPC + Prisma 6 + PostgreSQL + Redis**, editor **BlockNote**, gráficas **Apache ECharts**, Auth.js v5, desplegado en Docker sobre el DS923+ tras el reverse proxy de Synology + Cloudflare + Let's Encrypt.
 
-**Por qué resuelve lo que las otras no.** AFFiNE/AppFlowy son bonitos pero **no tienen gráficas**; NocoDB las cobra; Grist las tiene pero se ve como Airtable y no es "operable por IA" a medida. Notely junta las tres cosas que Jose quería y ninguna daba junta: **estética propia + gráficas de verdad + API para que Dobby lo mantenga**, todo gratis y en su casa.
+**Por qué resuelve lo que las otras no.** AFFiNE/AppFlowy son bonitos pero **no tienen gráficas**; NocoDB las cobra; Grist las tiene pero se ve como Airtable y no es "operable por IA" a medida. Notiono junta las tres cosas que Jose quería y ninguna daba junta: **estética propia + gráficas de verdad + API para que Dobby lo mantenga**, todo gratis y en su casa.
 
 **Filosofía de diseño (lo que mantiene el proyecto sano):**
 - *API-first ("si Dobby no puede por API, no está terminado").*
@@ -60,7 +60,7 @@
 
 ## 1. Visión
 
-**Notely es el sistema operativo personal de Jose: un Notion privado, gratis y operable por IA, donde las bases de datos se ven en gráficas de verdad.** No es un clon exhaustivo de Notion; es la intersección entre lo que Jose usa realmente (finanzas de autónomo, tareas, notas, plantillas) y lo que Notion hace mal o cobra caro: gráficas interactivas nativas, API sin fricción para que Dobby lea/escriba datos, y soberanía total del dato en el NAS.
+**Notiono es el sistema operativo personal de Jose: un Notion privado, gratis y operable por IA, donde las bases de datos se ven en gráficas de verdad.** No es un clon exhaustivo de Notion; es la intersección entre lo que Jose usa realmente (finanzas de autónomo, tareas, notas, plantillas) y lo que Notion hace mal o cobra caro: gráficas interactivas nativas, API sin fricción para que Dobby lea/escriba datos, y soberanía total del dato en el NAS.
 
 **Frase guía:** *"Si Dobby no puede hacerlo por API, no está terminado. Si Jose no lo usa en 2 semanas, no se construye."*
 
@@ -135,7 +135,7 @@ Criterio de corte: **(a)** ¿lo usa Jose hoy o en 6 meses? **(b)** ¿su coste de
 
 1. **API-first, "operable por IA":** toda acción de UI tiene equivalente API documentado. Errores legibles por máquina (código + mensaje + campo), esquemas consultables, escrituras idempotentes (header `Idempotency-Key`). Dobby es un usuario de primera clase, no un script.
 2. **Los datos mandan sobre el documento:** las BD son la columna vertebral; las páginas las decoran. Ante conflicto de esfuerzo, gana la fiabilidad del dato financiero.
-3. **Cero coste marginal:** nada que requiera SaaS de pago. Todo corre en el DS923+ dentro de ~3 GB de RAM presupuestada para Notely.
+3. **Cero coste marginal:** nada que requiera SaaS de pago. Todo corre en el DS923+ dentro de ~3 GB de RAM presupuestada para Notiono.
 4. **Aburrido por dentro, bonito por fuera:** Postgres relacional clásico, sin CRDT ni event-sourcing. La sofisticación se gasta en las gráficas y en la marca (#ff5c28, Bricolage/Hanken/Plex Mono, densidad tipo herramienta, no tipo landing).
 5. **Pérdida de datos = bug P0:** autosave, papelera, backups verificados. Un gasto deducible perdido es dinero perdido.
 6. **Convención sobre configuración:** pocas opciones, buenos defaults. Si una preferencia no la pediría Jose, no existe.
@@ -152,7 +152,7 @@ Criterio de corte: **(a)** ¿lo usa Jose hoy o en 6 meses? **(b)** ¿su coste de
 ## 7. Criterios de éxito medibles y Definition of Done v1
 
 **Éxito de producto (medir a 60 días de v1):**
-- Jose registra ≥90% de sus movimientos financieros en Notely (abandono real de la herramienta anterior).
+- Jose registra ≥90% de sus movimientos financieros en Notiono (abandono real de la herramienta anterior).
 - Dobby ejecuta ≥10 operaciones API/semana sin intervención manual y con <2% de errores 4xx/5xx.
 - Cierre trimestral fiscal (deducibles + export) en <30 min, contra ~2 h actuales.
 - Uso sostenido: ≥4 días/semana con al menos una escritura.
@@ -174,7 +174,7 @@ Criterio de corte: **(a)** ¿lo usa Jose hoy o en 6 meses? **(b)** ¿su coste de
 
 ## 1. Visión de conjunto
 
-NOTELY es un **monolito Next.js 16** desplegado como contenedor único en el DS923+, con Postgres y Redis reutilizados como servicios ya existentes en el NAS. No hay backend separado: el App Router sirve la UI (Server Components) y la API (tRPC sobre Route Handlers). Dobby (la IA) consume la misma API tRPC vía HTTP con una API key de servicio, sin ruta paralela: **un solo contrato de datos para humanos y agente**.
+NOTIONO es un **monolito Next.js 16** desplegado como contenedor único en el DS923+, con Postgres y Redis reutilizados como servicios ya existentes en el NAS. No hay backend separado: el App Router sirve la UI (Server Components) y la API (tRPC sobre Route Handlers). Dobby (la IA) consume la misma API tRPC vía HTTP con una API key de servicio, sin ruta paralela: **un solo contrato de datos para humanos y agente**.
 
 ```mermaid
 flowchart LR
@@ -186,7 +186,7 @@ flowchart LR
   end
   subgraph NAS[Synology DS923+ / Docker]
     RP[Reverse Proxy Synology :443]
-    subgraph APP[Contenedor notely - 1.5GB limit]
+    subgraph APP[Contenedor notiono - 1.5GB limit]
       N[Next.js 16 standalone<br/>RSC + Route Handlers]
       T[tRPC routers]
       S[Capa servicios]
@@ -194,7 +194,7 @@ flowchart LR
     end
     PG[(Postgres 16<br/>contenedor existente)]
     RD[(Redis<br/>contenedor existente)]
-    FS[/Volumen NAS<br/>/volume1/notely/uploads/]
+    FS[/Volumen NAS<br/>/volume1/notiono/uploads/]
   end
   D[Dobby<br/>OpenClaw en el NAS]
 
@@ -213,7 +213,7 @@ flowchart LR
 App única (no monorepo — un solo desplegable, un solo `package.json`; Turborepo sería sobreingeniería para un usuario):
 
 ```
-notely/
+notiono/
 ├── prisma/
 │   ├── schema.prisma
 │   └── migrations/
@@ -260,10 +260,10 @@ notely/
 
 ## 4. Rendimiento en el NAS (12GB compartidos)
 
-- **`output: "standalone"`** en `next.config.ts`: imagen final ~150MB sobre `node:22-alpine`, sin `node_modules` completo. `NODE_OPTIONS=--max-old-space-size=1024` y límite Docker `mem_limit: 1536m` (margen para picos de Prisma). Presupuesto total NOTELY: ~2GB incluyendo su cuota de Postgres/Redis compartidos.
+- **`output: "standalone"`** en `next.config.ts`: imagen final ~150MB sobre `node:22-alpine`, sin `node_modules` completo. `NODE_OPTIONS=--max-old-space-size=1024` y límite Docker `mem_limit: 1536m` (margen para picos de Prisma). Presupuesto total NOTIONO: ~2GB incluyendo su cuota de Postgres/Redis compartidos.
 - **Redis como amortiguador de Postgres**: cache de árbol de navegación (se recalcula caro, cambia poco), contenido de página (TTL 60s + invalidación explícita en mutación), resultados de vistas de BD con filtros (clave = hash del filtro), sesiones Auth.js y *rate limiting* de la API de Dobby (para que un cron desbocado no tumbe el NAS).
 - **SSR vs CSR**: SSR para la primera carga (el DS923+ con Ryzen R1600 renderiza HTML sin problema y ahorra JS al cliente); a partir de ahí, navegación tipo SPA con prefetch de TanStack Query. **Sin ISR ni cache de página completa de Next**: contenido privado mono-usuario, el `revalidate` de Next aporta poco y complica invalidación — Redis manual es más predecible.
-- **Ficheros en volumen del NAS**, no en Postgres: subida por Route Handler con streaming a `/volume1/notely/uploads/{pageId}/`, metadatos en Postgres, servido con `sendfile` y cabeceras `Cache-Control` largas (nombres con hash). Evita inflar la BD y los backups de Postgres.
+- **Ficheros en volumen del NAS**, no en Postgres: subida por Route Handler con streaming a `/volume1/notiono/uploads/{pageId}/`, metadatos en Postgres, servido con `sendfile` y cabeceras `Cache-Control` largas (nombres con hash). Evita inflar la BD y los backups de Postgres.
 - ECharts y BlockNote con `next/dynamic` (ssr: false) para no cargarlos en rutas que no los usan; Prisma con `connection_limit=5` en la URL para no agotar conexiones del Postgres compartido.
 
 ## 5. Decisiones y alternativas descartadas
@@ -292,7 +292,7 @@ notely/
 
 ## Filosofía: híbrido documento-JSON + filas reales
 
-NOTELY separa dos mundos con requisitos opuestos:
+NOTIONO separa dos mundos con requisitos opuestos:
 
 - **Páginas (notas)**: contenido libre, jerárquico, editado como un todo por BlockNote. Se guarda como **un solo documento JSONB** (`Page.content`). No necesitamos consultar bloques individuales por SQL; el editor carga/guarda el doc completo. Un bloque-por-fila (estilo Notion real) multiplicaría escrituras, complicaría el orden y no aporta nada si nadie consulta bloques sueltos.
 - **Bases de datos del usuario (Collections)**: aquí sí queremos `GROUP BY`, `SUM`, filtros por fecha/categoría para gráficas. Cada fila es un **Record real** en Postgres. Las celdas van en un JSONB `cells` (esquema flexible: el usuario añade campos sin `ALTER TABLE`), pero **materializamos con generated columns** las dos dimensiones que dominan la agregación financiera: fecha e importe.
@@ -485,7 +485,7 @@ Necesitamos un editor **block-based**, con UX Notion "de serie", extensible con 
 | Generación server-side (`ServerBlockNoteEditor`) | **Sí, oficial** | Con esfuerzo | Posible | No | Posible |
 | Colaboración futura | Yjs | Yjs | Yjs | Nativa | Yjs |
 
-**Decisión: BlockNote.** Es el único que da la UX Notion completa gratis *y* un JSON que Dobby puede escribir con un system prompt corto. Riesgo (breaking changes) acotado **pineando versión** y aislando el editor tras un `<NotelyEditor>`.
+**Decisión: BlockNote.** Es el único que da la UX Notion completa gratis *y* un JSON que Dobby puede escribir con un system prompt corto. Riesgo (breaking changes) acotado **pineando versión** y aislando el editor tras un `<NotionoEditor>`.
 
 ## Catálogo de bloques por fase
 
@@ -520,7 +520,7 @@ const ChartBlock = createReactBlockSpec(
       const data = useDatabaseQuery(block.props.databaseId);
       if (!block.props.databaseId)
         return <ChartConfigPlaceholder onSave={(p) => editor.updateBlock(block, { props: p })} />;
-      return <NotelyChart type={block.props.chartType} data={aggregate(data, block.props)} />;
+      return <NotionoChart type={block.props.chartType} data={aggregate(data, block.props)} />;
     } }
 );
 const schema = BlockNoteSchema.create({
@@ -728,7 +728,7 @@ Implementación: `prisma.record.upsert({ where: { collectionId_naturalKey }, upd
 
 # Gráficas y dashboards
 
-Este es el diferenciador de NOTELY: las gráficas no son imágenes ni embeds, son visualizaciones vivas conectadas a las Collections del usuario. Cambias una celda, cambia la gráfica. El caso de referencia es el dashboard de finanzas de Jose: importa su extracto bancario (o Dobby lo hace por él) y al instante ve ingresos vs gastos por mes, top categorías, balance acumulado y KPIs.
+Este es el diferenciador de NOTIONO: las gráficas no son imágenes ni embeds, son visualizaciones vivas conectadas a las Collections del usuario. Cambias una celda, cambia la gráfica. El caso de referencia es el dashboard de finanzas de Jose: importa su extracto bancario (o Dobby lo hace por él) y al instante ve ingresos vs gastos por mes, top categorías, balance acumulado y KPIs.
 
 ## Por qué ECharts
 
@@ -742,11 +742,11 @@ Este es el diferenciador de NOTELY: las gráficas no son imágenes ni embeds, so
 | Peso | ~350KB (tree-shakeable a ~150KB) | ~100KB | ~70KB | Variable | ~300KB |
 | Licencia / self-host | Apache 2.0, cero llamadas externas | MIT | MIT | MIT | MIT |
 
-**Decisión: ECharts.** Tres razones de peso para NOTELY:
+**Decisión: ECharts.** Tres razones de peso para NOTIONO:
 
 1. **El `option` de ECharts es JSON declarativo puro**, igual que nuestro `spec`. La traducción spec→gráfica es una función pura sin JSX intermedio, lo que permite que el servidor (y Dobby vía API) generen gráficas sin tocar React.
 2. **Interactividad de serie**: `dataZoom` para rangos de fechas, eventos `click` por serie/dato para drill-down, tooltips con formatters — todo lo que un dashboard financiero necesita sin plugins.
-3. **Rendimiento y self-host**: canvas rendering aguanta años de movimientos bancarios, y no hay dependencias de CDN ni telemetría — coherente con la filosofía self-hosted de NOTELY.
+3. **Rendimiento y self-host**: canvas rendering aguanta años de movimientos bancarios, y no hay dependencias de CDN ni telemetría — coherente con la filosofía self-hosted de NOTIONO.
 
 Recharts se descartó por rendimiento SVG y pobreza de tipos; Visx por coste de desarrollo (es un toolkit, no una librería de gráficas); Nivo por peso sin ventaja clara; Chart.js quedó segundo pero su interactividad avanzada requiere plugins de terceros.
 
@@ -836,7 +836,7 @@ La **invalidación** es por colección, no por chart: toda mutación de registro
 - **Tooltips**: `tooltip.formatter` con `Intl.NumberFormat` → "Marzo 2026 · Gastos: −1.842,50 €".
 - **Zoom**: `dataZoom` (slider + rueda) en series temporales largas.
 - **Filtrar por click**: click en un sector del donut de categorías emite `chart:filter` al contexto del dashboard; las demás gráficas re-consultan con ese filtro añadido.
-- **Drill-down**: el evento `click` de ECharts devuelve el datapoint; NOTELY reconstruye los filtros que lo definen (bucket + breakdown + filtros activos) y abre un panel lateral con la tabla de registros subyacentes — literalmente la Collection filtrada:
+- **Drill-down**: el evento `click` de ECharts devuelve el datapoint; NOTIONO reconstruye los filtros que lo definen (bucket + breakdown + filtros activos) y abre un panel lateral con la tabla de registros subyacentes — literalmente la Collection filtrada:
 
 ```ts
 chartInstance.on("click", (p) => {
@@ -897,7 +897,7 @@ Cuatro bloques sobre `col_movimientos` (fecha, concepto, importe, tipo, categor�
 
 **4. Balance acumulado** (área, col-span 6): `dimension` mes, measure sum con `"cumulative": true`, `chart.type: "area"`, relleno degradado de `#ff5c28` al 15% de opacidad.
 
-El resultado: Jose abre NOTELY, elige "Últimos 6 meses" y ve su vida financiera completa — y cualquier número sospechoso está a un click de los movimientos que lo explican.
+El resultado: Jose abre NOTIONO, elige "Últimos 6 meses" y ve su vida financiera completa — y cualquier número sospechoso está a un click de los movimientos que lo explican.
 
 ---
 
@@ -905,7 +905,7 @@ El resultado: Jose abre NOTELY, elige "Últimos 6 meses" y ve su vida financiera
 
 ## Filosofía general
 
-Notely empieza con un usuario (Jose) en varios dispositivos y crecerá a familia con edición concurrente **ocasional**. Eso permite una estrategia por fases donde cada fase resuelve un problema real y ninguna añade infraestructura antes de necesitarla:
+Notiono empieza con un usuario (Jose) en varios dispositivos y crecerá a familia con edición concurrente **ocasional**. Eso permite una estrategia por fases donde cada fase resuelve un problema real y ninguna añade infraestructura antes de necesitarla:
 
 | Fase | Problema real | Solución | Coste |
 |---|---|---|---|
@@ -995,7 +995,7 @@ Aquí el objetivo es **presencia y frescura**, no co-edición: si Maite mueve un
 Cliente A ──ws──► Servidor WS (Node, ws/socket.io)
 Cliente B ──ws──► Servidor WS (otra instancia)
                      ▲              ▲
-                     └── Redis pub/sub ──┘   canal: notely:events
+                     └── Redis pub/sub ──┘   canal: notiono:events
 Mutations tRPC ──► publish tras commit en Postgres
 ```
 
@@ -1061,7 +1061,7 @@ El cliente se suscribe por sala (`family:{familyId}` para listas/tableros, `page
 
 ### Estrategia de sesión: JWT firmado, no sesiones en BD
 
-Con Credentials provider, Auth.js v5 **no soporta sesiones de base de datos** (el adapter no crea registro de sesión con ese provider), así que la decisión práctica es **JWT en cookie**. Justificación adicional: NOTELY corre en un solo servidor doméstico, no necesitas revocación instantánea multi-nodo, y evitas un round-trip a Postgres por request. Mitiga el punto débil del JWT (no revocable) así: TTL corto (`maxAge: 7d`, `updateAge: 24h`) y un campo `sessionVersion` en `User` — al cambiar contraseña o "cerrar sesión en todos los dispositivos" incrementas la versión y el callback `jwt` invalida tokens viejos:
+Con Credentials provider, Auth.js v5 **no soporta sesiones de base de datos** (el adapter no crea registro de sesión con ese provider), así que la decisión práctica es **JWT en cookie**. Justificación adicional: NOTIONO corre en un solo servidor doméstico, no necesitas revocación instantánea multi-nodo, y evitas un round-trip a Postgres por request. Mitiga el punto débil del JWT (no revocable) así: TTL corto (`maxAge: 7d`, `updateAge: 24h`) y un campo `sessionVersion` en `User` — al cambiar contraseña o "cerrar sesión en todos los dispositivos" incrementas la versión y el callback `jwt` invalida tokens viejos:
 
 ```ts
 // auth.ts
@@ -1192,15 +1192,15 @@ Detalle importante: responde `NOT_FOUND` (no `FORBIDDEN`) cuando no hay acceso, 
 - **Un usuario por persona, sin cuentas compartidas.** Cada miembro tiene su workspace personal creado en el registro (invitación por enlace firmado que solo Jose/owner puede generar; sin registro abierto).
 - **Aislamiento por defecto = denegar.** Toda query de listado filtra por membership: `where: { workspace: { members: { some: { userId } } } }`. Nunca "listar y filtrar en cliente". La búsqueda global también pasa por el mismo filtro.
 - Compartir es **explícito y granular** (página o subárbol, VIEW/EDIT), revocable desde la UI del dueño.
-- Encaje con la filosofía OpenClaw de contextos separados: igual que cada persona habla con su agente en su propio contexto, en NOTELY cada persona ve solo su grafo de páginas; el cruce solo existe donde hay un share explícito, y Dobby respeta esa misma frontera (ver §4): cuando Dobby actúa "para Maite", usa un token con los permisos de Maite, no un token global.
+- Encaje con la filosofía OpenClaw de contextos separados: igual que cada persona habla con su agente en su propio contexto, en NOTIONO cada persona ve solo su grafo de páginas; el cruce solo existe donde hay un share explícito, y Dobby respeta esa misma frontera (ver §4): cuando Dobby actúa "para Maite", usa un token con los permisos de Maite, no un token global.
 
 ## 4. Acceso de Dobby (API de servicio)
 
 **Nada de puertas traseras ni saltarse guards.** Dobby es un principal más:
 
-- Tabla `ApiToken { id, name, userId, tokenHash, scopes: string[], lastUsedAt, expiresAt, revokedAt }`. El token en claro (`notely_sk_<32 bytes base64url>`) se muestra una sola vez; en BD solo **SHA-256 del token** (basta hash rápido: el token ya tiene 256 bits de entropía, no necesita Argon2). Lookup por prefijo corto indexado + comparación `timingSafeEqual`.
+- Tabla `ApiToken { id, name, userId, tokenHash, scopes: string[], lastUsedAt, expiresAt, revokedAt }`. El token en claro (`notiono_sk_<32 bytes base64url>`) se muestra una sola vez; en BD solo **SHA-256 del token** (basta hash rápido: el token ya tiene 256 bits de entropía, no necesita Argon2). Lookup por prefijo corto indexado + comparación `timingSafeEqual`.
 - **Scopes**: `pages:read`, `pages:write`, `search:read`… El guard de token comprueba scope **y además** ejecuta los mismos `assertPageAccess`/membership del usuario al que pertenece el token. Scope acota; permisos del usuario mandan.
-- Dos modos: (a) token ligado a la cuenta de servicio `dobby@notely` que es EDITOR solo de los workspaces donde se le invite, o (b) un token por miembro de la familia para acciones "en nombre de". Empieza con (a).
+- Dos modos: (a) token ligado a la cuenta de servicio `dobby@notiono` que es EDITOR solo de los workspaces donde se le invite, o (b) un token por miembro de la familia para acciones "en nombre de". Empieza con (a).
 - **Rotación**: `expiresAt` a 90 días, endpoint de rotación que emite el nuevo antes de revocar el viejo (solape de 24 h). Revocación inmediata poniendo `revokedAt`.
 - Middleware: `Authorization: Bearer` → resuelve token → construye `ctx.userId` igual que una sesión, marca `ctx.via = "api"` y aplica rate-limit propio por token en Redis. Los routers no distinguen sesión de token: mismos guards.
 - Audita cada llamada de API (tabla `AuditLog`: token, procedimiento, recurso, timestamp).
@@ -1219,7 +1219,7 @@ Detalle importante: responde `NOT_FOUND` (no `FORBIDDEN`) cuando no hay acceso, 
 
 ## Dos superficies, una frontera clara
 
-Notely expone **dos superficies de API** sobre la misma capa de servicios:
+Notiono expone **dos superficies de API** sobre la misma capa de servicios:
 
 1. **tRPC** — consumida solo por el frontend Next.js. Sesión de usuario (cookie), tipado end-to-end, procedures optimizadas para la UI (mutaciones optimistas, suscripciones, paginación por cursor de la vista). No es un contrato estable: puede cambiar con cada deploy.
 2. **REST v1** (`/api/v1/*`) — la superficie de **automatización** para Dobby y los crons de OpenClaw. Token de servicio, contrato versionado y estable, payloads JSON validados con Zod, y semántica **idempotente** en todo lo que un cron pueda re-ejecutar.
@@ -1236,7 +1236,7 @@ Dobby ──REST v1─┘         └──> eventBus ──> webhooks salientes
 
 - **Token de servicio**: `Authorization: Bearer nly_sk_...` (hash SHA-256 en tabla `ApiToken`, nunca en claro). Cada token tiene `scopes: string[]` — p. ej. el token de Dobby-finanzas: `["records:write", "records:read", "charts:refresh"]`; el de Dobby-editor añade `pages:write`, `collections:write`. Scope insuficiente → `403 FORBIDDEN_SCOPE`.
 - **Rate-limit** por token: 300 req/min (burst 60) vía bucket en Postgres/Redis; cabeceras `X-RateLimit-Remaining` y `Retry-After` en el 429. Los endpoints batch cuentan 1 request, no N — así incentivamos que los crons usen batch.
-- **Versionado** por path (`/api/v1/`): dentro de v1 solo cambios aditivos; breaking → `/api/v2/` con v1 mantenida ≥6 meses. Cada respuesta lleva `X-Notely-Api-Version`.
+- **Versionado** por path (`/api/v1/`): dentro de v1 solo cambios aditivos; breaking → `/api/v2/` con v1 mantenida ≥6 meses. Cada respuesta lleva `X-Notiono-Api-Version`.
 - **Errores estándar** (mismo shape siempre, parseable por un LLM):
 
 ```json
@@ -1348,10 +1348,10 @@ Implementación: `prisma.$transaction` + `INSERT ... ON CONFLICT (collection_id,
 
 ## Cómo Dobby genera contenido de páginas
 
-Dobby no escribe JSON de BlockNote a mano: usa un **helper builder** (`@notely/blocks`, publicado también como skill para OpenClaw) que garantiza estructura válida:
+Dobby no escribe JSON de BlockNote a mano: usa un **helper builder** (`@notiono/blocks`, publicado también como skill para OpenClaw) que garantiza estructura válida:
 
 ```ts
-import { page, h2, p, bullets, table, chart, collectionView } from "@notely/blocks";
+import { page, h2, p, bullets, table, chart, collectionView } from "@notiono/blocks";
 
 const blocks = page(
   h2("Resumen Julio 2026"),
@@ -1360,7 +1360,7 @@ const blocks = page(
   chart("cht_gastos_cat"),
   collectionView("col_movs", { filter: 'eq(mes,"2026-07")', view: "table" }),
 );
-await notely.pages.create({ parentId: "pg_finanzas", title: "Resumen Julio 2026", blocks });
+await notiono.pages.create({ parentId: "pg_finanzas", title: "Resumen Julio 2026", blocks });
 ```
 
 Cada helper emite el nodo BlockNote correcto (`type`, `props`, `content[]` con estilos); el server revalida con `zBlock`, así que aunque Dobby construyera el JSON directamente, un bloque malformado devuelve un 422 con `details` accionables.
@@ -1373,12 +1373,12 @@ Toda mutación publica en un `eventBus` interno; las suscripciones registradas r
 
 ```json
 // POST /api/v1/webhooks
-{ "url": "https://openclaw.local/hooks/notely", "secret": "whsec_…",
+{ "url": "https://openclaw.local/hooks/notiono", "secret": "whsec_…",
   "events": ["records.upserted", "chart.dirty", "page.updated"],
   "filter": { "collectionId": "col_movs" } }
 ```
 
-Entrega (firma `X-Notely-Signature: sha256=…` HMAC del body, reintentos 1m/5m/30m, `eventId` para deduplicar):
+Entrega (firma `X-Notiono-Signature: sha256=…` HMAC del body, reintentos 1m/5m/30m, `eventId` para deduplicar):
 
 ```json
 { "eventId": "evt_77q", "type": "records.upserted", "occurredAt": "2026-08-14T09:01:12Z",
@@ -1386,7 +1386,7 @@ Entrega (firma `X-Notely-Signature: sha256=…` HMAC del body, reintentos 1m/5m/
             "chartsMarkedDirty": ["cht_gastos_cat"] } }
 ```
 
-**El ciclo completo del extracto queda así:** cron de OpenClaw descarga el extracto → normaliza + hashea → `records:upsert` con `Idempotency-Key` → Notely marca dirty las charts dependientes y las recalcula en background → emite `chart.dirty`/`records.upserted` → el webhook despierta a Dobby, que decide si el mes cerró y, si procede, genera con el builder la página "Resumen mensual" y avisa por Telegram. Ninguna intervención humana, ninguna posibilidad de duplicados, y toda la superficie es la misma que auditaría un humano con `curl`.
+**El ciclo completo del extracto queda así:** cron de OpenClaw descarga el extracto → normaliza + hashea → `records:upsert` con `Idempotency-Key` → Notiono marca dirty las charts dependientes y las recalcula en background → emite `chart.dirty`/`records.upserted` → el webhook despierta a Dobby, que decide si el mes cerró y, si procede, genera con el builder la página "Resumen mensual" y avisa por Telegram. Ninguna intervención humana, ninguna posibilidad de duplicados, y toda la superficie es la misma que auditaría un humano con `curl`.
 
 ---
 
@@ -1394,12 +1394,12 @@ Entrega (firma `X-Notely-Signature: sha256=…` HMAC del body, reintentos 1m/5m/
 
 ## 1. Arquitectura de despliegue
 
-NOTELY corre como **un único contenedor Next.js standalone** en el DS923+, reutilizando el Postgres 16 y el Redis del stack AFFiNE mediante una red Docker compartida. Nada de duplicar bases de datos: menos RAM, un solo punto de backup.
+NOTIONO corre como **un único contenedor Next.js standalone** en el DS923+, reutilizando el Postgres 16 y el Redis del stack AFFiNE mediante una red Docker compartida. Nada de duplicar bases de datos: menos RAM, un solo punto de backup.
 
 ```
 Internet → Cloudflare (DNS, proxy naranja) → Synology Reverse Proxy (443, LE)
-        → notely-app:3000 (red docker "affine_net")
-        → postgres:5432 (BD "notely") · redis:6379 (DB índice 2)
+        → notiono-app:3000 (red docker "affine_net")
+        → postgres:5432 (BD "notiono") · redis:6379 (DB índice 2)
 ```
 
 ## 2. Dockerfile multi-stage (Next 16 standalone)
@@ -1422,7 +1422,7 @@ RUN npx prisma generate && npm run build   # next.config: output: 'standalone'
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
-RUN addgroup -S notely && adduser -S notely -G notely \
+RUN addgroup -S notiono && adduser -S notiono -G notiono \
  && apk add --no-cache curl
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
@@ -1432,37 +1432,37 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 COPY --from=build /app/node_modules/prisma ./node_modules/prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
-USER notely
+USER notiono
 EXPOSE 3000
 CMD ["node", "server.js"]
 ```
 
-Imagen resultante: ~250 MB. Se etiqueta versionada: `notely:1.4.2` y `notely:latest` nunca en prod (rollback imposible sin tags).
+Imagen resultante: ~250 MB. Se etiqueta versionada: `notiono:1.4.2` y `notiono:latest` nunca en prod (rollback imposible sin tags).
 
 ## 3. docker-compose.yml en el NAS
 
-`/volume1/docker/notely/docker-compose.yml`:
+`/volume1/docker/notiono/docker-compose.yml`:
 
 ```yaml
 services:
-  notely-migrate:
-    image: registry.local/notely:${NOTELY_TAG:?definir tag}
+  notiono-migrate:
+    image: registry.local/notiono:${NOTIONO_TAG:?definir tag}
     command: ["npx", "prisma", "migrate", "deploy"]
     env_file: [.env]
     networks: [affine_net]
     restart: "no"
 
-  notely:
-    image: registry.local/notely:${NOTELY_TAG:?definir tag}
-    container_name: notely-app
+  notiono:
+    image: registry.local/notiono:${NOTIONO_TAG:?definir tag}
+    container_name: notiono-app
     depends_on:
-      notely-migrate:
+      notiono-migrate:
         condition: service_completed_successfully
     env_file: [.env]
     environment:
       - NODE_OPTIONS=--max-old-space-size=768
     volumes:
-      - /volume1/docker/notely/uploads:/app/uploads
+      - /volume1/docker/notiono/uploads:/app/uploads
     networks: [affine_net]
     ports:
       - "127.0.0.1:3005:3000"   # solo loopback; entra por reverse proxy
@@ -1493,24 +1493,24 @@ Crear la BD sin tocar AFFiNE (una vez, vía Dobby por SSH):
 
 ```bash
 docker exec -it affine-postgres psql -U postgres -c \
-  "CREATE USER notely WITH PASSWORD '...'; CREATE DATABASE notely OWNER notely;"
+  "CREATE USER notiono WITH PASSWORD '...'; CREATE DATABASE notiono OWNER notiono;"
 ```
 
 `DATABASE_URL` con pool acotado — Prisma abre por defecto `num_cpus*2+1` conexiones y el Postgres compartido tiene `max_connections=100` que AFFiNE ya consume en parte:
 
 ```
-DATABASE_URL=postgresql://notely:***@postgres:5432/notely?connection_limit=5&pool_timeout=10
+DATABASE_URL=postgresql://notiono:***@postgres:5432/notiono?connection_limit=5&pool_timeout=10
 ```
 
-Con 5 conexiones sobra para un uso familiar; si aparecieran timeouts, subir a 10 antes que meter PgBouncer (innecesario a esta escala). Redis: reutilizar el existente con **DB índice distinto** (`REDIS_URL=redis://redis:6379/2`) y prefijo de claves `notely:`.
+Con 5 conexiones sobra para un uso familiar; si aparecieran timeouts, subir a 10 antes que meter PgBouncer (innecesario a esta escala). Redis: reutilizar el existente con **DB índice distinto** (`REDIS_URL=redis://redis:6379/2`) y prefijo de claves `notiono:`.
 
 ## 5. Reverse proxy, Cloudflare y TLS
 
 Patrón ya probado con `*.monrealperez.com`:
 
-1. **Cloudflare**: registro `A notely.monrealperez.com → IP pública` (o CNAME al DDNS), proxy naranja activado, SSL/TLS en modo **Full (strict)**.
-2. **DSM → Portal de inicio de sesión → Avanzado → Proxy inverso**: origen `HTTPS notely.monrealperez.com:443` → destino `HTTP localhost:3005`.
-3. En la regla, pestaña **Personalizar encabezado → Crear → WebSocket** (añade `Upgrade` y `Connection`, imprescindible para colaboración en vivo/HMR de nada, pero sí para SSE/WS de Notely). Añadir además:
+1. **Cloudflare**: registro `A notiono.monrealperez.com → IP pública` (o CNAME al DDNS), proxy naranja activado, SSL/TLS en modo **Full (strict)**.
+2. **DSM → Portal de inicio de sesión → Avanzado → Proxy inverso**: origen `HTTPS notiono.monrealperez.com:443` → destino `HTTP localhost:3005`.
+3. En la regla, pestaña **Personalizar encabezado → Crear → WebSocket** (añade `Upgrade` y `Connection`, imprescindible para colaboración en vivo/HMR de nada, pero sí para SSE/WS de Notiono). Añadir además:
    - `X-Forwarded-Proto: https`
    - `X-Real-IP: $remote_addr`
 4. Certificado Let's Encrypt en DSM (Seguridad → Certificado) para el subdominio y asignarlo a la regla de proxy. Si Cloudflare proxied bloquea el reto HTTP-01, usar DNS-01 con `acme.sh` + API de Cloudflare (ya montado para otros subdominios) o cert wildcard.
@@ -1518,26 +1518,26 @@ Patrón ya probado con `*.monrealperez.com`:
 
 ## 6. Configuración y secretos
 
-- `/volume1/docker/notely/.env` con permisos `600 root:root`: `DATABASE_URL`, `REDIS_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL=https://notely.monrealperez.com`, SMTP, etc.
+- `/volume1/docker/notiono/.env` con permisos `600 root:root`: `DATABASE_URL`, `REDIS_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL=https://notiono.monrealperez.com`, SMTP, etc.
 - Los secretos **no viajan en la imagen ni en git**; el repo tiene `.env.example`. Dobby los sembró una vez y solo se editan en el NAS.
 - Entornos: `dev` en el PC (`docker compose -f compose.dev.yml up` con Postgres/Redis locales y `migrate dev`), `prod` en el NAS (solo `migrate deploy`, jamás `dev` ni `db push`).
 
 ## 7. Backups y restauración
 
-Tarea programada de DSM (root, 03:30 diaria), script `/volume1/docker/notely/backup.sh`:
+Tarea programada de DSM (root, 03:30 diaria), script `/volume1/docker/notiono/backup.sh`:
 
 ```bash
 #!/bin/sh
 set -eu
-DIR=/volume1/backups/notely; DATE=$(date +%F)
-docker exec affine-postgres pg_dump -U notely -Fc notely > "$DIR/db-$DATE.dump"
-tar -C /volume1/docker/notely -czf "$DIR/uploads-$DATE.tgz" uploads
+DIR=/volume1/backups/notiono; DATE=$(date +%F)
+docker exec affine-postgres pg_dump -U notiono -Fc notiono > "$DIR/db-$DATE.dump"
+tar -C /volume1/docker/notiono -czf "$DIR/uploads-$DATE.tgz" uploads
 find "$DIR" -name 'db-*' -mtime +14 -delete
 find "$DIR" -name 'uploads-*' -mtime +14 -delete
 ```
 
 - **Retención**: 14 días locales + copia semanal a nube externa vía Hyper Backup/rclone (el NAS no es un backup de sí mismo).
-- **Restauración probada** (ensayar trimestralmente, no solo confiar): `pg_restore -U notely -d notely_restore --clean db-YYYY-MM-DD.dump` contra una BD temporal, arrancar un contenedor apuntando a ella y verificar login + una nota. Documentar el tiempo real (objetivo: <15 min).
+- **Restauración probada** (ensayar trimestralmente, no solo confiar): `pg_restore -U notiono -d notiono_restore --clean db-YYYY-MM-DD.dump` contra una BD temporal, arrancar un contenedor apuntando a ella y verificar login + una nota. Documentar el tiempo real (objetivo: <15 min).
 
 ## 8. CI/CD realista con Dobby
 
@@ -1547,22 +1547,22 @@ Sin registry público: build en el PC dev, push por SSH.
 
 ```bash
 # En el PC: build y export
-docker build -t notely:1.4.2 . && docker save notely:1.4.2 | gzip > notely-1.4.2.tgz
-scp notely-1.4.2.tgz nas:/volume1/docker/notely/images/
+docker build -t notiono:1.4.2 . && docker save notiono:1.4.2 | gzip > notiono-1.4.2.tgz
+scp notiono-1.4.2.tgz nas:/volume1/docker/notiono/images/
 # En el NAS:
-docker load < images/notely-1.4.2.tgz
-sed -i 's/^NOTELY_TAG=.*/NOTELY_TAG=1.4.2/' .env
+docker load < images/notiono-1.4.2.tgz
+sed -i 's/^NOTIONO_TAG=.*/NOTIONO_TAG=1.4.2/' .env
 docker compose up -d          # corre migrate y luego la app
-curl -fsS https://notely.monrealperez.com/api/health
+curl -fsS https://notiono.monrealperez.com/api/health
 ```
 
-**Rollback**: `NOTELY_TAG=1.4.1 docker compose up -d`. Como las imágenes viejas quedan cargadas (conservar las 3 últimas, `docker image prune` selectivo), el rollback es <30s. Ojo: si la migración N no es retro-compatible, el rollback de app exige restaurar el dump previo — por eso las migraciones se escriben **expand/contract** (añadir columnas antes de usarlas, borrar en una release posterior).
+**Rollback**: `NOTIONO_TAG=1.4.1 docker compose up -d`. Como las imágenes viejas quedan cargadas (conservar las 3 últimas, `docker image prune` selectivo), el rollback es <30s. Ojo: si la migración N no es retro-compatible, el rollback de app exige restaurar el dump previo — por eso las migraciones se escriben **expand/contract** (añadir columnas antes de usarlas, borrar en una release posterior).
 
 ## 9. Observabilidad y alertas
 
-- **Logs**: json-file rotado (config arriba); `docker logs -f notely-app` para diagnóstico. Next en standalone loguea a stdout: suficiente.
+- **Logs**: json-file rotado (config arriba); `docker logs -f notiono-app` para diagnóstico. Next en standalone loguea a stdout: suficiente.
 - **Healthcheck**: endpoint `/api/health` que hace `SELECT 1` a Prisma y `PING` a Redis, devuelve 200/503. Lo usa el healthcheck de Docker y el monitor externo.
-- **Alertas a Dobby**: cron cada 5 min en el propio gateway de Dobby (`curl -fsS https://notely.monrealperez.com/api/health || avisar`), que notifica por el canal familiar si falla 2 comprobaciones seguidas. Complemento: Uptime Kuma si ya corre en el NAS.
+- **Alertas a Dobby**: cron cada 5 min en el propio gateway de Dobby (`curl -fsS https://notiono.monrealperez.com/api/health || avisar`), que notifica por el canal familiar si falla 2 comprobaciones seguidas. Complemento: Uptime Kuma si ya corre en el NAS.
 - **Auto-recuperación**: `restart: unless-stopped` + healthcheck; opcionalmente autoheal para reiniciar contenedores unhealthy.
 
 ## 10. Hardening (expuesto a internet)
@@ -1582,28 +1582,28 @@ curl -fsS https://notely.monrealperez.com/api/health
 | AFFiNE (app+workers) | ~2–3 GB | ya fijado |
 | Postgres 16 compartido | ~0,5–1 GB | shared_buffers 512MB |
 | Redis compartido | ~100 MB | maxmemory 256MB |
-| **Notely** | **300–600 MB** | **1 GB / 2 CPU** |
+| **Notiono** | **300–600 MB** | **1 GB / 2 CPU** |
 | Margen (cache FS, picos) | ~3 GB | — |
 
-Notely en reposo consume ~300 MB (`--max-old-space-size=768` evita que Node crezca hasta el límite del cgroup y muera por OOM sin GC previo). El límite de 1 GB actúa de cortafuegos: si algo se dispara, cae Notely y no el NAS. Con este reparto quedan >2 GB libres; no añadir más stacks pesados sin revisar la tabla.
+Notiono en reposo consume ~300 MB (`--max-old-space-size=768` evita que Node crezca hasta el límite del cgroup y muera por OOM sin GC previo). El límite de 1 GB actúa de cortafuegos: si algo se dispara, cae Notiono y no el NAS. Con este reparto quedan >2 GB libres; no añadir más stacks pesados sin revisar la tabla.
 
 ---
 
 # Migración de datos y branding
 
-## 1. Plan de migración (script único vía API de Notely)
+## 1. Plan de migración (script único vía API de Notiono)
 
-Un solo script `scripts/migrate.ts` (Node, `tsx`), que lee los seis JSON de `nocodb-export/` y llama a la API de Notely en tres fases: **(1)** crear Collections + Fields, **(2)** upsert de Records, **(3)** verificación. Se ejecuta con `NOTELY_TOKEN=... pnpm migrate` y es seguro relanzarlo.
+Un solo script `scripts/migrate.ts` (Node, `tsx`), que lee los seis JSON de `nocodb-export/` y llama a la API de Notiono en tres fases: **(1)** crear Collections + Fields, **(2)** upsert de Records, **(3)** verificación. Se ejecuta con `NOTIONO_TOKEN=... pnpm migrate` y es seguro relanzarlo.
 
 **Idempotencia.** Cada record se inserta con una clave externa `nocoId` (campo oculto tipo `number`) que guarda el `Id` original de NocoDB. El script hace *upsert por `nocoId`*: si existe, actualiza; si no, crea. Las Collections se buscan por `slug` antes de crearse. Así el script puede correrse N veces sin duplicar las 460 filas de movimientos.
 
-**Decisión de diseño:** `Gastos_por_Categoria_2026` y `Resumen_Mensual_2026` son tablas *derivadas* (agregados de Movimientos). Se migran igualmente como Collections (para no perder las notas manuales del resumen), pero se marcan como candidatas a sustituir por vistas agregadas de Notely cuando existan; el dato fuente canónico es **Movimientos**.
+**Decisión de diseño:** `Gastos_por_Categoria_2026` y `Resumen_Mensual_2026` son tablas *derivadas* (agregados de Movimientos). Se migran igualmente como Collections (para no perder las notas manuales del resumen), pero se marcan como candidatas a sustituir por vistas agregadas de Notiono cuando existan; el dato fuente canónico es **Movimientos**.
 
 ### Mapeos campo a campo
 
 **Movimientos_2026 → Collection `movimientos`** (460 filas)
 
-| Campo NocoDB | Field Notely | Tipo | Notas |
+| Campo NocoDB | Field Notiono | Tipo | Notas |
 |---|---|---|---|
 | `Id` | `nocoId` | number (oculto) | clave de upsert |
 | `Fecha` | `fecha` | date | ISO `YYYY-MM-DD` tal cual |
@@ -1612,11 +1612,11 @@ Un solo script `scripts/migrate.ts` (Node, `tsx`), que lee los seis JSON de `noc
 | `Tipo` | `tipo` | select | opciones: Gasto (rojo suave), Ingreso (verde) |
 | `Categoria` | `categoria` | select | ~30 opciones jerárquicas "Área/Sub" extraídas del dataset |
 | `Mes` | `mes` | text | mantener como `2026-MM`; sirve de clave de agrupación |
-| `CreatedAt` | — | — | Notely genera el suyo; no se migra |
+| `CreatedAt` | — | — | Notiono genera el suyo; no se migra |
 
 **Deducibles_2026 → Collection `deducibles`**
 
-| Campo NocoDB | Field Notely | Tipo | Notas |
+| Campo NocoDB | Field Notiono | Tipo | Notas |
 |---|---|---|---|
 | `Id` | `nocoId` | number (oculto) | upsert |
 | `Concepto` | `concepto` | text (título) | |
@@ -1630,7 +1630,7 @@ Un solo script `scripts/migrate.ts` (Node, `tsx`), que lee los seis JSON de `noc
 
 **Facturas → Collection `facturas`**
 
-| Campo NocoDB | Field Notely | Tipo | Notas |
+| Campo NocoDB | Field Notiono | Tipo | Notas |
 |---|---|---|---|
 | `Id` | `nocoId` | number (oculto) | upsert |
 | `Concepto` | `concepto` | text (título) | |
@@ -1641,7 +1641,7 @@ Un solo script `scripts/migrate.ts` (Node, `tsx`), que lee los seis JSON de `noc
 
 **Tareas → Collection `tareas`**
 
-| Campo NocoDB | Field Notely | Tipo | Notas |
+| Campo NocoDB | Field Notiono | Tipo | Notas |
 |---|---|---|---|
 | `Id` | `nocoId` | number (oculto) | upsert |
 | `Tarea` | `titulo` | text (título) | |
@@ -1665,7 +1665,7 @@ El script termina con un bloque `verify()` que falla con exit code ≠ 0 si algo
 
 ## 2. Recreación de páginas de notas (desde AFFiNE)
 
-Las páginas del hub (Inicio, Proyectos, Casa, Finanzas, Recetas…) se recrean como **docs de bloques** de Notely en el mismo script (fase 1b), a partir del export markdown de AFFiNE:
+Las páginas del hub (Inicio, Proyectos, Casa, Finanzas, Recetas…) se recrean como **docs de bloques** de Notiono en el mismo script (fase 1b), a partir del export markdown de AFFiNE:
 
 - Parser md→bloques: `#`→heading1, `##`→heading2, párrafos→paragraph, listas→bulleted/numbered, `- [ ]`→todo, tablas md→table block, `![]()`→image (subiendo el asset vía endpoint de media).
 - **Inicio** se rehace a mano como dashboard: saludo, bloque de accesos rápidos (links a las collections) y vistas embebidas de `tareas` (filtro Estado≠Hecho) y `resumenMensual` (mes actual). Es la portada: merece diseño, no migración literal.
@@ -1750,7 +1750,7 @@ Fuentes con `next/font` (subsets `latin`, variable weight) inyectadas como esas 
 
 ## 5. Logo e identidad mínima
 
-Logotipo = wordmark **"notely"** en Bricolage Grotesque SemiBold, minúsculas, en `--color-ink`, con el **punto final en naranja** (`notely.`) — barato, memorable, escala bien. Símbolo para espacios pequeños: una **"n" minúscula de Bricolage en blanco sobre cuadrado naranja** con `radius-card` proporcional (el "superellipse" a 22% del lado).
+Logotipo = wordmark **"notiono"** en Bricolage Grotesque SemiBold, minúsculas, en `--color-ink`, con el **punto final en naranja** (`notiono.`) — barato, memorable, escala bien. Símbolo para espacios pequeños: una **"n" minúscula de Bricolage en blanco sobre cuadrado naranja** con `radius-card` proporcional (el "superellipse" a 22% del lado).
 
 **Favicon:** SVG único con media query para modo oscuro:
 
@@ -1800,7 +1800,7 @@ Principio: **la pirámide de verdad**. Mucho unit barato en la lógica pura (agr
 | Nivel | Herramienta | Qué se prueba | Ejemplos concretos |
 |---|---|---|---|
 | Unit | Vitest | Lógica pura sin BD | Agregaciones de gráficas (sum/avg por mes con meses vacíos, timezone, redondeo €); traducción de `View.config` → predicados de filtro (combinaciones AND/OR, fechas relativas); orden fraccional (inserción entre vecinos, no colisiona tras 1000 reordenaciones); evaluador de fórmulas (precedencia, división por cero, tipos mixtos, **rechazo de expresiones maliciosas**); serialización/deserialización de bloques (round-trip JSON idéntico) |
-| Integración | Vitest + Postgres de test (contenedor efímero o BD `notely_test`) | Routers tRPC y REST v1 contra Prisma real | Upsert idempotente de registros (2ª llamada = 0 duplicados); consultas sobre `Record.cells` JSONB devuelven lo mismo que el unit predice; permisos en cada procedure (viewer no puede mutar); migraciones aplican limpio desde cero |
+| Integración | Vitest + Postgres de test (contenedor efímero o BD `notiono_test`) | Routers tRPC y REST v1 contra Prisma real | Upsert idempotente de registros (2ª llamada = 0 duplicados); consultas sobre `Record.cells` JSONB devuelven lo mismo que el unit predice; permisos en cada procedure (viewer no puede mutar); migraciones aplican limpio desde cero |
 | E2E | Playwright (contra build de producción) | Flujos reales de usuario | (1) crear página con N bloques, recargar, contenido intacto; (2) crear colección + 20 registros + kanban, arrastrar tarjeta entre columnas y verificar persistencia; (3) crear gráfica de barras, editar un registro, verificar que la gráfica cambia; (4) login/logout, sesión expirada, viewer bloqueado |
 | API Dobby | Vitest (integración) + script smoke post-deploy | Contrato de automatización | Insertar `fixtures/extracto-ejemplo.json` por REST → conteo exacto de filas; re-ejecutar → idempotencia; llamar `charts/:id/refresh` → cache invalidada y agregados correctos; token con scope insuficiente → 403 |
 | CI | GitHub Actions (o Gitea Actions) | En cada push/PR | `lint` + `tsc --noEmit` + unit + integración (Postgres como service container) + e2e en Chromium; artefacto de imagen Docker solo si todo verde |
@@ -1819,7 +1819,7 @@ Principio: **la pirámide de verdad**. Mucho unit barato en la lógica pura (agr
 ## 12.4 Decisiones abiertas (confirmar antes de cada fase)
 
 **Antes de Fase 1:**
-1. **Nombre y subdominio definitivos** (NOTELY → `app.monrealperez.com`, `notas.…` u otro): afecta a branding, cookies y SSL; cambiarlo luego es barato pero molesto.
+1. **Nombre y subdominio definitivos** (NOTIONO → `app.monrealperez.com`, `notas.…` u otro): afecta a branding, cookies y SSL; cambiarlo luego es barato pero molesto.
 2. **Confirmar BlockNote** como editor (recomendado) frente a BlockSuite; última ventana para cambiar sin coste.
 3. **Búsqueda**: ¿solo títulos en F1 (recomendado) o full-text de contenido ya?
 
@@ -1848,7 +1848,7 @@ BlockNote trae soporte nativo de Yjs (`collaboration: { provider, fragment }`), 
 
 ```
 Navegador (BlockNote + y-prosemirror + awareness)
-   │  WebSocket wss://notely.local/collab
+   │  WebSocket wss://notiono.local/collab
    ▼
 Hocuspocus (contenedor Node)
    ├─ onAuthenticate → valida sesión Auth.js (JWT/cookie) + permisos de página
@@ -1961,7 +1961,7 @@ Regla de oro de toda la fase: **una sola fuente de verdad por página** (el Y.Do
 
 El directorio `notion-clone/` está vacío, así que diseño el subsistema desde cero alineado con el stack indicado (Next.js 16 + tRPC + Prisma 6 + Postgres + Redis + BlockNote + Auth.js).
 
-# Comentarios, menciones y notificaciones — NOTELY
+# Comentarios, menciones y notificaciones — NOTIONO
 
 ## 1. Modelo de datos (Prisma)
 
@@ -2267,7 +2267,7 @@ Un guest es un `User` normal **sin `Membership`**: se registra vía invitación 
 
 ## 4. Enlaces de compartición
 
-URL `https://notely.example.com/s/<token>` (token de 32 bytes, en BD solo el hash). El handler valida `revokedAt`, `expiresAt`, `maxUses`, incrementa `useCount` y registra en `AccessLog` con `via: "link:<id>"`. El acceso por link es **solo lectura o comentario**: si el visitante quiere editar, debe iniciar sesión y tener permiso real. La sesión de link se materializa como cookie firmada de corta vida (1h) ligada al `linkId`, para no rehacer la validación en cada asset. Rate-limit por IP en `/s/*` (Redis, 60/min) — es superficie anónima expuesta.
+URL `https://notiono.example.com/s/<token>` (token de 32 bytes, en BD solo el hash). El handler valida `revokedAt`, `expiresAt`, `maxUses`, incrementa `useCount` y registra en `AccessLog` con `via: "link:<id>"`. El acceso por link es **solo lectura o comentario**: si el visitante quiere editar, debe iniciar sesión y tener permiso real. La sesión de link se materializa como cookie firmada de corta vida (1h) ligada al `linkId`, para no rehacer la validación en cada asset. Rate-limit por IP en `/s/*` (Redis, 60/min) — es superficie anónima expuesta.
 
 ## 5. Publicar en la web
 
@@ -2443,7 +2443,7 @@ He revisado el planteamiento existente (`/home/node/.openclaw/workspace/notion-c
 
 ## 1. Relaciones bidireccionales (two-way relations)
 
-En Notion una relación puede ser unidireccional o mostrar una propiedad sincronizada en la colección destino. En Notely la verdad vive en un solo sitio — la tabla puente `RecordLink` — y la "bidireccionalidad" es metadato de presentación, lo que elimina por diseño los bugs de desincronización:
+En Notion una relación puede ser unidireccional o mostrar una propiedad sincronizada en la colección destino. En Notiono la verdad vive en un solo sitio — la tabla puente `RecordLink` — y la "bidireccionalidad" es metadato de presentación, lo que elimina por diseño los bugs de desincronización:
 
 ```prisma
 model Field {
@@ -2524,7 +2524,7 @@ Puntos clave del diseño: `RecordLink` como única verdad de las relaciones (two
 
 ---
 
-# Subsistema de Plantillas — NOTELY
+# Subsistema de Plantillas — NOTIONO
 
 ## 1. Visión general
 
@@ -2830,7 +2830,7 @@ Registro por proveedor con regex y estrategia:
 
 | Proveedor | Detección | Estrategia |
 |---|---|---|
-| Figma | `figma.com/(file\|design\|proto)/` | iframe `figma.com/embed?embed_host=notely&url=` |
+| Figma | `figma.com/(file\|design\|proto)/` | iframe `figma.com/embed?embed_host=notiono&url=` |
 | PDF | extensión/MIME | `<embed type="application/pdf">` o pdf.js (mejor control) |
 | Google Maps | `google.com/maps` | iframe embed API |
 | Google Drive | `drive.google.com/file/d/(ID)` | iframe `/file/d/ID/preview` |
@@ -3053,7 +3053,7 @@ Para que no destroce el rendimiento (se evalúa por fila candidata), se material
 | BTree `(user_id, page_id)` | EffectivePageAccess | filtro de permisos |
 | BTree `(workspace_id, updated_at DESC)` | Page | desempate de ranking |
 
-Con esto, Notely cubre el trío completo de Notion — búsqueda full-text con snippets resaltados, Quick Find instantáneo con recientes y filtros, y paleta de comandos extensible — sin ningún servicio adicional en el NAS.
+Con esto, Notiono cubre el trío completo de Notion — búsqueda full-text con snippets resaltados, Quick Find instantáneo con recientes y filtros, y paleta de comandos extensible — sin ningún servicio adicional en el NAS.
 
 ---
 
@@ -3061,7 +3061,7 @@ Con esto, Notely cubre el trío completo de Notion — búsqueda full-text con s
 
 ## Visión general
 
-El subsistema de import/export de Notely se apoya en tres piezas: un **modelo intermedio (IR)** de bloques/páginas/bases de datos, **adaptadores** por formato (que traducen hacia/desde el IR), y una **cola de trabajos** (BullMQ sobre Redis) que ejecuta todo en background. Nada de esto corre en el request de tRPC: la mutation solo valida, sube el fichero a storage (S3/MinIO) y encola.
+El subsistema de import/export de Notiono se apoya en tres piezas: un **modelo intermedio (IR)** de bloques/páginas/bases de datos, **adaptadores** por formato (que traducen hacia/desde el IR), y una **cola de trabajos** (BullMQ sobre Redis) que ejecuta todo en background. Nada de esto corre en el request de tRPC: la mutation solo valida, sube el fichero a storage (S3/MinIO) y encola.
 
 ```
 Fichero subido ──> ImportJob (cola) ──> Adaptador ──> IR ──> Persistencia (Prisma, tx por lotes)
@@ -3088,7 +3088,7 @@ Es el importador estrella y el más delicado, porque el export de Notion es "Mar
 2. **Pase 1 — inventario**: se recorre el árbol y se construye un grafo `hash32 → {tipo, ruta, padre}`. La jerarquía de páginas se reconstruye directamente de la estructura de carpetas: `A <h1>/B <h2>.md` ⇒ B es hija de A.
 3. **Pase 2 — bases de datos**: por cada CSV se infiere el schema (ver detección de tipos abajo), con heurísticas Notion-específicas: columnas con valores separados por `, ` y baja cardinalidad ⇒ `multi_select`; valores `Yes/No` ⇒ `checkbox`; celdas que son nombres de otras páginas del inventario ⇒ `relation`. La primera columna es siempre el `title`. Cada fila se casa con su `.md` correspondiente (por título) para que la fila-página conserve su contenido.
 4. **Pase 3 — contenido**: cada `.md` se parsea a IR con `remark` + extensiones (callouts de Notion se exportan como quote con emoji: los detectamos y los promovemos a bloque `callout`; toggles llegan como `<details>`; ecuaciones como `$$`).
-5. **Pase 4 — resolución de enlaces**: los links relativos con hash se resuelven contra el mapa del pase 1 y se reescriben como menciones internas (`page://<uuid-nuevo>`). Guardamos `notionHash → notelyPageId` en tabla `ImportMapping`, clave para la idempotencia y para futuros imports incrementales.
+5. **Pase 4 — resolución de enlaces**: los links relativos con hash se resuelven contra el mapa del pase 1 y se reescriben como menciones internas (`page://<uuid-nuevo>`). Guardamos `notionHash → notionoPageId` en tabla `ImportMapping`, clave para la idempotencia y para futuros imports incrementales.
 6. **Persistencia** en transacciones por lotes de ~50 páginas (una tx gigante bloquearía Postgres en workspaces grandes).
 
 ### Evernote (.enex)
@@ -3118,7 +3118,7 @@ El caso simple: un `.md` o un ZIP de `.md`. Reutiliza el pipeline del pase 3 de 
 - **HTML**: mismo árbol pero serializando bloques a HTML semántico con una hoja CSS embebida (standalone, sin JS). Toggles → `<details>`, callouts → `<aside class="callout">`.
 - **PDF**: render server-side con **Playwright/Chromium headless** en un contenedor worker dedicado (pool de páginas, no un browser por job). El worker abre una ruta interna `/render/:pageId?token=...` (token de un solo uso, sin sesión de usuario) que pinta la página con el CSS de impresión: fuentes embebidas, `page-break-inside: avoid` en bloques, cabecera/pie con título y numeración vía `page.pdf({ displayHeaderFooter })`. Espacio completo → un PDF por página, comprimidos en ZIP (concatenar PDFs enormes es frágil; se ofrece como opción con `pdf-lib`).
 - **Base de datos → CSV**: respeta la vista activa (filtros, orden, columnas visibles) o "todo"; fórmulas y rollups se exportan por su valor calculado; relations por el título de la página relacionada.
-- **Workspace completo (backup lógico)**: ZIP con Markdown + CSV **más** un `notely-export.json` con el IR crudo (ids, schemas exactos, permisos, comentarios) — el backup fiel es el JSON; el md/csv es la versión legible. Un import de este ZIP en otra instancia restaura sin pérdida.
+- **Workspace completo (backup lógico)**: ZIP con Markdown + CSV **más** un `notiono-export.json` con el IR crudo (ids, schemas exactos, permisos, comentarios) — el backup fiel es el JSON; el md/csv es la versión legible. Un import de este ZIP en otra instancia restaura sin pérdida.
 
 ## Adjuntos e imágenes
 
@@ -3152,7 +3152,7 @@ Ejemplo típico de Dobby (backup nocturno): `export.start({ workspace: true, for
 
 ---
 
-# Historial de versiones, papelera y navegación/personalización — Diseño NOTELY
+# Historial de versiones, papelera y navegación/personalización — Diseño NOTIONO
 
 ## 1. Historial de versiones de página
 
@@ -3322,7 +3322,7 @@ He revisado el planteamiento existente (`/home/node/.openclaw/workspace/notion-c
 
 ## 1. API pública: superficie y convenciones
 
-Base: `https://notely.example.com/api/public/v1`. Versionado **por cabecera** (`Notely-Version: 2026-08-15`, estilo Notion/Stripe: fecha de snapshot del contrato; sin cabecera → última estable) además del `/v1` de ruta para breaking mayores. Toda respuesta lleva `X-Notely-Api-Version` y `requestId`.
+Base: `https://notiono.example.com/api/public/v1`. Versionado **por cabecera** (`Notiono-Version: 2026-08-15`, estilo Notion/Stripe: fecha de snapshot del contrato; sin cabecera → última estable) además del `/v1` de ruta para breaking mayores. Toda respuesta lleva `X-Notiono-Api-Version` y `requestId`.
 
 **Recursos** (nombres alineados con Notion para que los SDKs/mentales de la gente funcionen):
 
@@ -3376,19 +3376,19 @@ Access tokens opacos (hash SHA-256 en BD, como los `nly_sk_`), TTL 1 h, refresh 
 Sobre el `eventBus` ya diseñado, formalizado:
 
 - **Tipos de evento:** `page.created|updated|archived`, `block.updated`, `database.schema_updated`, `records.created|upserted|deleted`, `chart.dirty`, `comment.created`. Payload fino (ids + delta mínimo); el consumidor rehidrata por API — evita filtrar contenido a endpoints comprometidos.
-- **Firma:** `X-Notely-Signature: t=1723710000,v1=hex(hmac_sha256(secret, t + "." + body))`. El timestamp dentro de la firma mata replays (>5 min → rechazar). Endpoint de verificación inicial tipo Notion: al crear la suscripción se envía `{"verification_token": ...}` que hay que confirmar.
+- **Firma:** `X-Notiono-Signature: t=1723710000,v1=hex(hmac_sha256(secret, t + "." + body))`. El timestamp dentro de la firma mata replays (>5 min → rechazar). Endpoint de verificación inicial tipo Notion: al crear la suscripción se envía `{"verification_token": ...}` que hay que confirmar.
 - **Reintentos:** cola en Postgres (`WebhookDelivery`: `eventId`, `subscriptionId`, `attempt`, `nextRetryAt`, `status`). Backoff 1m/5m/30m/2h/12h; tras 5 fallos la suscripción pasa a `paused` y se notifica al dueño. Worker con `FOR UPDATE SKIP LOCKED` — sin infraestructura nueva.
 - **Deduplicación:** `eventId` (`evt_...`) estable por evento; el consumidor guarda los últimos N ids. Entrega *at-least-once*, orden no garantizado (`occurredAt` para reordenar).
 
 ## 4. Integraciones concretas
 
-**OpenClaw/Dobby — integración de primera clase.** Deja de ser "un token" y pasa a app OAuth interna preinstalada con página propia de estado (últimas llamadas, webhooks entregados, errores 4xx recientes — oro para depurar alucinaciones de esquema). El paquete `@notely/blocks` + un skill `notely` para OpenClaw envuelven el SDK. El ciclo extracto→upsert→webhook→resumen de la sección 9 queda intacto, ahora sobre la superficie pública.
+**OpenClaw/Dobby — integración de primera clase.** Deja de ser "un token" y pasa a app OAuth interna preinstalada con página propia de estado (últimas llamadas, webhooks entregados, errores 4xx recientes — oro para depurar alucinaciones de esquema). El paquete `@notiono/blocks` + un skill `notiono` para OpenClaw envuelven el SDK. El ciclo extracto→upsert→webhook→resumen de la sección 9 queda intacto, ahora sobre la superficie pública.
 
-**Google Calendar (2-way sync).** Una colección con campo fecha se puede vincular a un calendario: OAuth de Google (scope `calendar.events`), tabla `SyncLink {recordId, gcalEventId, etag, lastSyncedAt}`. Notely→GCal: el eventBus dispara upsert del evento. GCal→Notely: *push notifications* de Google (watch channel, renovación cada 7 días) + `syncToken` incremental como respaldo. Conflictos: gana el `updatedAt` más reciente; empate → gana Notely y se anota en auditoría. Sin campo fecha obligatorio no hay vínculo — se valida al crear el link.
+**Google Calendar (2-way sync).** Una colección con campo fecha se puede vincular a un calendario: OAuth de Google (scope `calendar.events`), tabla `SyncLink {recordId, gcalEventId, etag, lastSyncedAt}`. Notiono→GCal: el eventBus dispara upsert del evento. GCal→Notiono: *push notifications* de Google (watch channel, renovación cada 7 días) + `syncToken` incremental como respaldo. Conflictos: gana el `updatedAt` más reciente; empate → gana Notiono y se anota en auditoría. Sin campo fecha obligatorio no hay vínculo — se valida al crear el link.
 
-**Crear páginas por email.** Dirección de entrada por destino: `add+pg_inbox@notely.example.com` (o alias aleatorio no adivinable). Un worker IMAP (o el relay SMTP del NAS) parsea: asunto → título, cuerpo (markdown/texto) → bloques vía el mismo builder, adjuntos → ficheros. Antispam mínimo: solo remitentes en allowlist del workspace; lo demás se descarta y se audita. Caso real: reenviar una factura desde el móvil y que aparezca como página con el PDF adjunto en "Deducibles".
+**Crear páginas por email.** Dirección de entrada por destino: `add+pg_inbox@notiono.example.com` (o alias aleatorio no adivinable). Un worker IMAP (o el relay SMTP del NAS) parsea: asunto → título, cuerpo (markdown/texto) → bloques vía el mismo builder, adjuntos → ficheros. Antispam mínimo: solo remitentes en allowlist del workspace; lo demás se descarta y se audita. Caso real: reenviar una factura desde el móvil y que aparezca como página con el PDF adjunto en "Deducibles".
 
-**Slack/Telegram.** Salientes primero (barato): una suscripción de webhook con `format: "slack"` o `format: "telegram"` hace que Notely renderice el evento como mensaje legible ("37 movimientos nuevos en *Finanzas 2026*") en vez de JSON. Entrantes: comando `/notely add ...` → el bot llama a la API pública con el token del usuario vinculado. Telegram ya lo cubre Dobby; Slack solo si aparece un caso real (anti-scope-creep).
+**Slack/Telegram.** Salientes primero (barato): una suscripción de webhook con `format: "slack"` o `format: "telegram"` hace que Notiono renderice el evento como mensaje legible ("37 movimientos nuevos en *Finanzas 2026*") en vez de JSON. Entrantes: comando `/notiono add ...` → el bot llama a la API pública con el token del usuario vinculado. Telegram ya lo cubre Dobby; Slack solo si aparece un caso real (anti-scope-creep).
 
 ## 5. Rate limiting, auditoría y SDK
 
@@ -3396,17 +3396,17 @@ Sobre el `eventBus` ya diseñado, formalizado:
 
 **Auditoría:** tabla append-only `AuditLog {id, principal (token/app/user), action, resourceType, resourceId, requestId, ip, at}`. Toda mutación de API pública escribe una fila en la misma transacción. Vista en Ajustes: "qué ha hecho cada integración esta semana", filtrable. Retención 12 meses, exportable a CSV.
 
-**SDK JS** (`@notely/sdk`, generado del OpenAPI + envoltorio a mano):
+**SDK JS** (`@notiono/sdk`, generado del OpenAPI + envoltorio a mano):
 
 ```ts
-const notely = new NotelyClient({ auth: process.env.NOTELY_TOKEN });
-const { results } = await notely.databases.query("col_movs", {
+const notiono = new NotionoClient({ auth: process.env.NOTIONO_TOKEN });
+const { results } = await notiono.databases.query("col_movs", {
   filter: { property: "mes", select: { equals: "2026-07" } }, sorts: [{ property: "fecha", direction: "desc" }],
 });
-for await (const page of notely.search.iterate({ query: "factura" })) { /* pagina solo */ }
+for await (const page of notiono.search.iterate({ query: "factura" })) { /* pagina solo */ }
 ```
 
-Incluye: reintento automático en 429/5xx con backoff, iteradores async que ocultan cursores, tipos generados de los fields de cada colección (`pnpm notely typegen`), y verificación de firmas de webhook (`notely.webhooks.verify(req)`).
+Incluye: reintento automático en 429/5xx con backoff, iteradores async que ocultan cursores, tipos generados de los fields de cada colección (`pnpm notiono typegen`), y verificación de firmas de webhook (`notiono.webhooks.verify(req)`).
 
 **Orden de construcción** (respetando el roadmap): (1) formalizar REST v1 → pública con OpenAPI y rate limit por token, (2) webhooks robustos (ya eran COULD C3 — suben a SHOULD porque OAuth y GCal dependen de ellos), (3) tokens internos con UI, (4) OAuth 2.0, (5) email-in y GCal, (6) SDK. Slack/Comments quedan detrás de un caso de uso real.
 
@@ -3420,7 +3420,7 @@ Incluye: reintento automático en 429/5xx con backoff, iteradores async que ocul
 
 ## Filosofía: PWA como estrategia móvil (decisión para Jose)
 
-**No habrá apps nativas iOS/Android.** Mantener dos apps nativas más el backend es inasumible para un solo dev (dos lenguajes/toolchains más, revisiones de App Store, firmas, releases sincronizadas: fácilmente 2–3× el coste total del proyecto). La alternativa es una **PWA instalable**: la misma app Next.js, instalada desde el navegador, con icono en el home screen, pantalla completa sin barra de URL, offline y notificaciones push. Para el uso real de Notely (leer/editar notas, marcar to-dos, mover tarjetas, fotografiar una factura), la PWA da **el 100% del valor perceptible**; lo que se pierde frente a nativo es marginal y está listado honestamente al final. **→ Decisión abierta para Jose (añadir a 12.4, antes de Fase 3):** confirmar PWA como estrategia móvil definitiva, sabiendo que en iOS exige "Añadir a pantalla de inicio" para push y standalone.
+**No habrá apps nativas iOS/Android.** Mantener dos apps nativas más el backend es inasumible para un solo dev (dos lenguajes/toolchains más, revisiones de App Store, firmas, releases sincronizadas: fácilmente 2–3× el coste total del proyecto). La alternativa es una **PWA instalable**: la misma app Next.js, instalada desde el navegador, con icono en el home screen, pantalla completa sin barra de URL, offline y notificaciones push. Para el uso real de Notiono (leer/editar notas, marcar to-dos, mover tarjetas, fotografiar una factura), la PWA da **el 100% del valor perceptible**; lo que se pierde frente a nativo es marginal y está listado honestamente al final. **→ Decisión abierta para Jose (añadir a 12.4, antes de Fase 3):** confirmar PWA como estrategia móvil definitiva, sabiendo que en iOS exige "Añadir a pantalla de inicio" para push y standalone.
 
 ## 13.1 PWA instalable sobre Next.js
 
@@ -3433,7 +3433,7 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Notely', short_name: 'Notely',
+    name: 'Notiono', short_name: 'Notiono',
     description: 'Notas y bases de datos de la familia Monreal',
     id: '/', start_url: '/', scope: '/',
     display: 'standalone',
@@ -3452,7 +3452,7 @@ export default function manifest(): MetadataRoute.Manifest {
 }
 ```
 
-Detalles que marcan la diferencia: icono **maskable** (Android recorta en círculo), `apple-touch-icon` de 180px y `viewport-fit=cover` + `env(safe-area-inset-*)` en CSS para el notch. Splash en iOS: la genera el propio iOS desde icono + `background_color`; no invertimos en `apple-touch-startup-image` por tamaño de pantalla (mantenimiento absurdo). Instalación: en Android Chrome ofrece el prompt (`beforeinstallprompt` → botón "Instalar Notely" en ajustes); en iOS es manual (Compartir → Añadir a pantalla de inicio) y mostraremos un tooltip una sola vez.
+Detalles que marcan la diferencia: icono **maskable** (Android recorta en círculo), `apple-touch-icon` de 180px y `viewport-fit=cover` + `env(safe-area-inset-*)` en CSS para el notch. Splash en iOS: la genera el propio iOS desde icono + `background_color`; no invertimos en `apple-touch-startup-image` por tamaño de pantalla (mantenimiento absurdo). Instalación: en Android Chrome ofrece el prompt (`beforeinstallprompt` → botón "Instalar Notiono" en ajustes); en iOS es manual (Compartir → Añadir a pantalla de inicio) y mostraremos un tooltip una sola vez.
 
 ## 13.2 Offline: qué funciona y cómo
 
@@ -3505,9 +3505,9 @@ Decisiones: **network-first con timeout de 4 s para datos** (frescura ante todo;
 - **Editor táctil**: BlockNote funciona en móvil, pero afinamos: toolbar de formato **fija sobre el teclado** (en lugar del popover flotante, incómodo con selección táctil), slash-menu a pantalla casi completa, y drag&drop de bloques mediante **pulsación larga en el handle** (el drag nativo de BlockNote/ProseMirror es usable pero fino: aumentamos el hit-area del handle a 44px en touch). `visualViewport` API para que el teclado no tape el cursor.
 - **Foto de factura**: en el registro de finanzas, botón "📷 Foto" → `<input type="file" accept="image/*" capture="environment">` abre la cámara trasera directamente. Cliente: recomprime a ~1600px/JPEG 80 (canvas) antes de subir (una factura no necesita 12 MP por HSDPA del pueblo), sube a `/uploads` y adjunta al campo `attachment` del registro. Offline: el blob queda en el outbox de IndexedDB.
 
-## 13.4 Compartir hacia Notely: Share Target y web clipper
+## 13.4 Compartir hacia Notiono: Share Target y web clipper
 
-- **Web Share Target** (declarado en el manifest, ver arriba): con Notely instalada, aparece en la hoja de compartir de Android (iOS no lo soporta — límite honesto). Compartir un enlace, texto o una foto → `POST /api/share` (route handler que valida sesión) → crea una página en **Inbox** con el contenido y notifica. Caso estrella: compartir el PDF de una factura desde la app del banco directamente a Notely.
+- **Web Share Target** (declarado en el manifest, ver arriba): con Notiono instalada, aparece en la hoja de compartir de Android (iOS no lo soporta — límite honesto). Compartir un enlace, texto o una foto → `POST /api/share` (route handler que valida sesión) → crea una página en **Inbox** con el contenido y notifica. Caso estrella: compartir el PDF de una factura desde la app del banco directamente a Notiono.
 - **Web clipper**: extensión de navegador MV3 (Chrome/Firefox, ~200 líneas): botón → coge `document.title`, URL y selección (o `Readability.js` para el artículo entero) → `POST /v1/pages` de la API REST (§9) con un token de scope `pages:write` guardado en las opciones de la extensión. Sin backend nuevo: es un cliente más de la API de Dobby. En iOS, el sustituto es un **Atajo de iOS** que hace el mismo POST (los Atajos hacen peticiones HTTP; coste: escribir una guía de 5 pasos).
 
 ## 13.5 Notificaciones push (VAPID) integradas con el inbox
@@ -3516,7 +3516,7 @@ Decisiones: **network-first con timeout de 4 s para datos** (frescura ante todo;
 
 ## 13.6 Límites honestos PWA vs nativo
 
-| Capacidad | PWA | Impacto en Notely |
+| Capacidad | PWA | Impacto en Notiono |
 |---|---|---|
 | Background sync real (app cerrada) | Solo Android/Chrome; iOS no | Bajo: sync al abrir cubre el caso real |
 | Push en iOS | Solo con PWA instalada (16.4+) | Medio: exige instalar; guía de 1 vez |

@@ -7,7 +7,7 @@ import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlock
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { editorSchema, MentionMenu, type NotelyPartialBlock } from "./mention";
+import { editorSchema, MentionMenu, type NotionoPartialBlock } from "./mention";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
 import { useTheme } from "@/lib/theme";
@@ -51,8 +51,8 @@ export function Editor({
   const setCoverM = trpc.pages.setCover.useMutation();
   const createInlineDb = trpc.db.createInline.useMutation();
 
-  const initial = useMemo<NotelyPartialBlock[] | undefined>(() => {
-    const c = initialContent as NotelyPartialBlock[] | undefined;
+  const initial = useMemo<NotionoPartialBlock[] | undefined>(() => {
+    const c = initialContent as NotionoPartialBlock[] | undefined;
     return Array.isArray(c) && c.length > 0 ? c : undefined;
   }, [initialContent]);
 

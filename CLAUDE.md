@@ -7,7 +7,7 @@ Clon de **Notion** self-hosted a medida para Jose y su familia. Objetivo: parida
 ## Stack y estructura
 - **Next.js 15 (App Router) + TypeScript estricto + tRPC + Prisma + PostgreSQL + TailwindCSS**.
 - Editor: **BlockNote** (con custom blocks/inline content propios). Iconos de interfaz: **lucide-react** (NO emojis/símbolos en el chrome). Gráficas: ECharts. Índices fraccionales: `fractional-indexing`.
-- Repo en el PC: `~/Projects/notely` (la carpeta se llama notely; el remoto es `git@github.com:josemp94/notiono.git`, rama `main`).
+- Repo en el PC: `~/Projects/notiono` (el remoto es `git@github.com:josemp94/notiono.git`, rama `main`).
 - **Auth = SOLO SSO (Synology OIDC)**, sin cuentas locales. El alta ocurre en el callback OIDC; primer usuario = admin. Rutas públicas fuera del grupo `(app)`: `/login`, `/s/[token]` (páginas publicadas), `/api/*`.
 - Multiusuario por **workspace** (Membership). `workspaceProcedure` da `ctx.user` y `ctx.workspace`.
 
@@ -35,4 +35,4 @@ Editor de páginas con bloques + autosave; árbol de páginas en el sidebar; **b
 - Nota: el `docker-compose.yml` del repo ya está bien (nombres `notiono-*`, app `3010:3000`, db con `expose` SIN puerto host para no chocar con un postgres del sistema). NO mapees la db al puerto 5432 del host.
 
 ## Cómo trabajar (para Jose)
-Abre una terminal en `~/Projects/notely` y ejecuta `claude`. Pídele en lenguaje natural la siguiente función (p.ej. "implementa la colaboración en tiempo real según el roadmap de docs/notion-parity.md, con migración a mano si hace falta, build limpio y un commit"). Claude Code leerá este CLAUDE.md y tendrá todo el contexto. Para ver los cambios en producción, pídele a Dobby que despliegue.
+Abre una terminal en `~/Projects/notiono` y ejecuta `claude`. Pídele en lenguaje natural la siguiente función (p.ej. "implementa la colaboración en tiempo real según el roadmap de docs/notion-parity.md, con migración a mano si hace falta, build limpio y un commit"). Claude Code leerá este CLAUDE.md y tendrá todo el contexto. Para ver los cambios en producción, pídele a Dobby que despliegue.
