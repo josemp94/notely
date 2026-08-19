@@ -58,6 +58,9 @@ export function RecordPanel({
   );
   const propFields = fields.filter((f) => f.id !== titleField?.id);
 
+  const saveTemplate = trpc.db.saveTemplate.useMutation({
+    onSuccess: () => utils.db.get.invalidate({ pageId }),
+  });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initial = useMemo<NotionoPartialBlock[] | undefined>(() => {
     const c = record.content as NotionoPartialBlock[] | undefined;
@@ -83,7 +86,16 @@ export function RecordPanel({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-8 pt-5">
-          <span className="text-xs text-[var(--muted)]">Ficha</span>
+          <button
+            onClick={() => {
+              const name = prompt("Nombre de la plantilla", title || "Plantilla");
+              if (name?.trim()) saveTemplate.mutate({ recordId: record.id, name: name.trim() });
+            }}
+            className="text-xs text-[var(--muted)] hover:text-brand"
+            title="Guardar estos valores como plantilla de fila"
+          >
+            Guardar como plantilla
+          </button>
           <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar"><X size={16} /></button>
         </div>
 

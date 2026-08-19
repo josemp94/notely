@@ -117,10 +117,11 @@ model Comment {
 
 // ---- Bases de datos del usuario ----
 model Collection {
-  id      String   @id @default(cuid())
-  pageId  String   @unique
-  page    Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  name    String
+  id        String @id @default(cuid())
+  pageId    String @unique
+  page      Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name      String
+  templates Json   @default("[]") // plantillas de fila: [{ id, name, cells }]
   fields  Field[]
   records Record[]
   views   View[]

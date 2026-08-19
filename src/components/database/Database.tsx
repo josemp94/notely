@@ -217,7 +217,14 @@ export function Database({
       ) : active?.type === "form" ? (
         <FormView pageId={pageId} collectionId={col.id} fields={asAny(fields)} />
       ) : (
-        <TableView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(shownRecords)} view={active} />
+        <TableView
+          pageId={pageId}
+          collectionId={col.id}
+          fields={asAny(visibleFields)}
+          records={asAny(shownRecords)}
+          view={active}
+          templates={asAny(col).templates ?? []}
+        />
       )}
       </div>
     </div>

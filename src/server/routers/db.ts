@@ -542,6 +542,47 @@ export const dbRouter = router({
       return { ok: true };
     }),
 
+  /**
+   * Guarda las celdas de una fila como plantilla de la base de datos.
+   * Para crear una fila desde una plantilla basta con `addRecord({ cells })`.
+   */
+  saveTemplate: workspaceProcedure
+    .input(z.object({ recordId: z.string(), name: z.string().min(1).max(60) }))
+    .mutation(async ({ ctx, input }) => {
+      const rec = await ctx.db.record.findFirst({
+        where: { id: input.recordId, collection: { page: { workspaceId: ctx.workspace.id } } },
+        include: { collection: { select: { id: true, templates: true } } },
+      });
+      if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      const templates = Array.isArray(rec.collection.templates) ? rec.collection.templates : [];
+      const template = {
+        id: "tpl_" + Math.random().toString(36).slice(2, 9),
+        name: input.name,
+        cells: (rec.cells ?? {}) as Record<string, unknown>,
+      };
+      await ctx.db.collection.update({
+        where: { id: rec.collection.id },
+        data: { templates: [...templates, template] as Prisma.InputJsonValue },
+      });
+      return template;
+    }),
+
+  deleteTemplate: workspaceProcedure
+    .input(z.object({ collectionId: z.string(), templateId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
+      const col = await ctx.db.collection.findUnique({
+        where: { id: input.collectionId },
+        select: { templates: true },
+      });
+      const templates = (Array.isArray(col?.templates) ? col.templates : []) as { id: string }[];
+      await ctx.db.collection.update({
+        where: { id: input.collectionId },
+        data: { templates: templates.filter((t) => t.id !== input.templateId) as Prisma.InputJsonValue },
+      });
+      return { ok: true };
+    }),
+
   /** Duplica una fila justo debajo, con sus subtareas. */
   duplicateRecord: workspaceProcedure
     .input(z.object({ id: z.string() }))

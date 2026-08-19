@@ -10,6 +10,8 @@ import { Popover } from "./DbToolbar";
 import { RelationCell } from "./RelationCell";
 import { RecordPanel } from "./RecordPanel";
 
+export type RowTemplate = { id: string; name: string; cells: Record<string, unknown> };
+
 type Rec = {
   id: string;
   cells: Record<string, unknown>;
@@ -28,12 +30,14 @@ export function TableView({
   fields,
   records,
   view,
+  templates = [],
 }: {
   pageId: string;
   collectionId: string;
   fields: FieldLite[];
   records: Rec[];
   view: { id: string; config: unknown };
+  templates?: RowTemplate[];
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
@@ -44,6 +48,7 @@ export function TableView({
   const deleteRecord = trpc.db.deleteRecord.useMutation({ onSuccess: invalidate });
   const duplicateRecord = trpc.db.duplicateRecord.useMutation({ onSuccess: invalidate });
   const moveRecord = trpc.db.moveRecord.useMutation({ onSuccess: invalidate });
+  const deleteTemplate = trpc.db.deleteTemplate.useMutation({ onSuccess: invalidate });
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const setFieldType = trpc.db.setFieldType.useMutation({ onSuccess: invalidate });
@@ -52,6 +57,7 @@ export function TableView({
 
   const [editingField, setEditingField] = useState<string | null>(null);
   const [menuField, setMenuField] = useState<string | null>(null);
+  const [newMenu, setNewMenu] = useState(false);
   // Ancho de columna: se arrastra en local y se guarda en la vista al soltar.
   const [drag, setDrag] = useState<{ fieldId: string; startX: number; startW: number; w: number } | null>(null);
   // Arrastre de filas: solo con el orden natural (sin orden ni agrupación activos).
@@ -393,12 +399,47 @@ export function TableView({
         </tfoot>
       </table>
 
-      <button
-        onClick={() => addRecord.mutate({ collectionId })}
-        className="mt-2 px-2 py-1 text-sm text-[var(--muted)] hover:text-brand"
-      >
-        + Nueva fila
-      </button>
+      <div className="relative mt-2 flex items-center">
+        <button
+          onClick={() => addRecord.mutate({ collectionId })}
+          className="px-2 py-1 text-sm text-[var(--muted)] hover:text-brand"
+        >
+          + Nueva fila
+        </button>
+        {templates.length > 0 && (
+          <button
+            onClick={() => setNewMenu((o) => !o)}
+            className="rounded px-1 py-1 text-[var(--muted)] hover:text-brand"
+            title="Crear desde una plantilla"
+          >
+            <ChevronDown size={14} />
+          </button>
+        )}
+        {newMenu && (
+          <div className="absolute bottom-full left-0 z-30 mb-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--background)] p-1 shadow-xl">
+            {templates.map((t) => (
+              <div key={t.id} className="group/tpl flex items-center">
+                <button
+                  onClick={() => {
+                    addRecord.mutate({ collectionId, cells: t.cells });
+                    setNewMenu(false);
+                  }}
+                  className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+                >
+                  {t.name}
+                </button>
+                <button
+                  onClick={() => deleteTemplate.mutate({ collectionId, templateId: t.id })}
+                  className="px-1 text-[var(--muted)] opacity-0 hover:text-red-500 group-hover/tpl:opacity-100"
+                  title="Borrar plantilla"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       <div className="mt-1 px-2 text-xs text-[var(--muted)]">{rows.length} de {records.length} filas</div>
 
       {openRec &&
