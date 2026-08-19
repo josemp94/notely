@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Database, Download, Lightbulb } from "lucide-react";
+import { Check, Database, Download, Lightbulb, ListTree } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -163,6 +163,14 @@ export function Editor({
                   group: "Bloques básicos",
                   icon: <Lightbulb size={18} />,
                   onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: "callout" }),
+                },
+                {
+                  title: "Tabla de contenidos",
+                  subtext: "Índice de los encabezados de la página",
+                  aliases: ["toc", "indice", "índice", "contenidos", "tabla de contenidos"],
+                  group: "Bloques básicos",
+                  icon: <ListTree size={18} />,
+                  onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: "toc" }),
                 },
                 {
                   title: "Base de datos",

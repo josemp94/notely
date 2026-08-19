@@ -6,6 +6,7 @@ import { createReactInlineContentSpec, SuggestionMenuController } from "@blockno
 import { trpc } from "@/trpc/react";
 import { CalloutBlock } from "./calloutBlock";
 import { DatabaseBlock } from "./databaseBlock";
+import { TocBlock } from "./tocBlock";
 
 /** Chip de mención inline: icono + título de la página, enlaza a /p/<id>. */
 const Mention = createReactInlineContentSpec(
@@ -52,7 +53,7 @@ const PersonMention = createReactInlineContentSpec(
 
 /** Schema compartido por todos los editores BlockNote de la app (registra "mention", "personMention" y el bloque "database"). */
 export const editorSchema = BlockNoteSchema.create({
-  blockSpecs: { ...defaultBlockSpecs, database: DatabaseBlock(), callout: CalloutBlock() },
+  blockSpecs: { ...defaultBlockSpecs, database: DatabaseBlock(), callout: CalloutBlock(), toc: TocBlock() },
   inlineContentSpecs: { ...defaultInlineContentSpecs, mention: Mention, personMention: PersonMention },
 });
 
