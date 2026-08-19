@@ -33,7 +33,6 @@ const t = (v: unknown) => {
 export function opsFor(type: string): { value: string; label: string }[] {
   switch (type) {
     case "number":
-    case "currency":
       return [
         { value: "eq", label: "=" },
         { value: "gt", label: ">" },
@@ -68,7 +67,7 @@ function matchFilter(cell: unknown, field: DbField, op: string, value: any): boo
     case "contains":
       return s(cell).toLowerCase().includes(s(value).toLowerCase());
     case "eq":
-      if (field.type === "number" || field.type === "currency") return n(cell) === n(value);
+      if (field.type === "number") return n(cell) === n(value);
       return s(cell).toLowerCase() === s(value).toLowerCase();
     case "is":
       if (field.type === "checkbox") return Boolean(cell) === (value === true || value === "true");
@@ -102,7 +101,7 @@ function matchFilter(cell: unknown, field: DbField, op: string, value: any): boo
 
 function compareCells(a: unknown, b: unknown, field?: DbField): number {
   if (!field) return s(a).localeCompare(s(b));
-  if (field.type === "number" || field.type === "currency") {
+  if (field.type === "number") {
     const x = n(a), y = n(b);
     if (isNaN(x) && isNaN(y)) return 0;
     if (isNaN(x)) return 1;

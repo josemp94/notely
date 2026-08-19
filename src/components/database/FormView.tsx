@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { optionsOf, type FieldLite } from "./Cell";
 
-const SUPPORTED = ["text", "number", "currency", "select", "date", "checkbox", "url"];
+const SUPPORTED = ["text", "number", "select", "status", "date", "checkbox", "url", "email", "phone"];
 
 export function FormView({ pageId, collectionId, fields }: { pageId: string; collectionId: string; fields: FieldLite[] }) {
   const utils = trpc.useUtils();
@@ -69,7 +69,7 @@ function FieldInput({ field, value, onChange }: { field: FieldLite; value: unkno
       <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand)]" />
     );
   }
-  if (field.type === "select") {
+  if (field.type === "select" || field.type === "status") {
     return (
       <select value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} className={base}>
         <option value="">—</option>
@@ -79,6 +79,12 @@ function FieldInput({ field, value, onChange }: { field: FieldLite; value: unkno
       </select>
     );
   }
-  const type = field.type === "date" ? "date" : field.type === "number" || field.type === "currency" ? "number" : field.type === "url" ? "url" : "text";
+  const type =
+    field.type === "date" ? "date"
+    : field.type === "number" ? "number"
+    : field.type === "url" ? "url"
+    : field.type === "email" ? "email"
+    : field.type === "phone" ? "tel"
+    : "text";
   return <input type={type} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} className={base} />;
 }

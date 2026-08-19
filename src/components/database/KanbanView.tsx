@@ -44,9 +44,10 @@ export function KanbanView({
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const [dragId, setDragId] = useState<string | null>(null);
 
+  // Estado y Selección comparten formato de opciones: ambos pueden agrupar el tablero.
+  const groupable = (f: FieldLite) => f.type === "select" || f.type === "status";
   const groupField =
-    fields.find((f) => f.id === groupByFieldId && f.type === "select") ??
-    fields.find((f) => f.type === "select");
+    fields.find((f) => f.id === groupByFieldId && groupable(f)) ?? fields.find(groupable);
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
   const size = SIZES[cardSize ?? "medium"] ?? SIZES.medium;
   const previewField = cardPreview && cardPreview !== "none" ? fields.find((f) => f.id === cardPreview) : undefined;

@@ -37,7 +37,7 @@ export function ChartView({
   const save = (patch: Partial<ChartConfig>) =>
     updateView.mutate({ id: view.id, config: { ...cfg, ...patch } });
 
-  const numberFields = fields.filter((f) => f.type === "number" || f.type === "currency");
+  const numberFields = fields.filter((f) => f.type === "number");
 
   const option = useMemo(() => {
     if (!data) return {};

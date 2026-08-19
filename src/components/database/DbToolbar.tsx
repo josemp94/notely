@@ -519,7 +519,7 @@ function FilterValue({ field, value, onChange }: { field?: DbField; value: any; 
       </select>
     );
   }
-  const inputType = field.type === "date" ? "date" : field.type === "number" || field.type === "currency" ? "number" : "text";
+  const inputType = field.type === "date" ? "date" : field.type === "number" ? "number" : "text";
   return (
     <input
       type={inputType}
