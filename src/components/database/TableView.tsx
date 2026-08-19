@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Maximize2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Maximize2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
 import { formatNumber, groupBy, NUMBER_FORMATS, type FieldLite } from "@/lib/cellText";
@@ -42,6 +42,7 @@ export function TableView({
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const addSubRecord = trpc.db.addSubRecord.useMutation({ onSuccess: invalidate });
   const deleteRecord = trpc.db.deleteRecord.useMutation({ onSuccess: invalidate });
+  const duplicateRecord = trpc.db.duplicateRecord.useMutation({ onSuccess: invalidate });
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Prisma } from "@prisma/client";
 import { router, workspaceProcedure } from "../trpc";
-import { rankAtEnd } from "@/lib/fractional";
+import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
 
@@ -416,6 +416,57 @@ export const dbRouter = router({
         data: { cells: cells as Prisma.InputJsonValue, updatedById: ctx.user.id },
         select: { id: true, cells: true },
       });
+    }),
+
+  /** Duplica una fila justo debajo, con sus subtareas. */
+  duplicateRecord: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const src = await ctx.db.record.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+      });
+      if (!src) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Se coloca entre el original y el siguiente hermano, para que caiga justo debajo.
+      const next = await ctx.db.record.findFirst({
+        where: { collectionId: src.collectionId, parentId: src.parentId, order: { gt: src.order } },
+        orderBy: { order: "asc" },
+        select: { order: true },
+      });
+      const maxSeq = await ctx.db.record.aggregate({
+        where: { collectionId: src.collectionId },
+        _max: { seq: true },
+      });
+      let seq = (maxSeq._max.seq ?? 0) + 1;
+
+      const copyTree = async (rec: typeof src, parentId: string | null, order: string): Promise<string> => {
+        const copy = await ctx.db.record.create({
+          data: {
+            collectionId: rec.collectionId,
+            parentId,
+            order,
+            seq: seq++,
+            cells: (rec.cells ?? {}) as Prisma.InputJsonValue,
+            content: (rec.content ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+            createdById: ctx.user.id,
+            updatedById: ctx.user.id,
+          },
+          select: { id: true },
+        });
+        const children = await ctx.db.record.findMany({
+          where: { parentId: rec.id },
+          orderBy: { order: "asc" },
+        });
+        let childOrder: string | null = null;
+        for (const child of children) {
+          childOrder = rankAtEnd(childOrder);
+          await copyTree(child, copy.id, childOrder);
+        }
+        return copy.id;
+      };
+
+      const id = await copyTree(src, src.parentId, rankBetween(src.order, next?.order ?? null));
+      return { id };
     }),
 
   deleteRecord: workspaceProcedure
