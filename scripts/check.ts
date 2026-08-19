@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { applyViewConfig, colorByRules, matchesFilters, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
 import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, groupBy, rowColor } from "../src/lib/cellText";
 import { embedUrl } from "../src/lib/embed";
+import { computeCalc } from "../src/lib/calc";
 
 const f = (id: string, type: string, config: unknown = {}): DbField => ({ id, name: id, type, config });
 const r = (id: string, cells: Record<string, unknown>): DbRecord => ({ id, cells, order: id });
@@ -172,4 +173,23 @@ assert.equal(colorByRules(vencida, reglaFields, []), undefined); // sin reglas, 
 assert.equal(matchesFilters(vencida, reglaFields, []), false);
 assert.equal(colorByRules(vencida, reglaFields, [{ id: "3", color: "red", filters: [] }]), undefined);
 
-console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces y reglas");
+// --- Cálculos de columna (fila de totales y subtotales por grupo) ---
+const precio = f("precio", "number", { format: "euro" });
+const filasCalc = [
+  r("1", { precio: 10.5 }),
+  r("2", { precio: 4.5 }),
+  r("3", {}), // vacía: no cuenta como valor
+  r("4", { precio: 0 }), // cero SÍ es un valor
+];
+assert.equal(computeCalc("count", precio, filasCalc), "4");
+assert.equal(computeCalc("filled", precio, filasCalc), "3");
+assert.equal(computeCalc("empty", precio, filasCalc), "1");
+assert.equal(computeCalc("percent_filled", precio, filasCalc), "75%");
+assert.equal(computeCalc("sum", precio, filasCalc), "15 €"); // con el formato del campo
+assert.equal(computeCalc("avg", precio, filasCalc), "5 €");
+assert.equal(computeCalc("min", precio, filasCalc), "0 €");
+assert.equal(computeCalc("max", precio, filasCalc), "10,5 €");
+assert.equal(computeCalc("sum", precio, [r("x", {})]), "—"); // sin números, no se inventa un 0
+assert.equal(computeCalc("", precio, filasCalc), ""); // sin cálculo elegido, celda vacía
+
+console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces, reglas y cálculos");
