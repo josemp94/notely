@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, workspaceProcedure, authedProcedure } from "../trpc";
 import { cellToText } from "./db";
 import { dayOf } from "@/lib/cellText";
+import { sendPush } from "../push";
 
 export const notificationsRouter = router({
   /** Bandeja del usuario en el espacio activo (más recientes primero). */
@@ -109,6 +110,14 @@ export const notificationsRouter = router({
     if (!pending.length) return { created: 0 };
     // skipDuplicates + índice único (userId, key): el mismo vencimiento no se avisa dos veces.
     const res = await ctx.db.notification.createMany({ data: pending, skipDuplicates: true });
+    if (res.count > 0) {
+      // Un único aviso por tanda: si vencen ocho cosas no queremos ocho notificaciones.
+      sendPush(ctx.user.id, {
+        title: res.count === 1 ? "Te toca una tarea" : `Te tocan ${res.count} tareas`,
+        body: res.count === 1 ? pending[0].title : "Ábrelas desde la campana o Mis tareas.",
+        url: "/my-tasks",
+      });
+    }
     return { created: res.count };
   }),
 
@@ -141,6 +150,12 @@ export const notificationsRouter = router({
           pageId: input.pageId,
           actorId: ctx.user.id,
         },
+      });
+      const page2 = await ctx.db.page.findUnique({ where: { id: input.pageId }, select: { title: true } });
+      sendPush(input.userId, {
+        title: `${ctx.user.name || ctx.user.email} te ha mencionado`,
+        body: page2?.title || "Sin título",
+        url: `/p/${input.pageId}`,
       });
       return { ok: true };
     }),

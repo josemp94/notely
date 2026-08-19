@@ -23,6 +23,7 @@ model User {
   notifications     Notification[] @relation("recipient")
   sentNotifications Notification[] @relation("actor")
   favorites    Favorite[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Session {
@@ -205,6 +206,25 @@ model Notification {
 
   @@unique([userId, key])
   @@index([userId, workspaceId, read])
+}
+
+// Ajuste global de la instalación (hoy solo el par de claves VAPID de los avisos push).
+model AppSetting {
+  key   String @id
+  value String
+}
+
+// Navegador suscrito a los avisos push de un usuario (uno por dispositivo).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Binario subido por el usuario (portadas). Los bytes viven en Postgres: sin servicios externos.

@@ -56,6 +56,7 @@ export default function SettingsPage() {
         {nameMsg && <p className="mt-2 text-xs text-[var(--muted)]">{nameMsg}</p>}
       </section>
 
+      <PushSection />
       <ApiTokensSection />
       <WebhooksSection />
     </div>
@@ -139,6 +140,102 @@ function ApiTokensSection() {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Avisos push: hay que activarlos en cada dispositivo, porque la suscripción es
+ * del navegador, no de la cuenta.
+ */
+function PushSection() {
+  const [endpoint, setEndpoint] = useState<string | null>(null);
+  const [estado, setEstado] = useState<string | null>(null);
+  const [soportado, setSoportado] = useState(true);
+  const { data: publicKey } = trpc.push.publicKey.useQuery();
+  const { data: suscrito, refetch } = trpc.push.isSubscribed.useQuery(
+    { endpoint: endpoint ?? "" },
+    { enabled: Boolean(endpoint) },
+  );
+  const subscribe = trpc.push.subscribe.useMutation({ onSuccess: () => refetch() });
+  const unsubscribe = trpc.push.unsubscribe.useMutation({ onSuccess: () => refetch() });
+
+  // ¿Este navegador ya tiene suscripción? (el service worker se registra en producción)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setSoportado(false);
+      return;
+    }
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setEndpoint(sub?.endpoint ?? null))
+      .catch(() => setSoportado(false));
+  }, []);
+
+  const activar = async () => {
+    setEstado(null);
+    try {
+      if ((await Notification.requestPermission()) !== "granted") {
+        setEstado("Has bloqueado los avisos en este navegador.");
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: publicKey!,
+      });
+      const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+      await subscribe.mutateAsync({
+        endpoint: json.endpoint!,
+        p256dh: json.keys!.p256dh!,
+        auth: json.keys!.auth!,
+      });
+      setEndpoint(json.endpoint!);
+      setEstado("Listo: este dispositivo recibirá avisos.");
+    } catch {
+      setEstado("No se ha podido activar en este navegador.");
+    }
+  };
+
+  const desactivar = async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await unsubscribe.mutateAsync({ endpoint: sub.endpoint });
+      await sub.unsubscribe();
+    }
+    setEndpoint(null);
+    setEstado("Avisos desactivados en este dispositivo.");
+  };
+
+  return (
+    <section className="mt-8">
+      <h2 className="font-display mb-1 font-bold">Avisos en el móvil y el escritorio</h2>
+      <p className="mb-3 text-xs text-[var(--muted)]">
+        Recibe una notificación cuando te mencionen o te toque una tarea, aunque no tengas Notiono
+        abierto. Hay que activarlo <b>en cada dispositivo</b>. En el móvil, instala antes la app
+        desde el navegador.
+      </p>
+      {!soportado ? (
+        <p className="text-sm text-[var(--muted)]">Este navegador no admite avisos push.</p>
+      ) : suscrito ? (
+        <button
+          onClick={desactivar}
+          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm hover:border-brand hover:text-brand"
+        >
+          Desactivar en este dispositivo
+        </button>
+      ) : (
+        <button
+          onClick={activar}
+          disabled={!publicKey}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          Activar en este dispositivo
+        </button>
+      )}
+      {estado && <p className="mt-2 text-xs text-[var(--muted)]">{estado}</p>}
     </section>
   );
 }

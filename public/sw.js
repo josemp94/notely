@@ -1,4 +1,4 @@
-// Service worker de Notiono: instalabilidad + shell offline.
+// Service worker de Notiono: instalabilidad + shell offline + avisos push.
 // - Mutaciones (no-GET) y /api/*: siempre a la red, sin tocar caché.
 // - Estáticos inmutables (/_next/static, iconos, fuentes): cache-first.
 // - Navegaciones: network-first con fallback a lo último cacheado (shell offline).
@@ -63,4 +63,42 @@ self.addEventListener("fetch", (e) => {
         .catch(() => caches.match(req).then((hit) => hit || caches.match("/"))),
     );
   }
+});
+
+
+// --- Avisos push ---
+// El servidor manda { title, body, url }. Si el JSON viniera mal, se avisa igual.
+self.addEventListener("push", (e) => {
+  let data = { title: "Notiono", body: "Tienes algo nuevo", url: "/" };
+  try {
+    if (e.data) data = { ...data, ...e.data.json() };
+  } catch {
+    // payload no-JSON: se queda el aviso genérico
+  }
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url || "/" },
+      tag: data.url || "notiono",
+    }),
+  );
+});
+
+// Al pulsar el aviso: reutiliza la pestaña abierta si la hay, en vez de abrir otra.
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
 });
