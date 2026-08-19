@@ -220,6 +220,7 @@ export function Database({
           cardPreview={asAny(active.config)?.cardPreview}
           colorFieldId={asAny(active.config)?.rowColorFieldId}
           groupByFieldId={asAny(active.config)?.groupByFieldId}
+          colorRules={asAny(active.config)?.colorRules}
         />
       ) : active?.type === "list" ? (
         <ListView

@@ -5,6 +5,7 @@ import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
 import { usePeople } from "./Cell";
 import { displayValue, groupBy, rowColor, type FieldLite } from "@/lib/cellText";
+import { colorByRules, type ColorRule, type DbField, type DbRecord } from "@/lib/viewData";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
@@ -23,6 +24,7 @@ export function GalleryView({
   cardPreview,
   colorFieldId,
   groupByFieldId,
+  colorRules,
 }: {
   pageId: string;
   collectionId: string;
@@ -32,6 +34,7 @@ export function GalleryView({
   cardPreview?: string;
   colorFieldId?: string;
   groupByFieldId?: string;
+  colorRules?: ColorRule[];
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
@@ -40,6 +43,8 @@ export function GalleryView({
   const people = usePeople();
   const colorField = fields.find((f) => f.id === colorFieldId);
   const groupField = fields.find((f) => f.id === groupByFieldId);
+  const colorOf = (r: Rec) =>
+    colorByRules(r as unknown as DbRecord, fields as unknown as DbField[], colorRules) ?? rowColor(colorField, r.cells);
 
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
   const size = SIZES[cardSize ?? "medium"] ?? SIZES.medium;
@@ -68,7 +73,7 @@ export function GalleryView({
           <button
             key={r.id}
             onClick={() => setOpenRec(r)}
-            style={{ background: rowColor(colorField, r.cells) }}
+            style={{ background: colorOf(r) }}
             className={`flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] ${size.card} text-left shadow-sm transition hover:border-brand hover:shadow-md`}
           >
             <div className={`font-display truncate font-semibold ${size.title}`}>{recTitle(r)}</div>

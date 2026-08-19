@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizonta
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
 import { formatNumber, groupBy, NUMBER_FORMATS, rowColor, type FieldLite } from "@/lib/cellText";
+import { colorByRules, type DbField, type DbRecord } from "@/lib/viewData";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
 import { Popover } from "./DbToolbar";
 import { RelationCell } from "./RelationCell";
@@ -143,6 +144,10 @@ export function TableView({
   const groupField = fields.find((f) => f.id === cfg.groupByFieldId);
   const canReorder = !groupField && !(cfg.sorts?.length > 0);
   const colorField = fields.find((f) => f.id === cfg.rowColorFieldId);
+  // Primero las reglas («si vence hoy, en rojo»); si ninguna casa, el color de la etiqueta.
+  const colorOf = (r: Rec) =>
+    colorByRules(r as unknown as DbRecord, fields as unknown as DbField[], cfg.colorRules) ??
+    rowColor(colorField, r.cells);
   const groups = groupBy(records, groupField, people);
   const hasCalcs = fields.some((f) => calcs[f.id]);
 
@@ -150,7 +155,7 @@ export function TableView({
   const renderRow = ({ rec: r, depth, hasChildren }: { rec: Rec; depth: number; hasChildren: boolean }) => (
     <tr
       key={r.id}
-      style={rowColor(colorField, r.cells) ? { background: rowColor(colorField, r.cells) } : undefined}
+      style={colorOf(r) ? { background: colorOf(r) } : undefined}
       className={`group border-b border-[var(--border)] hover:bg-[var(--border)]/20 ${
         dropRow?.id === r.id
           ? dropRow.pos === "before"
@@ -178,7 +183,7 @@ export function TableView({
     >
       <td
         className="sticky left-0 z-10 px-1 py-1 text-center"
-        style={{ background: rowColor(colorField, r.cells) ?? "var(--background)" }}
+        style={{ background: colorOf(r) ?? "var(--background)" }}
       >
         <div className="flex items-center">
           {canReorder && (
@@ -242,7 +247,7 @@ export function TableView({
           <td
             key={f.id}
             className="sticky left-14 z-10 overflow-hidden px-2 py-1"
-            style={{ ...style, background: rowColor(colorField, r.cells) ?? "var(--background)" }}
+            style={{ ...style, background: colorOf(r) ?? "var(--background)" }}
           >
             <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
               {hasChildren ? (

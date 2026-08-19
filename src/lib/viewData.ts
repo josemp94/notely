@@ -1,6 +1,6 @@
 // Aplica filtros y orden (guardados en view.config) a los registros, en cliente.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { dayOf, endDayOf } from "./cellText";
+import { dayOf, endDayOf, OPTION_COLORS } from "./cellText";
 
 export type DbField = { id: string; name: string; type: string; config: any };
 export type DbRecord = { id: string; cells: Record<string, unknown>; order: string };
@@ -222,6 +222,23 @@ function evalNode(node: FilterNode, r: DbRecord, byId: Map<string, DbField>): bo
   if (!field) return null;
   if (!NO_VALUE_OPS.has(node.op) && (node.value === "" || node.value == null)) return null;
   return matchFilter(r.cells[node.fieldId], field, node.op, node.value);
+}
+
+/** Regla de color: si el registro cumple sus condiciones, la fila se pinta de ese color. */
+export type ColorRule = { id: string; color: string; filters: FilterNode[] };
+
+/** ¿El registro cumple estas condiciones? (mismo motor que los filtros de la vista). */
+export function matchesFilters(record: DbRecord, fields: DbField[], nodes: FilterNode[]): boolean {
+  if (!nodes.length) return false;
+  const byId = new Map(fields.map((f) => [f.id, f]));
+  return evalNode({ type: "group", op: "and", filters: nodes }, record, byId) === true;
+}
+
+/** Color de la primera regla que cumple el registro (las reglas se evalúan en orden). */
+export function colorByRules(record: DbRecord, fields: DbField[], rules: ColorRule[] | undefined): string | undefined {
+  if (!rules?.length) return undefined;
+  const hit = rules.find((rule) => matchesFilters(record, fields, rule.filters ?? []));
+  return hit ? OPTION_COLORS[hit.color] ?? undefined : undefined;
 }
 
 export function applyViewConfig(records: DbRecord[], fields: DbField[], config: any): DbRecord[] {

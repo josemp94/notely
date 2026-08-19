@@ -27,6 +27,7 @@ import { downloadText } from "@/lib/download";
 import {
   countFilters,
   isFilterGroup,
+  type ColorRule,
   NO_VALUE_OPS,
   opsFor,
   type DbField,
@@ -337,6 +338,11 @@ export function DbToolbar({
                       ))}
                   </select>
                 </label>
+                <ColorRulesEditor
+                  fields={fields}
+                  rules={view.config?.colorRules ?? []}
+                  onChange={(colorRules) => saveConfig({ colorRules })}
+                />
               </div>
             )}
             {(view.type === "kanban" || view.type === "gallery") && (
@@ -603,5 +609,87 @@ function PersonFilterValue({ value, onChange }: { value: any; onChange: (v: any)
         <option key={m.userId} value={m.userId}>{m.name || m.email}</option>
       ))}
     </select>
+  );
+}
+
+const RULE_COLORS: [string, string][] = [
+  ["red", "Rojo"],
+  ["orange", "Naranja"],
+  ["yellow", "Amarillo"],
+  ["green", "Verde"],
+  ["blue", "Azul"],
+  ["gray", "Gris"],
+];
+
+/**
+ * Reglas de color: cada una tiene sus condiciones (el mismo editor que los filtros
+ * de la vista) y un color. Gana la primera que cumple la fila.
+ */
+function ColorRulesEditor({
+  fields,
+  rules,
+  onChange,
+}: {
+  fields: DbField[];
+  rules: ColorRule[];
+  onChange: (rules: ColorRule[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const set = (i: number, rule: ColorRule) => onChange(rules.map((r, j) => (j === i ? rule : r)));
+
+  return (
+    <div className="px-2 pb-1">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between py-1 text-sm hover:text-brand"
+      >
+        <span>Reglas de color</span>
+        <span className="text-xs text-[var(--muted)]">{rules.length || "ninguna"}</span>
+      </button>
+      {open && (
+        <div className="space-y-2 pb-1">
+          {rules.map((rule, i) => (
+            <div key={rule.id} className="rounded-lg border border-[var(--border)] p-2">
+              <div className="mb-1 flex items-center gap-2">
+                <select
+                  value={rule.color}
+                  onChange={(e) => set(i, { ...rule, color: e.target.value })}
+                  className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+                >
+                  {RULE_COLORS.map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+                <span className="text-xs text-[var(--muted)]">si cumple:</span>
+                <button
+                  onClick={() => onChange(rules.filter((_, j) => j !== i))}
+                  className="ml-auto text-[var(--muted)] hover:text-red-500"
+                  title="Quitar regla"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+              <FilterNodesEditor
+                nodes={rule.filters ?? []}
+                fields={fields}
+                onChange={(filters) => set(i, { ...rule, filters })}
+                depth={1}
+              />
+            </div>
+          ))}
+          <button
+            onClick={() =>
+              onChange([
+                ...rules,
+                { id: "rule_" + Math.random().toString(36).slice(2, 9), color: "red", filters: [] },
+              ])
+            }
+            className="text-xs text-brand hover:underline"
+          >
+            ＋ Añadir regla
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

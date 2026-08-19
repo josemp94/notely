@@ -3,7 +3,7 @@
  * Ejecutar: npm run check
  */
 import assert from "node:assert/strict";
-import { applyViewConfig, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
+import { applyViewConfig, colorByRules, matchesFilters, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
 import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, groupBy, rowColor } from "../src/lib/cellText";
 import { embedUrl } from "../src/lib/embed";
 
@@ -154,4 +154,22 @@ assert.equal(embedUrl("https://vimeo.com/123456"), "https://player.vimeo.com/vid
 assert.equal(embedUrl("https://elpais.com/receta"), null); // una web normal es tarjeta, no reproductor
 assert.equal(embedUrl("no es una url"), null);
 
-console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores y enlaces");
+// --- Reglas de color: mismas condiciones que los filtros, primera que casa gana ---
+const reglaFields: DbField[] = [f("cuando", "date"), f("estado", "status", { options: [{ id: "done", label: "Hecho" }] })];
+const vencida = r("v", { cuando: "1999-01-01" });
+const hecha = r("h", { cuando: "1999-01-01", estado: "done" });
+
+const reglas = [
+  { id: "1", color: "green", filters: [{ fieldId: "estado", op: "is", value: "done" }] },
+  { id: "2", color: "red", filters: [{ fieldId: "cuando", op: "before", value: "2020-01-01" }] },
+];
+assert.equal(colorByRules(hecha, reglaFields, reglas), "#c9efd8"); // gana la primera que cumple
+assert.equal(colorByRules(vencida, reglaFields, reglas), "#ffd2cd");
+assert.equal(colorByRules(r("x", {}), reglaFields, reglas), undefined); // no cumple ninguna
+assert.equal(colorByRules(vencida, reglaFields, []), undefined); // sin reglas, sin color
+
+// Una regla sin condiciones no debe pintar todo (sería el error fácil aquí).
+assert.equal(matchesFilters(vencida, reglaFields, []), false);
+assert.equal(colorByRules(vencida, reglaFields, [{ id: "3", color: "red", filters: [] }]), undefined);
+
+console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces y reglas");
