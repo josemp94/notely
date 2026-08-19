@@ -5,6 +5,7 @@ import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
+import { dispatchWebhooks } from "../webhooks";
 import { dateValue, dayOf } from "@/lib/cellText";
 
 /** Días que sobreviven las filas borradas antes de desaparecer para siempre. */
@@ -454,7 +455,7 @@ export const dbRouter = router({
         where: { collectionId: input.collectionId },
         _max: { seq: true },
       });
-      return ctx.db.record.create({
+      const created = await ctx.db.record.create({
         data: {
           collectionId: input.collectionId,
           order: rankAtEnd(last?.order ?? null),
@@ -464,6 +465,8 @@ export const dbRouter = router({
           updatedById: ctx.user.id,
         },
       });
+      dispatchWebhooks(ctx.workspace.id, "record.created", { recordId: created.id, collectionId: input.collectionId, cells: created.cells });
+      return created;
     }),
 
   /** Crea un sub-elemento: registro hijo del indicado, en la misma colección. */
@@ -506,11 +509,18 @@ export const dbRouter = router({
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
       const cells = { ...(rec.cells as Record<string, unknown>), [input.fieldId]: input.value };
       if (input.value === null || input.value === "") delete cells[input.fieldId];
-      return ctx.db.record.update({
+      const updated = await ctx.db.record.update({
         where: { id: input.recordId },
         data: { cells: cells as Prisma.InputJsonValue, updatedById: ctx.user.id },
         select: { id: true, cells: true },
       });
+      dispatchWebhooks(ctx.workspace.id, "record.updated", {
+        recordId: updated.id,
+        collectionId: rec.collectionId,
+        fieldId: input.fieldId,
+        cells: updated.cells,
+      });
+      return updated;
     }),
 
   /** Filas archivadas de una base de datos (papelera de filas). */
@@ -705,6 +715,7 @@ export const dbRouter = router({
       // Las subtareas se van con su padre, como al borrar una página con hijas.
       await ctx.db.record.updateMany({ where: { parentId: input.id }, data: { archivedAt: now } });
       await ctx.db.record.update({ where: { id: input.id }, data: { archivedAt: now } });
+      dispatchWebhooks(ctx.workspace.id, "record.deleted", { recordId: input.id });
       return { ok: true };
     }),
 
