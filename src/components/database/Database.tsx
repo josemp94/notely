@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { Search, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { PageIcon } from "@/components/PageIcon";
 import { AddCoverButton, CoverBand } from "@/components/PageCover";
 import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
+import { displayValue, usePeople } from "./Cell";
 import { DbToolbar, ViewIcon } from "./DbToolbar";
 import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
@@ -38,6 +40,9 @@ export function Database({
   const [icon, setIcon] = useState<string | null>(initialIcon ?? "🗃️");
   const [cover, setCover] = useState<string | null>(initialCover ?? null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [q, setQ] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const people = usePeople();
 
   const rename = trpc.pages.rename.useMutation({ onSuccess: () => utils.pages.tree.invalidate() });
   const setCoverM = trpc.pages.setCover.useMutation();
@@ -66,6 +71,16 @@ export function Database({
     () => applyViewConfig(rawRecords as unknown as DbRecord[], fields as unknown as DbField[], active?.config),
     [rawRecords, fields, active],
   );
+  // Búsqueda interna (la lupa): sobre el texto visible de cada celda, después de filtros y orden.
+  const shownRecords = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return viewRecords;
+    return viewRecords.filter((r) =>
+      (fields as unknown as DbField[]).some((f) =>
+        displayValue(f, r.cells?.[f.id], people).toLowerCase().includes(needle),
+      ),
+    );
+  }, [viewRecords, fields, q, people]);
 
   if (isLoading || !col) {
     return <div className="px-4 py-6 text-[var(--muted)]">Cargando base de datos…</div>;
@@ -120,8 +135,37 @@ export function Database({
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-1 pb-1">
+          {searchOpen ? (
+            <div className="flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1">
+              <Search size={13} className="shrink-0 text-[var(--muted)]" />
+              <input
+                autoFocus
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && (setQ(""), setSearchOpen(false))}
+                placeholder="Buscar en la base de datos…"
+                className="w-44 bg-transparent text-xs outline-none"
+              />
+              <button
+                onClick={() => { setQ(""); setSearchOpen(false); }}
+                className="shrink-0 text-[var(--muted)] hover:text-[var(--foreground)]"
+                title="Cerrar búsqueda"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--border)]/40"
+              title="Buscar en la base de datos"
+            >
+              <Search size={15} />
+            </button>
+          )}
         {canEdit && active && (
-          <div className="pb-1">
+          <div>
             <DbToolbar
               pageId={pageId}
               collectionId={col.id}
@@ -132,6 +176,7 @@ export function Database({
             />
           </div>
         )}
+        </div>
       </div>
 
       {active?.type === "kanban" ? (
@@ -139,7 +184,7 @@ export function Database({
           pageId={pageId}
           collectionId={col.id}
           fields={asAny(visibleFields)}
-          records={asAny(viewRecords)}
+          records={asAny(shownRecords)}
           groupByFieldId={asAny(active.config)?.groupByFieldId}
           cardSize={asAny(active.config)?.cardSize}
           cardPreview={asAny(active.config)?.cardPreview}
@@ -151,26 +196,26 @@ export function Database({
           pageId={pageId}
           collectionId={col.id}
           fields={asAny(visibleFields)}
-          records={asAny(viewRecords)}
+          records={asAny(shownRecords)}
           view={active}
         />
       ) : active?.type === "timeline" ? (
-        <TimelineView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} view={active} />
+        <TimelineView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(shownRecords)} view={active} />
       ) : active?.type === "gallery" ? (
         <GalleryView
           pageId={pageId}
           collectionId={col.id}
           fields={asAny(visibleFields)}
-          records={asAny(viewRecords)}
+          records={asAny(shownRecords)}
           cardSize={asAny(active.config)?.cardSize}
           cardPreview={asAny(active.config)?.cardPreview}
         />
       ) : active?.type === "list" ? (
-        <ListView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} />
+        <ListView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(shownRecords)} />
       ) : active?.type === "form" ? (
         <FormView pageId={pageId} collectionId={col.id} fields={asAny(fields)} />
       ) : (
-        <TableView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(viewRecords)} view={active} />
+        <TableView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(shownRecords)} view={active} />
       )}
       </div>
     </div>
