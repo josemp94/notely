@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Database, Download, FileText, Lightbulb, ListTree } from "lucide-react";
+import { Check, Database, Download, FileText, Lightbulb, Link2, ListTree } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -187,6 +187,19 @@ export function Editor({
                     });
                   },
                 },
+                // Vista enlazada: apunta a una BD que ya existe, no crea otra.
+                ...(await utils.db.listDatabases.fetch()).map((d) => ({
+                  title: `Enlazar: ${d.title || "Sin título"}`,
+                  subtext: "Vista de una base de datos que ya existe",
+                  aliases: ["enlazar", "linked", "vista", d.title?.toLowerCase() ?? ""],
+                  group: "Bases de datos",
+                  icon: <Link2 size={18} />,
+                  onItemClick: () =>
+                    insertOrUpdateBlockForSlashMenu(editor, {
+                      type: "database",
+                      props: { collectionId: d.collectionId, pageId: d.pageId },
+                    }),
+                })),
               ],
               query,
             )
