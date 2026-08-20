@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
-import { groupBy, NUMBER_FORMATS, rowColor, type FieldLite } from "@/lib/cellText";
+import { frozenOffsets, FROZEN_WIDTH, groupBy, NUMBER_FORMATS, rowColor, type FieldLite } from "@/lib/cellText";
 import { CALC_OPTS, computeCalc } from "@/lib/calc";
 import { colorByRules, type DbField, type DbRecord } from "@/lib/viewData";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
@@ -123,6 +123,14 @@ export function TableView({
 
   const widthOf = (fieldId: string) =>
     drag?.fieldId === fieldId ? drag.w : widths[fieldId];
+
+  // Columnas congeladas: las N primeras se quedan fijas al desplazar en horizontal.
+  // Por defecto una, como en Notion (la que identifica la fila).
+  const frozen: number = Math.max(0, Math.min(fields.length, cfg.frozen ?? 1));
+  const setFrozen = (n: number) => updateView.mutate({ id: view.id, config: { ...cfg, frozen: n } });
+  const lefts = frozenOffsets(fields.map((f) => widthOf(f.id)), frozen, 56);
+  // Una columna congelada necesita ancho fijo; si no se le ha puesto, se le supone uno.
+  const anchoDe = (i: number) => (lefts[i] !== null ? (widthOf(fields[i].id) ?? FROZEN_WIDTH) : widthOf(fields[i].id));
 
   // El arrastre se sigue en window para que no se pierda al salir de la cabecera.
   const dragRef = useRef(drag);
@@ -251,20 +259,29 @@ export function TableView({
               onCommit={(value) => updateCell.mutate({ recordId: r.id, fieldId: f.id, value })}
             />
           );
-        const w = widthOf(f.id);
-        const style = w ? { maxWidth: w, width: w } : undefined;
+        const w = anchoDe(i);
+        const left = lefts[i];
+        // Las congeladas llevan fondo propio, o se transparentarían sobre lo que pasa por debajo.
+        const style = {
+          ...(w ? { maxWidth: w, width: w } : {}),
+          ...(left === null ? {} : { left, background: colorOf(r) ?? "var(--background)" }),
+        };
         if (i !== 0)
           return (
-            <td key={f.id} className={`px-2 py-1 ${wrap ? "align-top" : "overflow-hidden"}`} style={style}>
+            <td
+              key={f.id}
+              className={`px-2 py-1 ${wrap ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
+              style={style}
+            >
               {cell}
             </td>
           );
-        // Primera columna: congelada al desplazar en horizontal, con el color de la fila si lo hay.
+        // La primera columna además lleva el árbol de subtareas.
         return (
           <td
             key={f.id}
-            className={`sticky left-14 z-10 px-2 py-1 ${wrap ? "align-top" : "overflow-hidden"}`}
-            style={{ ...style, background: colorOf(r) ?? "var(--background)" }}
+            className={`px-2 py-1 ${wrap ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
+            style={style}
           >
             <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
               {hasChildren ? (
@@ -316,10 +333,13 @@ export function TableView({
             {fields.map((f, i) => (
               <th
                 key={f.id}
-                className={`group relative px-2 py-1 font-medium ${widthOf(f.id) ? "" : "min-w-40"} ${
-                  i === 0 ? "sticky left-14 z-20 bg-[var(--background)]" : ""
+                className={`group relative px-2 py-1 font-medium ${anchoDe(i) ? "" : "min-w-40"} ${
+                  lefts[i] === null ? "" : "sticky z-20 bg-[var(--background)]"
                 }`}
-                style={widthOf(f.id) ? { width: widthOf(f.id), minWidth: widthOf(f.id), maxWidth: widthOf(f.id) } : undefined}
+                style={{
+                  ...(anchoDe(i) ? { width: anchoDe(i), minWidth: anchoDe(i), maxWidth: anchoDe(i) } : {}),
+                  ...(lefts[i] === null ? {} : { left: lefts[i] }),
+                }}
               >
                 <span className="flex items-center gap-1">
                   {editingField === f.id ? (
@@ -366,6 +386,8 @@ export function TableView({
                     field={f}
                     onClose={() => setMenuField(null)}
                     onRename={() => { setMenuField(null); setEditingField(f.id); }}
+                    frozen={i < frozen}
+                    onFreeze={() => { setFrozen(i < frozen ? i : i + 1); setMenuField(null); }}
                     onConfig={(config) => updateField.mutate({ id: f.id, config: { ...(f.config as object), ...config } })}
                     onType={(type) => {
                       if (confirm(`Cambiar «${f.name}» a ${FIELD_LABELS[type] ?? type}. Los valores se convertirán y lo que no se pueda convertir se perderá. ¿Seguir?`)) {
@@ -447,7 +469,11 @@ export function TableView({
           <tr className="border-t border-[var(--border)] text-xs text-[var(--muted)]">
             <td className="sticky left-0 z-10 bg-[var(--background)]" />
             {fields.map((f, i) => (
-              <td key={f.id} className={`px-2 py-1 ${i === 0 ? "sticky left-14 z-10 bg-[var(--background)]" : ""}`}>
+              <td
+                key={f.id}
+                className={`px-2 py-1 ${lefts[i] === null ? "" : "sticky z-10 bg-[var(--background)]"}`}
+                style={lefts[i] === null ? undefined : { left: lefts[i] }}
+              >
                 <CalcCell field={f} calc={calcs[f.id] ?? ""} records={records} onChange={(c) => setCalc(f.id, c)} />
               </td>
             ))}
@@ -578,6 +604,8 @@ function FieldMenu({
   field,
   onClose,
   onRename,
+  frozen,
+  onFreeze,
   onConfig,
   onType,
   onDelete,
@@ -585,6 +613,8 @@ function FieldMenu({
   field: FieldLite;
   onClose: () => void;
   onRename: () => void;
+  frozen: boolean;
+  onFreeze: () => void;
   onConfig: (config: Record<string, unknown>) => void;
   onType: (type: ConvertibleType) => void;
   onDelete: () => void;
@@ -595,6 +625,9 @@ function FieldMenu({
     <Popover onClose={onClose} className="left-0 w-64 p-2 font-normal normal-case">
       <button onClick={onRename} className={item}>
         Renombrar
+      </button>
+      <button onClick={onFreeze} className={item} title="Las columnas congeladas no se mueven al desplazar la tabla en horizontal">
+        {frozen ? "Descongelar desde aquí" : "Congelar hasta esta columna"}
       </button>
 
       {/* Los campos calculados no se pueden convertir: su valor no vive en la celda. */}

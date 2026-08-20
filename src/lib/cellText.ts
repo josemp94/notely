@@ -169,3 +169,25 @@ export function groupBy<R extends RecordLite>(
     .map(([label, recs]) => ({ key: label, label, records: recs }))
     .sort((a, b) => rank(a.label) - rank(b.label) || a.label.localeCompare(b.label));
 }
+
+/**
+ * Ancho que se le supone a una columna congelada que no tiene uno fijo. Congelar
+ * exige conocer el ancho: sin él no se sabe dónde empieza la siguiente y se
+ * solaparían al desplazar en horizontal.
+ */
+export const FROZEN_WIDTH = 180;
+
+/**
+ * A qué distancia del borde izquierdo se ancla cada columna congelada, en píxeles.
+ * Devuelve null para las que no lo están. `start` es lo que ocupa la columnilla de
+ * los controles de fila.
+ */
+export function frozenOffsets(widths: (number | undefined)[], frozen: number, start: number): (number | null)[] {
+  let x = start;
+  return widths.map((w, i) => {
+    if (i >= frozen) return null;
+    const left = x;
+    x += w ?? FROZEN_WIDTH;
+    return left;
+  });
+}

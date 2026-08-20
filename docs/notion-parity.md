@@ -74,7 +74,7 @@ Falta:
 - ✅ **Duplicar vista** con todos sus ajustes.
 - ❌ **Panel de registro** en Kanban; modos side/center/full; navegar entre registros; comentarios de fila.
 - ✅ **Ancho de columna** ajustable arrastrando y persistente por vista (doble clic vuelve al automático).
-- ✅ **Primera columna congelada** al desplazar en horizontal y **envolver texto** por vista. ❌ Elegir hasta qué columna congelar.
+- ✅ **Congelar columnas** al desplazar en horizontal: se elige hasta cuál en el menú ⋯ de la columna (por defecto la primera). ✅ **Envolver texto** por vista.
 - ✅ **Reordenar filas arrastrando** (cuando la vista no tiene orden ni agrupación) y **duplicar fila** con sus subtareas.
 - ❌ Reordenar columnas arrastrando.
 - ❌ Fila de cálculos fuera de la Tabla.
