@@ -40,14 +40,31 @@ Está construido con **Yjs** y un servidor **Hocuspocus** propio.
 
 ## Puesta en marcha en el NAS
 
-1. En `docker-compose.yml` ya está el servicio `collab` (puerto host **3011**).
-2. `NEXT_PUBLIC_COLLAB_URL` se incrusta **al compilar** (es una variable `NEXT_PUBLIC_`),
-   así que va como `args` del build de `app`, no como variable de entorno del contenedor.
-   Si cambias el dominio, hay que reconstruir la imagen, no basta con reiniciar.
-3. En **DSM → Portal de inicio de sesión → Avanzado → Proxy inverso**, crear una regla:
-   - Origen: `HTTPS` · `collab.notiono.monrealperez.com` · puerto `443`
-   - Destino: `HTTP` · `localhost` · puerto `3011`
-   - En **Personalizar cabecera**, botón **Crear → WebSocket** (añade `Upgrade` y `Connection`).
-4. El subdominio debe resolver (registro DNS/Cloudflare igual que `notiono`).
-5. Comprobación: dos navegadores en la misma página; al escribir en uno aparece en el otro
-   con el cursor de la otra persona. Si no, mirar `docker logs notiono-collab`.
+**Todo va por `notiono.monrealperez.com`, sin subdominio y sin piezas nuevas.** El contenedor
+de siempre (`notiono-app`, puerto 3010) sirve la web y, en el mismo puerto, el WebSocket bajo
+`/collab`: el proxy inverso de Synology solo enruta por host y puerto, no admite rutas, así que
+separarlo obligaría a un subdominio o a meter otro proxy.
+
+1. En el DSM, la regla de proxy inverso **sigue igual** (`notiono.monrealperez.com` →
+   `localhost:3010`). Solo hay que añadirle, en **Personalizar cabecera**, el botón
+   **Crear → WebSocket** (mete `Upgrade` y `Connection`). Sin eso, la conexión se corta.
+   *(Hecho por Jose el 20-ago-2026.)*
+2. `NEXT_PUBLIC_COLLAB_URL` se incrusta **al compilar** (variable `NEXT_PUBLIC_`), por eso va
+   en `args` del build de `app`. Si cambias de dominio hay que reconstruir la imagen, no basta
+   con reiniciar el contenedor.
+3. Desplegar con `docker compose up -d --build`.
+4. Comprobación: dos navegadores en la misma página; al escribir en uno aparece en el otro con
+   el cursor de la otra persona. Si no, `docker logs notiono-app`.
+5. Desde fuera: `curl -s https://notiono.monrealperez.com/api/health` debe traer el campo
+   `collab` con la dirección del WebSocket. Si viene `null`, el build no recibió la variable y
+   la colaboración está apagada (también se ve en **Ajustes → Estado**).
+
+## Comprobado en producción (20-ago-2026)
+
+- El proxy del DSM **pasa el upgrade** en `/collab` y aguanta la conexión abierta con actividad
+  (pings correctos durante minutos); otras rutas no llegan al servidor de colaboración.
+- Una conexión que **no se autentica** la cierra el servidor sola (60 s si está muda, ~120 s si
+  solo hace ping): no se acumulan conexiones abiertas.
+- **Un permiso inválido no sincroniza nada**, pero el servidor corta en silencio, sin mensaje de
+  error. Por eso el editor muestra el aviso «Sin sincronizar» y el permiso se renueva en cada
+  reconexión (dura una hora).
