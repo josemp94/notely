@@ -97,6 +97,18 @@ export function TableView({
     }
   };
   walk("", 0);
+  const [rowLimit, setRowLimit] = useState(80);
+  const moreRef = useRef<HTMLTableRowElement | null>(null);
+  useEffect(() => {
+    const el = moreRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (e) => { if (e[0].isIntersecting) setRowLimit((n) => n + 120); },
+      { rootMargin: "600px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [rows.length, rowLimit]);
   const toggle = (id: string) =>
     setCollapsed((s) => {
       const next = new Set(s);
@@ -472,7 +484,16 @@ export function TableView({
             );
           })
         ) : (
-        <tbody>{rows.map(renderRow)}</tbody>
+        <tbody>
+          {rows.slice(0, rowLimit).map(renderRow)}
+          {rows.length > rowLimit && (
+            <tr ref={moreRef}>
+              <td colSpan={fields.length + 2} className="px-2 py-3 text-center text-xs text-[var(--muted)]">
+                Cargando más… ({rowLimit} de {rows.length})
+              </td>
+            </tr>
+          )}
+        </tbody>
         )}
         <tfoot>
           <tr className="border-t border-[var(--border)] text-xs text-[var(--muted)]">

@@ -280,7 +280,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
   };
 
   const pill = (o: Option) => (
-    <span key={o.id} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"] }}>
+    <span key={o.id} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"], color: "#26241f" }}>
       {o.label}
       {multi && (
         <button onClick={(e) => { e.stopPropagation(); toggle(o.id); }} className="opacity-60 hover:opacity-100">
@@ -332,7 +332,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
                   {inGroup.map((o) => (
                     <div key={o.id} className="group/opt flex items-center gap-1 rounded hover:bg-[var(--hover)]">
                       <button onClick={() => toggle(o.id)} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-left text-sm">
-                        <span className="truncate rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"] }}>
+                        <span className="truncate rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"], color: "#26241f" }}>
                           {o.label}
                         </span>
                         {selected.includes(o.id) && <span className="ml-auto text-brand"><Check size={14} /></span>}
