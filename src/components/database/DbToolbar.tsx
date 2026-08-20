@@ -110,7 +110,7 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "filter" ? null : "filter")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${nFilters ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+          className={`toque flex items-center justify-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${nFilters ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
           title={nFilters ? `Filtrar (${nFilters})` : "Filtrar"}
           aria-label="Filtrar"
         >
@@ -148,7 +148,7 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "sort" ? null : "sort")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${sorts.length ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+          className={`toque flex items-center justify-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${sorts.length ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
           title={sorts.length ? `Ordenar (${sorts.length})` : "Ordenar"}
           aria-label="Ordenar"
         >
@@ -214,7 +214,7 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "props" ? null : "props")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${hidden.length ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+          className={`toque flex items-center justify-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${hidden.length ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
           title="Propiedades: qué columnas se ven"
           aria-label="Propiedades"
         >
@@ -416,7 +416,7 @@ export function DbToolbar({
           const { name, csv } = await utils.db.exportCsv.fetch({ collectionId });
           downloadText(`${name}.csv`, csv, "text/csv");
         }}
-        className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
+        className="toque flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
         title="Exportar a CSV"
         aria-label="Exportar a CSV"
       >
@@ -455,7 +455,7 @@ export function AddViewButton({
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
+        className="toque flex items-center justify-center rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
         title="Añadir una vista"
         aria-label="Añadir una vista"
       >

@@ -132,8 +132,8 @@ export function Database({
       </div>
       )}
 
-      <div className="mb-4 flex items-end justify-between gap-2 border-b border-[var(--border)]">
-        <div className="flex items-center gap-0.5 overflow-x-auto">
+      <div className="mb-4 flex flex-col items-stretch gap-1 border-b border-[var(--border)] md:flex-row md:items-end md:justify-between md:gap-2">
+        <div className="sin-barra flex items-center gap-0.5 overflow-x-auto">
           {col.views.map((v) => (
             <button
               key={v.id}
@@ -167,7 +167,9 @@ export function Database({
             <AddViewButton pageId={pageId} collectionId={col.id} onViewCreated={(id) => setActiveViewId(id)} />
           )}
         </div>
-        <div className="flex items-center gap-1 pb-1">
+        {/* En el móvil, la barra baja a su propia línea: con los botones a tamaño de
+            dedo, en una sola fila las pestañas se quedaban en «Tab». */}
+        <div className="flex items-center justify-end gap-1 pb-1">
           {searchOpen ? (
             <div className="flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1">
               <Search size={13} className="shrink-0 text-[var(--muted)]" />
@@ -190,7 +192,7 @@ export function Database({
           ) : (
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)]"
+              className="toque flex items-center justify-center rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)]"
               title="Buscar en la base de datos"
             >
               <Search size={15} />

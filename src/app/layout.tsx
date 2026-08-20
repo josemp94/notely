@@ -28,7 +28,15 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ff5c28",
+  // Instalada como app, la web llega hasta debajo de la muesca y de la barra de
+  // gestos; el hueco lo dejamos nosotros con las clases de zona segura.
+  viewportFit: "cover",
+  // El color de la barra de estado sigue al tema: una barra naranja sobre una app
+  // blanca (o negra) se ve como un parche.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#191918" },
+  ],
 };
 
 export default function RootLayout({

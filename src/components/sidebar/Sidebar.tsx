@@ -115,7 +115,7 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-dvh w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)]">
-      <div className="flex items-center justify-between px-3 pt-3">
+      <div className="zona-segura-arriba flex items-center justify-between px-3">
         <Link href="/" className="font-display text-lg font-bold">
           No<span className="text-brand">tio</span>no
         </Link>
@@ -297,7 +297,7 @@ function when(d: Date) {
  * están además juntos en la ventana de Atajos.
  */
 const accionPanel =
-  "rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]";
+  "toque flex items-center justify-center rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]";
 
 function NotificationsBell() {
   const utils = trpc.useUtils();
@@ -652,7 +652,7 @@ function AccountFooter({ me }: { me: Me }) {
     },
   });
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] px-4 py-3">
+    <div className="zona-segura-abajo flex items-center justify-between gap-2 border-t border-[var(--border)] px-4 pt-3">
       <Link
         href="/settings"
         className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"

@@ -115,3 +115,39 @@ h1, h2, h3, .font-display {
 .bn-block-content[data-content-type="column"] {
   padding: 0;
 }
+
+/* --- Móvil -----------------------------------------------------------------
+   Con el dedo no se acierta en un icono de 28 px: en pantallas táctiles los
+   botones de la interfaz crecen a 40, que es lo que mide una yema. Y los campos
+   suben a 16 px porque por debajo de eso Safari hace zoom al tocarlos y deja la
+   página descolocada, con el usuario buscando dónde ha ido a parar. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  .toque {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+/* Tiras que se desplazan de lado (las pestañas de vistas): la barra de scroll a
+   la vista debajo de las pestañas quedaba fea, y se sabe que hay más porque se
+   ven cortadas. */
+.sin-barra {
+  scrollbar-width: none;
+}
+.sin-barra::-webkit-scrollbar {
+  display: none;
+}
+
+/* Zona segura del móvil: la muesca arriba y la barra de gestos abajo, para cuando
+   se usa como app instalada y la app ocupa la pantalla entera. */
+.zona-segura-arriba {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+.zona-segura-abajo {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}

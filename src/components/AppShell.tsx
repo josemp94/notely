@@ -87,10 +87,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Cabecera solo móvil con botón de menú */}
-        <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2 md:hidden">
+        <div className="zona-segura-arriba flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 pb-2 md:hidden">
           <button
             onClick={() => setOpen(true)}
-            className="rounded p-1 text-[var(--muted)] hover:text-[var(--foreground)]"
+            className="toque flex items-center rounded-md p-1 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
             aria-label="Abrir menú"
           >
             <Menu size={20} />
