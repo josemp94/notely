@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { applyViewConfig, colorByRules, matchesFilters, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
-import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, frozenOffsets, FROZEN_WIDTH, groupBy, rowColor } from "../src/lib/cellText";
+import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, rowColor } from "../src/lib/cellText";
 import { embedUrl } from "../src/lib/embed";
 import { computeCalc } from "../src/lib/calc";
 
@@ -193,11 +193,11 @@ assert.equal(computeCalc("sum", precio, [r("x", {})]), "—"); // sin números, 
 assert.equal(computeCalc("", precio, filasCalc), ""); // sin cálculo elegido, celda vacía
 
 // --- Columnas congeladas (dónde se ancla cada una al desplazar en horizontal) ---
-assert.deepEqual(frozenOffsets([100, 200, 50], 0, 56), [null, null, null]); // ninguna
-assert.deepEqual(frozenOffsets([100, 200, 50], 1, 56), [56, null, null]); // la de siempre
-assert.deepEqual(frozenOffsets([100, 200, 50], 2, 56), [56, 156, null]); // se acumulan los anchos
+assert.deepEqual(frozenOffsets([100, 200, 50], 0, GUTTER_WIDTH), [null, null, null]); // ninguna
+assert.deepEqual(frozenOffsets([100, 200, 50], 1, GUTTER_WIDTH), [GUTTER_WIDTH, null, null]); // la de siempre
+assert.deepEqual(frozenOffsets([100, 200, 50], 2, GUTTER_WIDTH), [GUTTER_WIDTH, GUTTER_WIDTH + 100, null]); // se acumulan los anchos
 // Sin ancho fijo se le supone uno: si no, la siguiente se anclaría encima.
-assert.deepEqual(frozenOffsets([undefined, 40], 2, 56), [56, 56 + FROZEN_WIDTH]);
+assert.deepEqual(frozenOffsets([undefined, 40], 2, GUTTER_WIDTH), [GUTTER_WIDTH, GUTTER_WIDTH + FROZEN_WIDTH]);
 
 // --- Edición simultánea: que el socket quede de verdad enganchado ---
 // Se levanta un servidor real con dos clientes porque este fallo no da la cara:

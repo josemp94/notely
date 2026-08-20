@@ -178,6 +178,16 @@ export function groupBy<R extends RecordLite>(
 export const FROZEN_WIDTH = 180;
 
 /**
+ * Ancho del margen izquierdo de la tabla (el de arrastrar y abrir la ficha).
+ *
+ * Tiene que ser un número conocido y forzado en las celdas, no un `w-14` a ver qué
+ * pasa: el navegador encoge esa columna a lo que ocupe su contenido, y si el primer
+ * congelado se pega a los 56px que se le suponían mientras el margen mide 35, queda
+ * una rendija por la que se ve pasar el resto de la tabla. Justo lo que se veía.
+ */
+export const GUTTER_WIDTH = 40;
+
+/**
  * A qué distancia del borde izquierdo se ancla cada columna congelada, en píxeles.
  * Devuelve null para las que no lo están. `start` es lo que ocupa la columnilla de
  * los controles de fila.

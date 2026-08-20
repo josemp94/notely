@@ -188,3 +188,30 @@ h1, h2, h3, .font-display {
     padding-top: env(safe-area-inset-top);
   }
 }
+
+/* Controles que solo aparecen al pasar el ratón por encima de su fila.
+   En una pantalla táctil no existe «pasar por encima»: ahí se ven siempre, o serían
+   sencillamente inalcanzables. Así estaban, entre otros, abrir la ficha de una fila,
+   el menú de una columna y el «+» para crear una subpágina: en el móvil no había
+   forma de llegar a ellos. */
+.al-pasar {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.group:hover .al-pasar,
+[class*="group/"]:hover .al-pasar,
+.al-pasar:focus-within {
+  opacity: 1;
+}
+@media (pointer: coarse) {
+  .al-pasar {
+    opacity: 1;
+  }
+}
+
+/* Las celdas de la tabla son inputs, y un input recorta a hachazo: «Comprar la
+   fruta de la». Con esto se recorta con puntos suspensivos, que es lo que se
+   entiende como «hay más». Solo mientras no se escribe en él. */
+td input[type="text"] {
+  text-overflow: ellipsis;
+}

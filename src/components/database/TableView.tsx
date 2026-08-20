@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
-import { frozenOffsets, FROZEN_WIDTH, groupBy, NUMBER_FORMATS, rowColor, type FieldLite } from "@/lib/cellText";
+import { frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, NUMBER_FORMATS, rowColor, type FieldLite } from "@/lib/cellText";
 import { CALC_OPTS, computeCalc } from "@/lib/calc";
 import { colorByRules, type DbField, type DbRecord } from "@/lib/viewData";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
@@ -128,7 +128,10 @@ export function TableView({
   // Por defecto una, como en Notion (la que identifica la fila).
   const frozen: number = Math.max(0, Math.min(fields.length, cfg.frozen ?? 1));
   const setFrozen = (n: number) => updateView.mutate({ id: view.id, config: { ...cfg, frozen: n } });
-  const lefts = frozenOffsets(fields.map((f) => widthOf(f.id)), frozen, 56);
+  const lefts = frozenOffsets(fields.map((f) => widthOf(f.id)), frozen, GUTTER_WIDTH);
+  // El margen se fuerza a ese mismo ancho en TODAS sus celdas: es el punto de
+  // partida del que cuelgan las congeladas.
+  const margen = { width: GUTTER_WIDTH, minWidth: GUTTER_WIDTH, maxWidth: GUTTER_WIDTH };
   // Una columna congelada necesita ancho fijo; si no se le ha puesto, se le supone uno.
   const anchoDe = (i: number) => (lefts[i] !== null ? (widthOf(fields[i].id) ?? FROZEN_WIDTH) : widthOf(fields[i].id));
 
@@ -207,7 +210,7 @@ export function TableView({
     >
       <td
         className="sticky left-0 z-10 px-1 py-1 text-center"
-        style={{ background: colorOf(r) ?? "var(--background)" }}
+        style={{ ...margen, background: colorOf(r) ?? "var(--background)" }}
       >
         <div className="flex items-center">
           {canReorder && (
@@ -229,7 +232,7 @@ export function TableView({
           )}
           <button
             onClick={() => setOpenRec(r)}
-            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--foreground)] group-hover:opacity-100"
+            className="text-[var(--muted)] al-pasar hover:text-[var(--foreground)]"
             title="Abrir ficha"
           >
             <Maximize2 size={14} />
@@ -304,7 +307,7 @@ export function TableView({
         <div className="flex items-center gap-1">
           <button
             onClick={() => addSub(r.id)}
-            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--foreground)] group-hover:opacity-100"
+            className="text-[var(--muted)] al-pasar hover:text-[var(--foreground)]"
             title="Añadir subtarea"
           >
             <Plus size={14} />
@@ -314,7 +317,7 @@ export function TableView({
               deleteRecord.mutate({ id: r.id });
               setDeleted(r.id);
             }}
-            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+            className="text-[var(--muted)] al-pasar hover:text-red-500"
             title="Borrar fila"
           >
             <Trash2 size={14} />
@@ -329,7 +332,7 @@ export function TableView({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-y border-[var(--border)] text-left text-[var(--muted)]">
-            <th className="sticky left-0 z-20 w-14 bg-[var(--background)]" />
+            <th className="sticky left-0 z-20 bg-[var(--background)]" style={margen} />
             {fields.map((f, i) => (
               <th
                 key={f.id}
@@ -360,7 +363,7 @@ export function TableView({
                   <span className="text-[10px] uppercase opacity-50">{FIELD_LABELS[f.type] ?? f.type}</span>
                   <button
                     onClick={() => setMenuField(menuField === f.id ? null : f.id)}
-                    className="ml-auto opacity-0 transition-opacity group-hover:opacity-100"
+                    className="ml-auto al-pasar"
                     title="Opciones de la columna"
                   >
                     <MoreHorizontal size={14} />
@@ -450,9 +453,15 @@ export function TableView({
                     : g.records.map((r) => renderRow({ rec: r, depth: 0, hasChildren: false })))}
                 {!folded && hasCalcs && (
                   <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
-                    <td />
-                    {fields.map((f) => (
-                      <td key={f.id} className="px-2 py-1 text-right tabular-nums">
+                    <td className="sticky left-0 z-10 bg-[var(--background)]" style={margen} />
+                    {fields.map((f, i) => (
+                      <td
+                        key={f.id}
+                        className={`px-2 py-1 text-right tabular-nums ${
+                          lefts[i] === null ? "" : "sticky z-10 bg-[var(--background)]"
+                        }`}
+                        style={lefts[i] === null ? undefined : { left: lefts[i] }}
+                      >
                         {calcs[f.id] ? computeCalc(calcs[f.id], f, g.records) : ""}
                       </td>
                     ))}
@@ -467,7 +476,7 @@ export function TableView({
         )}
         <tfoot>
           <tr className="border-t border-[var(--border)] text-xs text-[var(--muted)]">
-            <td className="sticky left-0 z-10 bg-[var(--background)]" />
+            <td className="sticky left-0 z-10 bg-[var(--background)]" style={margen} />
             {fields.map((f, i) => (
               <td
                 key={f.id}
@@ -485,7 +494,7 @@ export function TableView({
       <div className="relative mt-2 flex items-center">
         <button
           onClick={() => addRecord.mutate({ collectionId })}
-          className="px-2 py-1 text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+          className="toque inline-flex items-center px-2 py-1 text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
         >
           + Nueva fila
         </button>
@@ -513,7 +522,7 @@ export function TableView({
                 </button>
                 <button
                   onClick={() => deleteTemplate.mutate({ collectionId, templateId: t.id })}
-                  className="px-1 text-[var(--muted)] opacity-0 hover:text-red-500 group-hover/tpl:opacity-100"
+                  className="al-pasar px-1 text-[var(--muted)] hover:text-red-500"
                   title="Borrar plantilla"
                 >
                   <Trash2 size={13} />
@@ -525,14 +534,14 @@ export function TableView({
       </div>
       <div className="mt-1 flex items-center gap-3 px-2 text-xs text-[var(--muted)]">
         <span>{rows.length} de {records.length} filas</span>
-        <button onClick={() => setTrashOpen(true)} className="flex items-center gap-1 hover:text-[var(--foreground)]">
+        <button onClick={() => setTrashOpen(true)} className="toque flex items-center gap-1 hover:text-[var(--foreground)]">
           <Trash2 size={12} /> Papelera
         </button>
       </div>
       {trashOpen && <RecordTrash collectionId={collectionId} onClose={() => setTrashOpen(false)} onChange={invalidate} />}
 
       {deleted && (
-        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-sm shadow-xl">
+        <div className="fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-sm shadow-xl md:bottom-4">
           <span>Fila borrada</span>
           <button
             onClick={() => restoreRecord.mutate({ id: deleted })}
