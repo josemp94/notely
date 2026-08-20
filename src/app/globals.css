@@ -215,3 +215,37 @@ h1, h2, h3, .font-display {
 td input[type="text"] {
   text-overflow: ellipsis;
 }
+
+/* Como .toque, pero solo alto: para lo que va en fila y no puede ensancharse sin
+   descolocar a los de al lado (el desplegable de una página del panel). */
+@media (pointer: coarse) {
+  .toque-estrecho {
+    min-height: 40px;
+  }
+}
+
+/* Tamaños de los encabezados del editor en el móvil.
+   BlockNote los pinta con `font-size: var(--level)` y de fábrica el H1 va a 3em:
+   48 px en una pantalla de 390, donde un título de dos palabras ocupa dos líneas y
+   media pantalla. Se rebajan solo en móvil, cambiando la variable —no el font-size—
+   para que siga funcionando su cadena de tamaños. */
+@media (max-width: 767px) {
+  [data-content-type="heading"] {
+    --level: 2em;
+  }
+  [data-content-type="heading"][data-level="2"] {
+    --level: 1.6em;
+  }
+  [data-content-type="heading"][data-level="3"] {
+    --level: 1.2em;
+  }
+  [data-prev-level="1"] {
+    --prev-level: 2em;
+  }
+  [data-prev-level="2"] {
+    --prev-level: 1.6em;
+  }
+  [data-prev-level="3"] {
+    --prev-level: 1.2em;
+  }
+}

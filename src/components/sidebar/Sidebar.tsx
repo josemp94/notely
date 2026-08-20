@@ -823,11 +823,11 @@ function TreeItem({
       >
         <button
           onClick={() => setOpen((o) => !o)}
-          className={`flex w-4 shrink-0 items-center justify-center text-[var(--muted)] ${node.hasChildren ? "" : "invisible"}`}
+          className={`toque-estrecho flex w-4 shrink-0 items-center justify-center text-[var(--muted)] ${node.hasChildren ? "" : "invisible"}`}
         >
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
-        <Link href={`/p/${node.id}`} className="flex-1 truncate py-1" draggable={false}>
+        <Link href={`/p/${node.id}`} className="toque flex flex-1 items-center truncate py-1" draggable={false}>
           {node.icon ? `${node.icon} ` : <FileText size={13} className="mr-1 inline align-[-2px]" />}
           {node.title || "Sin título"}
         </Link>
