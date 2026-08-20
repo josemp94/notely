@@ -8,7 +8,8 @@
     "start": "NODE_ENV=production node server.mjs",
     "lint": "eslint",
     "check": "tsx scripts/check.ts",
-    "build:collab": "esbuild collab/hocuspocus.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=collab/dist/hocuspocus.mjs"
+    "build:collab": "esbuild collab/hocuspocus.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=collab/dist/hocuspocus.mjs",
+    "check:api": "tsx scripts/check-api.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

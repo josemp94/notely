@@ -34,6 +34,109 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/v1/databases/<i
 
 Las `cells` son un objeto `{ fieldId: valor }`; usa los `fields` para mapear nombres.
 
+### Crear una base de datos
+
+Crea la base de datos entera de una vez: página, columnas y vistas.
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+        "name": "Gastos de casa",
+        "icon": "💶",
+        "fields": [
+          { "name": "Concepto", "type": "text" },
+          { "name": "Importe",  "type": "number" },
+          { "name": "Estado",   "type": "status" },
+          { "name": "Fecha",    "type": "date" }
+        ],
+        "views": [{ "type": "table" }, { "type": "kanban", "name": "Por estado" }]
+      }' \
+  http://localhost:3000/api/v1/databases
+# → 201 {
+#      "id": "<collectionId>", "pageId": "…", "title": "Gastos de casa", "icon": "💶",
+#      "fields": [{ "id", "name", "type" }, …],
+#      "views":  [{ "id", "name", "type" }, …]
+#    }
+```
+
+El `id` que devuelve es el de la **base de datos** (la colección), que es el que
+piden el resto de rutas; `pageId` es el de su página, para enlazarla.
+
+- `fields` y `views` son opcionales: sin ellos nace con una columna de texto
+  («Nombre») y una vista Tabla. Sin ninguna de las dos no se podría ni abrir.
+- `parentId` (opcional) la cuelga de otra página del mismo espacio.
+- **No** nace con filas de ejemplo, al revés que la creada desde la web.
+- Guarda los `id` de las columnas: son la clave de `cells` al crear registros.
+
+Tipos de columna: `text`, `number`, `select`, `multiselect`, `status`, `person`,
+`files`, `checkbox`, `date`, `url`, `email`, `phone`, `created_time`,
+`last_edited_time`, `created_by`, `last_edited_by`, `id`.
+Tipos de vista: `table`, `kanban`, `calendar`, `timeline`, `gallery`, `chart`,
+`list`, `form`.
+
+### Añadir una columna
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "name": "Categoría", "type": "select" }' \
+  http://localhost:3000/api/v1/databases/<id>/fields
+# → 201 { "id", "name", "type" }
+```
+
+### Renombrar una columna, cambiar su tipo o su configuración
+
+```bash
+# renombrar
+curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "name": "Categoría del gasto" }' \
+  http://localhost:3000/api/v1/fields/<fieldId>
+
+# cambiar el tipo (convierte las celdas)
+curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "type": "text" }' \
+  http://localhost:3000/api/v1/fields/<fieldId>
+# → { "id", "name", "type", "config", "converted": 12 }
+```
+
+**Cambiar el tipo no es un cambio de nombre**: convierte el valor de todas las
+celdas y lo que no se pueda convertir se pierde, además de reescribir las opciones
+de la columna. `converted` dice cuántas celdas se tocaron. Si en la misma llamada
+envías `config` y `type`, manda el tipo: se aplica el último.
+
+Las columnas calculadas (`relation`, `rollup`, `formula`) no se pueden convertir:
+devuelven 400.
+
+### Borrar una columna
+
+```bash
+curl -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/v1/fields/<fieldId>
+# → { "ok": true }   (se pierden sus valores en todas las filas)
+```
+
+### Añadir una vista
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "type": "calendar", "name": "Vencimientos" }' \
+  http://localhost:3000/api/v1/databases/<id>/views
+# → 201 { "id", "name", "type" }
+```
+
+Sin `name` se le pone el del tipo («Tabla», «Kanban»…). La vista se configura sola
+con lo que encuentra: el Kanban se agrupa por la primera columna de selección y el
+calendario usa la primera de fecha.
+
+### Crear una página de documento
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "title": "Actas de reunión", "icon": "📝" }' \
+  http://localhost:3000/api/v1/pages
+# → 201 { "id", "title", "icon", "parentId" }
+```
+
+Nace vacía. El contenido de una página no se escribe todavía por API.
+
 ### Crear un registro
 
 ```bash
@@ -64,6 +167,27 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/v1/re
 
 
 ---
+
+## Errores
+
+Todos los errores son JSON `{ "error": "…" }` con el código que toca:
+
+| Código | Cuándo |
+|---|---|
+| 400 | el cuerpo no vale (falta un campo, un tipo que no existe), o la operación no se puede hacer (borrar la última vista, convertir una columna calculada) |
+| 401 | falta el token o no vale |
+| 404 | el recurso no existe **o no es de tu espacio** — desde el token son lo mismo a propósito: así no se puede averiguar qué existe en otro espacio probando ids |
+
+## Probar que todo funciona
+
+```bash
+BASE_URL=https://notiono.monrealperez.com NOTIONO_TOKEN=ntn_… npm run check:api
+```
+
+Crea una base de datos con columnas y vistas, añade otra columna, la renombra, le
+cambia el tipo, añade una vista, escribe un registro y lo vuelve a leer, y comprueba
+que sin token responde 401 y que lo de otro espacio responde 404. Deja la base de
+datos de prueba creada y dice su id para poder borrarla.
 
 ## Avisos salientes (webhooks)
 
