@@ -37,7 +37,9 @@ services:
         # la app atiende ahí el WebSocket de la edición simultánea.
         NEXT_PUBLIC_COLLAB_URL: "wss://notiono.monrealperez.com/collab"
     container_name: notiono-app
-    command: ["node", "server.js"]
+    # Sin `command`: manda el CMD de la imagen (node server.mjs). Aquí ponía
+    # `node server.js`, que era el servidor que generaba el modo standalone de
+    # Next; ese modo ya no se usa y ese fichero no existe en la imagen.
     depends_on:
       db:
         condition: service_healthy
