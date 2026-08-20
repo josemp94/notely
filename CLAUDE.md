@@ -17,10 +17,9 @@ Editor de páginas con bloques + autosave; árbol de páginas en el sidebar; **b
 El inventario fiable de qué existe y qué no está en `docs/notion-parity.md`, reescrito el 19-ago-2026 leyendo el código (el anterior estaba muy desfasado). Consúltalo antes de decidir qué construir.
 
 ## Roadmap / PENDIENTE
-- **Edición simultánea (Yjs): HECHA y con el proxy del NAS ya configurado por Jose (20-ago-2026).** Falta probarla en producción entre dos personas. Servicio `notiono-collab` (Hocuspocus) en el compose, permiso de sala firmado con `AUTH_SECRET` y estado en `Page.ydoc`. Ver `docs/colaboracion.md`: hay que crear la regla de proxy inverso en DSM con la cabecera WebSocket y que resuelva el subdominio. Hasta entonces la app funciona igual (la colaboración se activa solo si existe `NEXT_PUBLIC_COLLAB_URL`).
+- **Edición simultánea (Yjs): HECHA y funcionando en producción.** La sirve la propia app en `/collab` (servidor propio `server.mjs` + `collab/hocuspocus.ts`; por eso Next ya **no** usa `output: standalone`), con permiso de sala firmado con `AUTH_SECRET` y estado en `Page.ydoc`. El proxy del DSM ya tiene la cabecera WebSocket (Jose, 20-ago-2026) y se comprobó desde fuera que pasa el upgrade. Falta la prueba final entre dos personas. Ver `docs/colaboracion.md`.
 - Lo siguiente: congelar hasta N columnas (hace falta conocer el ancho de cada una), columnas en el editor (a mano: el paquete oficial de BlockNote es de pago), y pulir lo que salga al probar en producción.
-- Más eventos de webhook (páginas, comentarios) y reintentos; columnas en el editor; más pulido.
-- Lo siguiente barato y visible (ver hoja de ruta del doc de paridad): subagrupar, cálculos fuera de la Tabla, color condicional por reglas, envolver texto en celdas, columnas en el editor (el paquete oficial de BlockNote es de pago) y dejar los comentarios en línea para cuando se haga Yjs (BlockNote solo trae almacenes de hilos sobre Yjs; hacerlo antes sería código para tirar).
+- Diagnóstico sin entrar al servidor: `/api/health` dice si la colaboración quedó activa, y **Ajustes → Estado** lo enseña en la propia app.
 
 ## Convenciones (IMPORTANTE, seguir siempre)
 - **TypeScript estricto**; `npm run build` debe quedar LIMPIO antes de commitear.
