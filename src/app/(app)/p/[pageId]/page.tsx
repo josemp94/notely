@@ -113,7 +113,7 @@ function Breadcrumbs({ pageId }: { pageId: string }) {
         href="/"
         className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
       >
-        {me?.workspace?.icon ? <span>{me.workspace.icon}</span> : <Folder size={13} />}
+        <Folder size={13} />
         <span className="max-w-32 truncate">{me?.workspace?.name ?? "Espacio"}</span>
       </Link>
       {chain.map((p, i) => (

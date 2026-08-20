@@ -7,7 +7,9 @@ export async function ensureWorkspace(db: DB, user: { id: string; name: string |
   let ws = await db.workspace.findFirst({ where: { ownerId: user.id } });
   if (!ws) {
     ws = await db.workspace.create({
-      data: { name: user.name ?? "Mi espacio", icon: "🧡", ownerId: user.id },
+      // Sin icono: el del espacio no se puede elegir en ningún sitio, así que poner
+      // uno por defecto era decidir por el usuario. Se muestra el icono de carpeta.
+      data: { name: user.name ?? "Mi espacio", ownerId: user.id },
     });
     await db.member.create({ data: { workspaceId: ws.id, userId: user.id, role: "owner" } });
     await db.page.create({

@@ -488,7 +488,7 @@ function WorkspaceBar({ me }: { me: Me }) {
           title="Cambiar de espacio"
         >
           <span className="truncate">
-            {current?.icon ? `${current.icon} ` : <Folder size={13} className="mr-1 inline align-[-2px]" />}
+            <Folder size={13} className="mr-1 inline align-[-2px]" />
             {current?.name ?? "Espacio"}
           </span>
           <span className="ml-auto shrink-0"><ChevronDown size={14} /></span>
@@ -520,7 +520,7 @@ function WorkspaceBar({ me }: { me: Me }) {
               }`}
             >
               <span className="truncate">
-                {s.icon ? `${s.icon} ` : <Folder size={13} className="mr-1 inline align-[-2px]" />}
+                <Folder size={13} className="mr-1 inline align-[-2px]" />
                 {s.name}
               </span>
               {!s.isOwner && (
