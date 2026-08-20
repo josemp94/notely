@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Check, Paperclip, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
+import { Popover } from "./Popover";
 import { dateValue, formatNumber, OPTION_COLORS, optionsOf, STATUS_GROUPS, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
 
 
@@ -307,7 +308,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
         )}
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 shadow-xl">
+        <Popover onClose={() => setOpen(false)} className="left-0 w-56 p-2">
           <input
             autoFocus
             value={q}
@@ -360,7 +361,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
             )}
             {shown.length === 0 && !q && <p className="px-1 py-1 text-xs text-[var(--muted)]">Sin opciones. Escribe para crear.</p>}
           </div>
-        </div>
+        </Popover>
       )}
     </div>
   );
@@ -433,7 +434,7 @@ function PersonCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown
         )}
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-60 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 shadow-xl">
+        <Popover onClose={() => setOpen(false)} className="left-0 w-60 p-2">
           <input
             autoFocus
             value={q}
@@ -455,7 +456,7 @@ function PersonCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown
             ))}
             {!shown.length && <p className="px-1 py-1 text-xs text-[var(--muted)]">Sin miembros que coincidan.</p>}
           </div>
-        </div>
+        </Popover>
       )}
     </div>
   );

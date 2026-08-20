@@ -104,13 +104,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {collapsed && (
           <button
             onClick={toggleSidebar}
-            className="absolute left-2 top-2 z-20 hidden rounded p-1 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)] md:block"
+            className="absolute left-1.5 top-2 z-20 hidden rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)] md:block"
             title="Mostrar el panel (Ctrl+\\)"
           >
             <PanelLeft size={18} />
           </button>
         )}
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        {/* Con el panel plegado, el contenido se aparta lo que ocupa el botón de
+            recuperarlo: si no, se le monta encima a la miga de pan. */}
+        <main className={`flex-1 overflow-y-auto ${collapsed ? "md:pl-9" : ""}`}>{children}</main>
       </div>
     </div>
   );

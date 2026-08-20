@@ -3,7 +3,14 @@
 import { useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
-import { VIEW_MENU_EVENT } from "@/lib/shortcuts";
+import { VIEW_MENU_EVENT, type ViewMenuDetail } from "@/lib/shortcuts";
+
+/** Abre el menú de la vista justo donde se ha pulsado. */
+function abrirMenuVista(e: { preventDefault: () => void; clientX: number; clientY: number }) {
+  e.preventDefault();
+  const detail: ViewMenuDetail = { x: e.clientX, y: e.clientY };
+  window.dispatchEvent(new CustomEvent(VIEW_MENU_EVENT, { detail }));
+}
 import { PageIcon } from "@/components/PageIcon";
 import { AddCoverButton, CoverBand } from "@/components/PageCover";
 import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
@@ -130,19 +137,22 @@ export function Database({
           {col.views.map((v) => (
             <button
               key={v.id}
-              onClick={() => {
+              // Pinchar la vista en la que ya estás abre sus opciones, como en
+              // Notion; la primera vez solo cambia de vista. Y el clic derecho las
+              // abre siempre. En los dos casos salen donde está el ratón.
+              onClick={(e) => {
+                const yaEstaba = active?.id === v.id;
                 setActiveViewId(v.id);
                 onViewChange?.(v.id);
+                if (yaEstaba && canEdit) abrirMenuVista(e);
               }}
-              // Clic derecho: las opciones de la vista, donde uno las busca.
               onContextMenu={(e) => {
                 if (!canEdit) return;
-                e.preventDefault();
                 setActiveViewId(v.id);
                 onViewChange?.(v.id);
-                window.dispatchEvent(new Event(VIEW_MENU_EVENT));
+                abrirMenuVista(e);
               }}
-              title={canEdit ? `${v.name} · clic derecho para sus opciones` : v.name}
+              title={canEdit ? `${v.name} · púlsala otra vez para sus opciones` : v.name}
               className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm ${
                 active?.id === v.id
                   ? "border-b-2 border-brand font-medium text-[var(--foreground)]"

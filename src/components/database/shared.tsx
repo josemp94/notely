@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Database, FunctionSquare, Link2, Plus, Sigma } from "lucide-react";
 import { trpc } from "@/trpc/react";
+import { Popover } from "./Popover";
 import type { FieldLite } from "@/lib/cellText";
 
 export const FIELD_LABELS: Record<string, string> = {
@@ -91,7 +92,7 @@ export function AddFieldButton({
         <Plus size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-1 max-h-72 w-52 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--background)] p-1 shadow-lg">
+        <Popover onClose={reset} className="right-0 w-52 p-1">
           {view === "root" && (
             <>
               {TYPES.map((t) => (
@@ -260,7 +261,7 @@ export function AddFieldButton({
               )}
             </>
           )}
-        </div>
+        </Popover>
       )}
     </div>
   );

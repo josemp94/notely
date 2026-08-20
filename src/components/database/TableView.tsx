@@ -8,7 +8,7 @@ import { frozenOffsets, FROZEN_WIDTH, groupBy, NUMBER_FORMATS, rowColor, type Fi
 import { CALC_OPTS, computeCalc } from "@/lib/calc";
 import { colorByRules, type DbField, type DbRecord } from "@/lib/viewData";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
-import { Popover } from "./DbToolbar";
+import { Popover } from "./Popover";
 import { RelationCell } from "./RelationCell";
 import { RecordPanel } from "./RecordPanel";
 

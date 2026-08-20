@@ -11,8 +11,13 @@ export function isTyping(target: EventTarget | null): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
 
-/** Clic derecho sobre la pestaña de una vista: abre su menú de opciones. */
+/**
+ * Abrir el menú de una vista donde está el ratón. Lleva el punto del clic porque el
+ * menú tiene que salir ahí: antes colgaba del engranaje de la derecha, lejos de la
+ * pestaña sobre la que se pinchaba.
+ */
 export const VIEW_MENU_EVENT = "notiono:menu-vista";
+export type ViewMenuDetail = { x: number; y: number };
 
 /** La ventana con todos los atajos («?» o Ctrl+/). */
 export const SHORTCUTS_EVENT = "notiono:atajos";

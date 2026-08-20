@@ -1,12 +1,12 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { ArrowUpDown, BarChart3, Calendar, ClipboardList, Columns3, Copy, Download, Eye, EyeOff, Filter as FilterIcon, GanttChart, LayoutGrid, List, Pencil, Plus, Settings, Table, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowUpDown, BarChart3, Calendar, ClipboardList, Columns3, Copy, Download, Eye, EyeOff, Filter as FilterIcon, GanttChart, LayoutGrid, List, Pencil, Plus, Table, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
+import { Popover } from "./Popover";
 import { downloadText } from "@/lib/download";
-import { VIEW_MENU_EVENT } from "@/lib/shortcuts";
+import { VIEW_MENU_EVENT, type ViewMenuDetail } from "@/lib/shortcuts";
 import {
   countFilters,
   isFilterGroup,
@@ -36,88 +36,6 @@ const VIEW_TYPES: { type: "table" | "kanban" | "calendar" | "timeline" | "galler
 export function ViewIcon({ type, size = 14 }: { type: string; size?: number }) {
   const I = VIEW_TYPES.find((v) => v.type === type)?.icon ?? Table;
   return <I size={size} />;
-}
-
-/**
- * Menú colgante de un botón (filtros, opciones de columna, tipos de vista…).
- *
- * Se pinta FUERA del árbol de la página, pegado a su botón por coordenadas. Antes
- * colgaba del botón con posición absoluta y, dentro de la tabla —que se desplaza en
- * horizontal—, el menú quedaba recortado: el de «añadir columna» se veía a medias.
- * Al sacarlo del árbol ya no hay caja que lo recorte, y de paso se le pone tope de
- * altura y se le impide salirse de la pantalla.
- *
- * `className` sigue diciendo el ancho y hacia qué lado alinea (`right-0` = por la
- * derecha, que es como lo piden casi todos los botones de la barra).
- */
-export function Popover({
-  children,
-  onClose,
-  className = "right-0 w-80 p-3",
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-  className?: string;
-}) {
-  const ancla = useRef<HTMLSpanElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
-  const porLaDerecha = className.includes("right-0");
-
-  useLayoutEffect(() => {
-    const colocar = () => {
-      const boton = ancla.current?.parentElement?.getBoundingClientRect();
-      const caja = panel.current?.getBoundingClientRect();
-      if (!boton) return;
-      const ancho = caja?.width || 320;
-      const alto = caja?.height || 240;
-      const margen = 8;
-      const izq = porLaDerecha ? boton.right - ancho : boton.left;
-      // Debajo del botón, que es donde se espera. Solo se va arriba si no cabe
-      // debajo Y arriba hay más sitio: subirlo a un hueco aún más pequeño sería
-      // cambiar un menú apretado por otro peor.
-      const huecoAbajo = window.innerHeight - boton.bottom - margen;
-      const huecoArriba = boton.top - margen;
-      const debajo = alto <= huecoAbajo || huecoAbajo >= huecoArriba;
-      setPos({
-        top: debajo ? boton.bottom + 4 : Math.max(margen, boton.top - Math.min(alto, huecoArriba) - 4),
-        left: Math.max(margen, Math.min(izq, window.innerWidth - ancho - margen)),
-        maxHeight: debajo ? huecoAbajo : huecoArriba,
-      });
-    };
-    colocar();
-    // Si la página se mueve bajo el menú, el menú se mueve con ella.
-    window.addEventListener("scroll", colocar, true);
-    window.addEventListener("resize", colocar);
-    return () => {
-      window.removeEventListener("scroll", colocar, true);
-      window.removeEventListener("resize", colocar);
-    };
-  }, [porLaDerecha]);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (panel.current && !panel.current.contains(e.target as globalThis.Node)) onClose();
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [onClose]);
-
-  return (
-    <>
-      <span ref={ancla} className="hidden" />
-      {createPortal(
-        <div
-          ref={panel}
-          style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, maxHeight: pos?.maxHeight }}
-          className={`fixed z-[60] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl ${className.replace(/\b(right|left)-0\b/g, "")}`}
-        >
-          {children}
-        </div>,
-        document.body,
-      )}
-    </>
-  );
 }
 
 export function DbToolbar({
@@ -167,8 +85,12 @@ export function DbToolbar({
   // El clic derecho sobre la pestaña de una vista abre este mismo menú: la acción
   // viaja por un evento de ventana, como los atajos, para no tener que subir el
   // estado del menú hasta la tabla y volver a bajarlo.
+  const [cfgAt, setCfgAt] = useState<ViewMenuDetail | null>(null);
   useEffect(() => {
-    const abrir = () => setOpen("cfg");
+    const abrir = (e: Event) => {
+      setCfgAt((e as CustomEvent<ViewMenuDetail>).detail ?? null);
+      setOpen("cfg");
+    };
     window.addEventListener(VIEW_MENU_EVENT, abrir);
     return () => window.removeEventListener(VIEW_MENU_EVENT, abrir);
   }, []);
@@ -323,17 +245,12 @@ export function DbToolbar({
         )}
       </div>
 
-      {/* Config vista (renombrar / borrar) */}
+      {/* Opciones de la vista. No hay botón: se abren pinchando su pestaña, que es
+          donde uno mira. Antes había un engranaje aquí a la derecha y el menú salía
+          en la otra punta de la barra, lejos de la vista a la que se refería. */}
       <div className="relative">
-        <button
-          onClick={() => setOpen(open === "cfg" ? null : "cfg")}
-          className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--hover)]"
-          title="Ajustes de la vista"
-        >
-          <Settings size={16} />
-        </button>
         {open === "cfg" && (
-          <Popover onClose={() => setOpen(null)}>
+          <Popover onClose={() => setOpen(null)} at={cfgAt ?? undefined} className="w-80 p-3">
             <button
               onClick={() => {
                 const name = window.prompt("Nuevo nombre de la vista:", view.name);
