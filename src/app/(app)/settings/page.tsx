@@ -57,6 +57,7 @@ export default function SettingsPage() {
         {nameMsg && <p className="mt-2 text-xs text-[var(--muted)]">{nameMsg}</p>}
       </section>
 
+      <EstadoSection />
       <PushSection />
       <ApiTokensSection />
       <WebhooksSection />
@@ -141,6 +142,50 @@ function ApiTokensSection() {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Estado de la instalación. Sirve para saber, sin entrar al servidor, si el último
+ * despliegue dejó activas las piezas que dependen de la configuración.
+ */
+function EstadoSection() {
+  const [salud, setSalud] = useState<{ collab?: string | null; ts?: string } | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then(setSalud)
+      .catch(() => setError(true));
+  }, []);
+
+  const fila = (nombre: string, ok: boolean, detalle: string) => (
+    <li className="flex items-center gap-2 py-1 text-sm">
+      <span className={`size-2 rounded-full ${ok ? "bg-green-500" : "bg-amber-500"}`} />
+      <span className="font-medium">{nombre}</span>
+      <span className="text-[var(--muted)]">{detalle}</span>
+    </li>
+  );
+
+  return (
+    <section className="mt-8">
+      <h2 className="font-display mb-1 font-bold">Estado</h2>
+      <p className="mb-2 text-xs text-[var(--muted)]">
+        Cómo ha quedado el último despliegue. Si algo sale en ámbar, la función está apagada.
+      </p>
+      {error && <p className="text-sm text-red-500">No se ha podido consultar el estado.</p>}
+      {salud && (
+        <ul>
+          {fila(
+            "Edición simultánea",
+            Boolean(salud.collab),
+            salud.collab ? salud.collab : "apagada: al compilar no se indicó la dirección del servidor",
+          )}
+          {fila("Servidor", true, `respondió a las ${new Date(salud.ts ?? Date.now()).toLocaleTimeString()}`)}
+        </ul>
+      )}
     </section>
   );
 }
