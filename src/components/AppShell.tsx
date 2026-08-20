@@ -5,7 +5,8 @@ import { Menu, PanelLeft } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { SearchPalette } from "@/components/SearchPalette";
-import { isTyping, NEW_PAGE_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
+import { Shortcuts } from "@/components/Shortcuts";
+import { isTyping, NEW_PAGE_EVENT, SHORTCUTS_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
 
 const COLLAPSED_KEY = "notiono.sidebar-collapsed";
 
@@ -34,6 +35,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
+      // «?» a secas abre los atajos, como en tantos sitios; Ctrl+/ hace lo mismo
+      // para quien tenga un teclado donde «?» pide dos dedos.
+      if ((e.key === "?" || (mod && e.key === "/")) && !isTyping(e.target)) {
+        e.preventDefault();
+        window.dispatchEvent(new Event(SHORTCUTS_EVENT));
+        return;
+      }
       if (!mod) return;
       if (e.key === "\\") {
         e.preventDefault();
@@ -59,6 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex h-dvh">
       <SearchPalette />
+      <Shortcuts />
       {/* Fondo oscuro al abrir el panel en móvil */}
       {open && (
         <div

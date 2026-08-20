@@ -5,33 +5,9 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BlockNoteEditor } from "@blocknote/core";
-import {
-  Bell,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  Copy,
-  Database,
-  FilePlus,
-  FileText,
-  Folder,
-  FolderInput,
-  Moon,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Settings,
-  Sparkles,
-  Star,
-  Sun,
-  CircleCheck,
-  PanelLeftClose,
-  Trash2,
-  Upload,
-  Users,
-  X,
-} from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, CircleCheck, Clock, Copy, Database, FilePlus, FileText, Folder, FolderInput, Keyboard, Moon, MoreHorizontal, PanelLeftClose, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, Upload, Users, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
+import { openShortcuts } from "@/components/Shortcuts";
 import { NEW_PAGE_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
 import { parseCsv } from "@/lib/csv";
 import { TEMPLATES } from "@/lib/templates";
@@ -685,6 +661,16 @@ function AccountFooter({ me }: { me: Me }) {
         <Settings size={14} />
         <span className="truncate">{me?.name || me?.email || "Cuenta"}</span>
       </Link>
+      {/* Los atajos, a un clic: si solo se pueden descubrir tecleando «?», no se
+          descubren. */}
+      <button
+        onClick={openShortcuts}
+        className="shrink-0 rounded p-1 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
+        title="Atajos · ?"
+        aria-label="Atajos"
+      >
+        <Keyboard size={14} />
+      </button>
       <ThemeToggle />
       <button
         onClick={() => logout.mutate()}
@@ -783,6 +769,13 @@ function TreeItem({
   return (
     <li>
       <div
+        // Clic derecho: el mismo menú que el «⋯», pero donde está el ratón. El «⋯»
+        // solo aparece al pasar por encima, así que en una lista larga cuesta dar con él.
+        onContextMenu={(e) => {
+          if (!canEdit) return;
+          e.preventDefault();
+          setMenu({ x: e.clientX, y: e.clientY });
+        }}
         className={`group flex items-center gap-1 rounded-md pr-1 text-sm ${
           active ? "bg-[var(--active)] font-medium" : "hover:bg-[var(--hover)]"
         } ${

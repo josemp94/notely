@@ -13,3 +13,6 @@ export function isTyping(target: EventTarget | null): boolean {
 
 /** Clic derecho sobre la pestaña de una vista: abre su menú de opciones. */
 export const VIEW_MENU_EVENT = "notiono:menu-vista";
+
+/** La ventana con todos los atajos («?» o Ctrl+/). */
+export const SHORTCUTS_EVENT = "notiono:atajos";
