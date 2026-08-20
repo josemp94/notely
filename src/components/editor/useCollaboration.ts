@@ -24,6 +24,12 @@ export type Collaboration = {
   threadStore: YjsThreadStore;
   /** Cache compartida de nombres y avatares, para cursores y comentarios. */
   userStore: ReturnType<typeof createUserStore>;
+  /**
+   * Contenido con el que hay que estrenar el documento compartido, o null si ya
+   * lo estrenó otro. Lo siembra el navegador porque convertir bloques a Yjs
+   * necesita el esquema del editor, que no se puede cargar en el servidor.
+   */
+  seed: unknown[] | null;
 };
 
 /**
@@ -37,9 +43,11 @@ export type Collaboration = {
 export function useCollaboration(
   pageId: string,
   me?: { id: string; name: string | null; email: string } | null,
-): Collaboration | null {
+): { collab: Collaboration | null; fallo: boolean } {
   const url = process.env.NEXT_PUBLIC_COLLAB_URL;
-  const [ready, setReady] = useState(false); // el documento ya tiene estado Yjs
+  // El contenido a sembrar (o null si siembra otro); null-de-estado = aún no se sabe.
+  const [inicio, setInicio] = useState<{ seed: unknown[] | null } | null>(null);
+  const [fallo, setFallo] = useState(false);
   const utils = trpc.useUtils();
   const ensureYdoc = trpc.pages.ensureYdoc.useMutation();
   const collabToken = trpc.pages.collabToken.useMutation();
@@ -51,17 +59,21 @@ export function useCollaboration(
   useEffect(() => {
     if (!url || !me) return;
     let cancelled = false;
-    setReady(false);
+    setInicio(null);
+    setFallo(false);
     ensureMutate({ id: pageId })
-      .then(() => !cancelled && setReady(true))
-      .catch(() => !cancelled && setReady(false)); // sin colaboración: el editor sigue funcionando
+      .then((r) => !cancelled && setInicio({ seed: (r.seed as unknown[] | null) ?? null }))
+      // El editor sigue funcionando con su autosave, pero a solas: eso hay que
+      // decirlo. Callarlo fue justo lo que dejó la colaboración rota sin que se
+      // notara, con cada pestaña escribiendo en su propia copia.
+      .catch(() => !cancelled && setFallo(true));
     return () => {
       cancelled = true;
     };
   }, [url, me, pageId, ensureMutate, tokenMutate]);
 
   const collab = useMemo(() => {
-    if (!url || !ready || !me) return null;
+    if (!url || !inicio || !me) return null;
     const doc = new Y.Doc();
     const provider = new HocuspocusProvider({
       url,
@@ -102,8 +114,9 @@ export function useCollaboration(
         new DefaultThreadStoreAuth(me.id, "editor"),
       ),
       userStore,
+      seed: inicio.seed,
     };
-  }, [url, ready, me, pageId, utils]);
+  }, [url, inicio, me, pageId, utils, tokenMutate]);
 
   // Al cambiar de página se cierra la conexión anterior.
   useEffect(() => {
@@ -114,5 +127,5 @@ export function useCollaboration(
     };
   }, [collab]);
 
-  return collab;
+  return { collab, fallo };
 }

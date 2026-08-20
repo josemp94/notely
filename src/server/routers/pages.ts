@@ -116,9 +116,15 @@ export const pagesRouter = router({
     }),
 
   /**
-   * Prepara la página para la edición simultánea: si aún no tiene estado Yjs,
-   * lo crea a partir de su contenido actual. Sin esto, el primer usuario que
+   * Prepara la página para la edición simultánea. Sin esto, el primero que
    * entrase en modo colaborativo vería el documento vacío.
+   *
+   * La conversión de bloques a estado Yjs la hace el NAVEGADOR, no el servidor:
+   * necesita el esquema del editor, que está hecho de componentes de React, y en
+   * el servidor de Next `react` se resuelve en su versión de servidor —sin
+   * `createContext`—, así que la conversión revienta ahí. Aquí solo se decide, de
+   * forma atómica, QUIÉN siembra: el primero que llega se lleva el contenido para
+   * insertarlo; a los demás ya les llegará por la red.
    */
   ensureYdoc: workspaceProcedure
     .input(z.object({ id: z.string() }))
@@ -128,25 +134,17 @@ export const pagesRouter = router({
         select: { id: true, ydoc: true, content: true },
       });
       if (!page) throw new TRPCError({ code: "NOT_FOUND" });
-      if (page.ydoc) return { ok: true, seeded: false };
+      if (page.ydoc) return { seed: null };
 
-      const { ServerBlockNoteEditor } = await import("@blocknote/server-util");
-      const { editorSchema } = await import("@/components/editor/mention");
       const Y = await import("yjs");
-
-      const editor = ServerBlockNoteEditor.create({ schema: editorSchema });
-      const doc = new Y.Doc();
-      const blocks = Array.isArray(page.content) ? page.content : [];
-      if (blocks.length) {
-        editor.blocksToYXmlFragment(blocks as never, doc.getXmlFragment("document-store"));
-      }
-      const state = Buffer.from(Y.encodeStateAsUpdate(doc));
-      // Si dos pestañas entran a la vez, solo siembra la primera.
-      const done = await ctx.db.page.updateMany({
+      // Documento vacío: sirve de "reserva" para que solo una pestaña siembre.
+      const vacio = Buffer.from(Y.encodeStateAsUpdate(new Y.Doc()));
+      const nuestro = await ctx.db.page.updateMany({
         where: { id: page.id, ydoc: null },
-        data: { ydoc: state },
+        data: { ydoc: vacio },
       });
-      return { ok: true, seeded: done.count > 0 };
+      if (nuestro.count === 0) return { seed: null };
+      return { seed: Array.isArray(page.content) ? page.content : [] };
     }),
 
   /** Vista previa de un enlace (OpenGraph) para el bloque "bookmark" del editor. */

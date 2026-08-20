@@ -11,10 +11,16 @@ import type { HocuspocusProvider } from "@hocuspocus/provider";
  * el editor seguía escribiendo en la copia local sin avisar de que nadie más
  * estaba viendo esos cambios. Solo se muestra cuando algo no va bien.
  */
-export function CollabStatus({ provider }: { provider: HocuspocusProvider }) {
+export function CollabStatus({ provider }: { provider: HocuspocusProvider | null }) {
   const [estado, setEstado] = useState<"conectando" | "conectado" | "desconectado">("conectando");
 
   useEffect(() => {
+    // Sin proveedor no se llegó ni a conectar (la página no pudo prepararse):
+    // el editor guarda igual, pero a solas, y eso hay que decirlo.
+    if (!provider) {
+      setEstado("desconectado");
+      return;
+    }
     const conectado = () => setEstado("conectado");
     const desconectado = () => setEstado("desconectado");
     const conectando = () => setEstado("conectando");

@@ -75,7 +75,7 @@ export function Editor({
   // Edición simultánea: si la instalación tiene servidor de colaboración, el
   // documento se sincroniza en vivo; si no, el editor funciona como siempre.
   const { data: me } = trpc.auth.me.useQuery();
-  const collab = useCollaboration(pageId, me);
+  const { collab, fallo: collabFallo } = useCollaboration(pageId, me);
 
   const editor = useCreateBlockNote(
     collab
@@ -100,6 +100,24 @@ export function Editor({
       : { dictionary: es, schema: editorSchema, initialContent: initial },
     [collab],
   );
+
+  // Estrenar el documento compartido con lo que ya tenía la página. Lo hace el
+  // navegador porque la conversión necesita el esquema del editor, y solo la
+  // pestaña a la que el servidor le dio el turno, para no duplicar el contenido.
+  useEffect(() => {
+    const bloques = collab?.seed;
+    if (!collab || !bloques?.length) return;
+    const sembrar = () => {
+      // Puede que ya no esté vacío: la copia local del navegador lo habrá llenado.
+      if (collab.fragment.length > 0) return;
+      editor.replaceBlocks(editor.document, bloques as never);
+    };
+    if (collab.provider.isSynced) sembrar();
+    collab.provider.on("synced", sembrar);
+    return () => {
+      collab.provider.off("synced", sembrar);
+    };
+  }, [collab, editor]);
 
   function scheduleSave() {
     if (!canEdit) return;
@@ -152,7 +170,7 @@ export function Editor({
       <div className={`mb-3 flex h-6 items-center gap-2 font-mono text-[11px] text-[var(--muted)] ${cover ? "justify-end" : ""}`}>
         {/* Quién más está en la página ahora mismo, y si la conexión falla. */}
         {collab && <Presence provider={collab.provider} />}
-        {collab && <CollabStatus provider={collab.provider} />}
+        {(collab || collabFallo) && <CollabStatus provider={collab?.provider ?? null} />}
         {collab && (
           <button
             onClick={() => setShowThreads((v) => !v)}
