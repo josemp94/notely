@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Database, Download, FileText, Lightbulb, Link as LinkIcon, Link2, ListTree } from "lucide-react";
+import { Check, Database, Download, FileText, Lightbulb, Link as LinkIcon, Link2, ListTree, MessageSquare, X } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import {
   FloatingComposerController,
   FloatingThreadController,
+  ThreadsSidebar,
   getDefaultReactSlashMenuItems,
   SuggestionMenuController,
   useCreateBlockNote,
@@ -51,6 +52,7 @@ export function Editor({
   const [icon, setIcon] = useState<string | null>(initialIcon ?? null);
   const [cover, setCover] = useState<string | null>(initialCover ?? null);
   const [saveState, setSaveState] = useState<SaveState>("saved");
+  const [showThreads, setShowThreads] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -149,6 +151,15 @@ export function Editor({
       <div className={`mb-3 flex h-6 items-center gap-2 font-mono text-[11px] text-[var(--muted)] ${cover ? "justify-end" : ""}`}>
         {/* Quién más está en la página ahora mismo. */}
         {collab && <Presence provider={collab.provider} />}
+        {collab && (
+          <button
+            onClick={() => setShowThreads((v) => !v)}
+            className={`flex items-center gap-1 rounded px-1.5 hover:bg-brand-50 hover:text-brand ${showThreads ? "text-brand" : ""}`}
+            title="Comentarios del texto"
+          >
+            <MessageSquare size={12} />
+          </button>
+        )}
         {canEdit ? (
           saveState === "saving" ? (
             "Guardando…"
@@ -199,6 +210,19 @@ export function Editor({
           <>
             <FloatingComposerController />
             <FloatingThreadController />
+            {showThreads && (
+              <aside className="fixed right-4 top-24 z-30 max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--background)] p-2 shadow-xl">
+                <div className="mb-1 flex items-center justify-between px-1">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
+                    Comentarios del texto
+                  </span>
+                  <button onClick={() => setShowThreads(false)} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+                    <X size={14} />
+                  </button>
+                </div>
+                <ThreadsSidebar filter="open" sort="position" />
+              </aside>
+            )}
           </>
         )}
         <MentionMenu editor={editor} pageId={pageId} />
