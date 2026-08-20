@@ -15,14 +15,15 @@
   "startUrl": "/",
   "iconUrl": "https://notiono.monrealperez.com/icon-512.png",
   "maskableIconUrl": "https://notiono.monrealperez.com/icon-512.png",
-  "appVersionName": "1.0.0",
   "appVersionCode": 1,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://notiono.monrealperez.com/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
-  "alphaDependencies": { "enabled": false },
+  "alphaDependencies": {
+    "enabled": false
+  },
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
@@ -32,5 +33,7 @@
   "signingKey": {
     "path": "/home/jose/notiono-apk/notiono.keystore",
     "alias": "notiono"
-  }
+  },
+  "splashScreenFadeOutDuration": 300,
+  "appVersion": "1.0.0"
 }
