@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Menu, PanelLeft } from "lucide-react";
+import { PanelLeft } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/Sidebar";
+import { BarraInferior } from "@/components/BarraInferior";
 import { SearchPalette } from "@/components/SearchPalette";
 import { Shortcuts } from "@/components/Shortcuts";
 import { isTyping, NEW_PAGE_EVENT, SHORTCUTS_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
@@ -85,21 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Cabecera solo móvil con botón de menú */}
-        <div className="zona-segura-arriba flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 pb-2 md:hidden">
-          <button
-            onClick={() => setOpen(true)}
-            className="toque flex items-center rounded-md p-1 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
-            aria-label="Abrir menú"
-          >
-            <Menu size={20} />
-          </button>
-          <span className="font-display font-bold">
-            No<span className="text-brand">tio</span>no
-          </span>
-        </div>
-
+      <div className="esquiva-muesca flex min-w-0 flex-1 flex-col">
         {/* Con el panel plegado (Ctrl+\\) queda este botón para recuperarlo. */}
         {collapsed && (
           <button
@@ -112,7 +99,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
         {/* Con el panel plegado, el contenido se aparta lo que ocupa el botón de
             recuperarlo: si no, se le monta encima a la miga de pan. */}
-        <main className={`flex-1 overflow-y-auto ${collapsed ? "md:pl-9" : ""}`}>{children}</main>
+        <main className={`min-h-0 flex-1 overflow-y-auto ${collapsed ? "md:pl-9" : ""}`}>
+          {children}
+        </main>
+        {/* En el móvil la navegación va abajo, al alcance del pulgar: el menú de la
+            esquina de arriba era lo que hacía que esto oliera a página web. */}
+        <BarraInferior onMenu={() => setOpen(true)} />
       </div>
     </div>
   );

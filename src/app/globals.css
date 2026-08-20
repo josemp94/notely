@@ -151,3 +151,40 @@ h1, h2, h3, .font-display {
 .zona-segura-abajo {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
+
+/* Instalada como app (el APK de Android y la PWA): quitarle lo que la delata como
+   una pestaña del navegador. El tirón hacia abajo para recargar es el peor —en una
+   app no se recarga nada—, y el menú de «copiar / buscar» al mantener pulsado un
+   botón tampoco existe fuera de la web. El texto del contenido sigue seleccionándose:
+   esto solo apaga los botones y las barras. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+  button,
+  nav,
+  [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+
+/* El destello azul al tocar es de navegador; el estado pulsado ya lo pinta cada
+   botón. */
+@media (pointer: coarse) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Sin barra arriba en el móvil, la muesca del teléfono la esquiva el marco: si no,
+   la miga de pan se metería debajo del reloj en los móviles con notch (en el APK de
+   Android no pasa —la barra de estado va aparte—, pero sí en un iPhone con la web
+   añadida a la pantalla de inicio). */
+@media (max-width: 767px) {
+  .esquiva-muesca {
+    padding-top: env(safe-area-inset-top);
+  }
+}
