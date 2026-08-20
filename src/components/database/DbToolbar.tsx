@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpDown, BarChart3, Calendar, ClipboardList, Columns3, Copy, Download, Eye, EyeOff, Filter as FilterIcon, GanttChart, LayoutGrid, List, Pencil, Plus, Table, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Popover } from "./Popover";
+import { usePeople } from "./Cell";
 import { downloadText } from "@/lib/download";
 import { VIEW_MENU_EVENT, type ViewMenuDetail } from "@/lib/shortcuts";
 import {
@@ -555,8 +556,8 @@ function FilterNodesEditor({
         >
           <Plus size={12} /> Añadir filtro
         </button>
-        {/* ponytail: anidación capada a 2 niveles por usabilidad del popover; sube el tope si hace falta */}
-        {depth < 2 && (
+        {/* Hasta 3 niveles de grupos anidados, el mismo tope que la UI de Notion. */}
+        {depth < 3 && (
           <button
             onClick={() => {
               const c = newCondition();
@@ -722,6 +723,127 @@ function RelationFilterValue({ field, value, onChange }: { field: DbField; value
         <option key={o.id} value={o.id}>{o.title}</option>
       ))}
     </select>
+  );
+}
+
+/** Texto legible del valor de un filtro para el chip (etiquetas, nombres, anclas…). */
+function chipValueText(
+  field: DbField,
+  op: string,
+  value: any,
+  people: Map<string, string>,
+  relOpts?: { id: string; title: string }[],
+): string {
+  if (NO_VALUE_OPS.has(op)) return "";
+  if (value == null || value === "") return "…";
+  if (typeof value === "object" && typeof value.rel === "string")
+    return DATE_ANCHORS.find(([v]) => v === value.rel)?.[1].toLowerCase() ?? "…";
+  if (field.type === "checkbox") return value === true || value === "true" ? "Sí" : "No";
+  if (["person", "created_by", "last_edited_by"].includes(field.type))
+    return value === "me" ? "Yo" : (people.get(String(value)) ?? "…");
+  if (field.type === "relation") return relOpts?.find((o) => o.id === value)?.title ?? "…";
+  if (["select", "multiselect", "status"].includes(field.type)) {
+    if (typeof value === "string" && value.startsWith("group:"))
+      return STATUS_GROUPS.find(([g]) => g === value.slice("group:".length))?.[1] ?? value;
+    const opts: { id: string; label: string }[] = field.config?.options ?? [];
+    return opts.find((o) => o.id === value)?.label ?? String(value);
+  }
+  return String(value);
+}
+
+/** Resumen de un chip: "Campo: operador valor" (o "Grupo · N condiciones"). */
+function ChipLabel({ node, fields }: { node: FilterNode; fields: DbField[] }) {
+  const people = usePeople();
+  const field = isFilterGroup(node) ? undefined : fields.find((f) => f.id === node.fieldId);
+  const targetCollectionId =
+    field?.type === "relation" ? (field.config as { targetCollectionId?: string })?.targetCollectionId : undefined;
+  const { data: relOpts } = trpc.db.relationOptions.useQuery(
+    { collectionId: targetCollectionId ?? "" },
+    { enabled: !!targetCollectionId },
+  );
+  if (isFilterGroup(node)) {
+    const total = countFilters(node.filters);
+    return <>{`Grupo · ${total} ${total === 1 ? "condición" : "condiciones"}`}</>;
+  }
+  if (!field) return <>?</>;
+  const opLabel = opsFor(field.type).find((o) => o.value === node.op)?.label ?? node.op;
+  const valueText = chipValueText(field, node.op, node.value, people, relOpts);
+  return <>{`${field.name}: ${opLabel}${valueText ? ` ${valueText}` : ""}`}</>;
+}
+
+/**
+ * Barra de chips de filtro encima de la vista, como en Notion: una píldora por
+ * condición de primer nivel. Pinchar un chip abre un popover para editarlo rápido
+ * y la X lo quita. No se dibuja nada si la vista no tiene filtros.
+ */
+export function FilterChips({ pageId, view, fields }: { pageId: string; view: View; fields: DbField[] }) {
+  const utils = trpc.useUtils();
+  const update = trpc.db.updateView.useMutation({
+    onSuccess: () => {
+      utils.db.get.invalidate({ pageId });
+      utils.db.chartData.invalidate();
+    },
+  });
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const filters: FilterNode[] = Array.isArray(view.config?.filters) ? view.config.filters : [];
+  if (!filters.length) return null;
+  const save = (nf: FilterNode[]) => update.mutate({ id: view.id, config: { ...view.config, filters: nf } });
+  const set = (i: number, node: FilterNode) => save(filters.map((x, j) => (j === i ? node : x)));
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
+      {filters.map((node, i) => (
+        <div key={i} className="relative">
+          <span className="flex items-center gap-0.5 rounded-full border border-[var(--border)] py-0.5 pl-2.5 pr-1 text-[var(--muted)]">
+            <button onClick={() => setOpenIdx(openIdx === i ? null : i)} className="toque-estrecho hover:text-brand">
+              <ChipLabel node={node} fields={fields} />
+            </button>
+            <button
+              onClick={() => save(filters.filter((_, j) => j !== i))}
+              className="toque-estrecho rounded-full p-0.5 hover:text-red-500"
+              title="Quitar filtro"
+              aria-label="Quitar filtro"
+            >
+              <X size={12} />
+            </button>
+          </span>
+          {openIdx === i && (
+            <Popover onClose={() => setOpenIdx(null)} className="w-80 p-3">
+              {isFilterGroup(node) ? (
+                <>
+                  <div className="mb-2 flex items-center gap-1 text-xs text-[var(--muted)]">
+                    <span>Coincidir con</span>
+                    <select
+                      value={node.op}
+                      onChange={(e) => set(i, { ...node, op: e.target.value as "and" | "or" })}
+                      className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs text-[var(--foreground)]"
+                    >
+                      <option value="and">todos</option>
+                      <option value="or">cualquiera</option>
+                    </select>
+                  </div>
+                  <FilterNodesEditor
+                    nodes={node.filters}
+                    onChange={(f) => set(i, { ...node, filters: f })}
+                    fields={fields}
+                    depth={1}
+                  />
+                </>
+              ) : (
+                <ConditionRow
+                  filter={node}
+                  fields={fields}
+                  onChange={(fl) => set(i, fl)}
+                  onRemove={() => {
+                    save(filters.filter((_, j) => j !== i));
+                    setOpenIdx(null);
+                  }}
+                />
+              )}
+            </Popover>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 

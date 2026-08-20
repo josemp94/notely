@@ -16,7 +16,7 @@ import { AddCoverButton, CoverBand } from "@/components/PageCover";
 import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
 import { usePeople } from "./Cell";
 import { displayValue } from "@/lib/cellText";
-import { AddViewButton, DbToolbar, ViewIcon } from "./DbToolbar";
+import { AddViewButton, DbToolbar, FilterChips, ViewIcon } from "./DbToolbar";
 import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
 import { ChartView } from "./ChartView";
@@ -214,6 +214,11 @@ export function Database({
         )}
         </div>
       </div>
+
+      {/* Chips de filtro estilo Notion, encima de la vista (edición rápida). */}
+      {canEdit && (
+        <FilterChips pageId={pageId} view={asAny(active)} fields={fields as unknown as DbField[]} />
+      )}
 
       {active?.type === "kanban" ? (
         <KanbanView
