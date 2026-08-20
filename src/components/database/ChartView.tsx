@@ -14,9 +14,13 @@ type ChartConfig = {
   yFieldId?: string | null;
   agg?: string;
   dateBucket?: string;
+  omitZero?: boolean;
+  breakdownFieldId?: string | null;
 };
 
 const DATE_TYPES = ["date", "created_time", "last_edited_time"];
+/** Campos por los que se puede desglosar (2ª dimensión, barras apiladas). */
+const BREAKDOWN_TYPES = ["select", "status", "multiselect", "person", "checkbox"];
 
 export function ChartView({
   pageId,
@@ -41,11 +45,13 @@ export function ChartView({
     updateView.mutate({ id: view.id, config: { ...cfg, ...patch } });
 
   const numberFields = fields.filter((f) => f.type === "number");
+  // La "tarta" de antes se trata como donut, que es lo que dibuja Notion.
+  const chartType = cfg.chartType === "pie" ? "donut" : (cfg.chartType ?? "bar");
 
   const option = useMemo(() => {
     if (!data) return {};
-    const { chartType, categories, values, xName, yName } = data;
-    if (chartType === "pie" || chartType === "donut") {
+    const { categories, values, series, xName, yName } = data;
+    if (chartType === "donut") {
       return {
         color: PALETTE,
         tooltip: { trigger: "item" },
@@ -53,43 +59,74 @@ export function ChartView({
         series: [
           {
             type: "pie",
-            radius: chartType === "donut" ? ["40%", "70%"] : "65%",
+            radius: ["40%", "70%"],
             data: categories.map((c, i) => ({ name: c, value: values[i] })),
           },
         ],
       };
     }
-    return {
-      color: [BRAND],
-      grid: { left: 48, right: 20, top: 24, bottom: 48 },
-      tooltip: { trigger: "axis" },
-      xAxis: { type: "category", data: categories, name: xName, axisLabel: { rotate: categories.length > 6 ? 30 : 0 } },
-      yAxis: { type: "value", name: yName },
-      series: [{ type: chartType === "line" ? "line" : "bar", data: values, smooth: true, areaStyle: chartType === "line" ? {} : undefined }],
+    const horizontal = chartType === "bar_h";
+    // Con desglose, una serie apilada por cada valor de la 2ª dimensión.
+    const seriesData = series?.length
+      ? series.map((sr) => ({
+          name: sr.name,
+          type: chartType === "line" ? ("line" as const) : ("bar" as const),
+          stack: chartType === "line" ? undefined : "total",
+          data: sr.values,
+          smooth: true,
+        }))
+      : [
+          {
+            type: chartType === "line" ? ("line" as const) : ("bar" as const),
+            data: values,
+            smooth: true,
+            areaStyle: chartType === "line" ? {} : undefined,
+          },
+        ];
+    const catAxis = {
+      type: "category" as const,
+      data: categories,
+      name: horizontal ? undefined : xName,
+      axisLabel: { rotate: !horizontal && categories.length > 6 ? 30 : 0 },
+      // En horizontal, la primera categoría arriba (ECharts las pinta de abajo a arriba).
+      inverse: horizontal,
     };
-  }, [data]);
+    const valAxis = { type: "value" as const, name: yName };
+    return {
+      color: series?.length ? PALETTE : [BRAND],
+      grid: { left: horizontal ? 110 : 48, right: 20, top: 24, bottom: series?.length ? 56 : 48 },
+      tooltip: { trigger: "axis" },
+      legend: series?.length ? { bottom: 0, type: "scroll" } : undefined,
+      xAxis: horizontal ? valAxis : catAxis,
+      yAxis: horizontal ? catAxis : valAxis,
+      series: seriesData,
+    };
+  }, [data, chartType]);
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         <Select
           label="Tipo"
-          value={cfg.chartType ?? "bar"}
+          value={chartType}
           onChange={(v) => save({ chartType: v })}
           options={[
             ["bar", "Barras"],
+            ["bar_h", "Barras horizontales"],
             ["line", "Líneas"],
-            ["pie", "Tarta"],
-            ["donut", "Donut"],
+            ["donut", "Anillo"],
+            ["number", "Número"],
           ]}
         />
-        <Select
-          label="Agrupar por"
-          value={cfg.xFieldId ?? ""}
-          onChange={(v) => save({ xFieldId: v })}
-          options={fields.map((f) => [f.id, f.name] as [string, string])}
-        />
-        {DATE_TYPES.includes(fields.find((f) => f.id === cfg.xFieldId)?.type ?? "") && (
+        {chartType !== "number" && (
+          <Select
+            label="Agrupar por"
+            value={cfg.xFieldId ?? ""}
+            onChange={(v) => save({ xFieldId: v })}
+            options={fields.map((f) => [f.id, f.name] as [string, string])}
+          />
+        )}
+        {chartType !== "number" && DATE_TYPES.includes(fields.find((f) => f.id === cfg.xFieldId)?.type ?? "") && (
           <Select
             label="Por"
             value={cfg.dateBucket ?? "month"}
@@ -116,7 +153,7 @@ export function ChartView({
             ["median", "Mediana"],
           ]}
         />
-        {cfg.agg !== "count" && (
+        {cfg.agg && cfg.agg !== "count" && (
           <Select
             label="Campo"
             value={cfg.yFieldId ?? ""}
@@ -124,8 +161,40 @@ export function ChartView({
             options={numberFields.map((f) => [f.id, f.name] as [string, string])}
           />
         )}
+        {["bar", "bar_h", "line"].includes(chartType) && (
+          <Select
+            label="Desglosar por"
+            value={cfg.breakdownFieldId ?? ""}
+            onChange={(v) => save({ breakdownFieldId: v || null })}
+            options={[
+              ["", "Sin desglose"],
+              ...fields
+                .filter((f) => BREAKDOWN_TYPES.includes(f.type) && f.id !== cfg.xFieldId)
+                .map((f) => [f.id, f.name] as [string, string]),
+            ]}
+          />
+        )}
+        {chartType !== "number" && (
+          <label className="flex items-center gap-1 text-[var(--muted)]">
+            <input
+              type="checkbox"
+              checked={!!cfg.omitZero}
+              onChange={(e) => save({ omitZero: e.target.checked })}
+              className="size-3.5 accent-[var(--color-brand,#ff5c28)]"
+            />
+            Omitir ceros
+          </label>
+        )}
       </div>
-      {data && data.categories.length > 0 ? (
+      {chartType === "number" ? (
+        // KPI: un único valor grande, la agregación sobre todos los registros filtrados.
+        <div className="flex h-64 flex-col items-center justify-center">
+          <div className="font-display text-6xl font-extrabold">
+            {new Intl.NumberFormat("es-ES").format(data?.total ?? 0)}
+          </div>
+          <div className="mt-2 text-sm text-[var(--muted)]">{data?.yName || "Registros"}</div>
+        </div>
+      ) : data && data.categories.length > 0 ? (
         <ReactECharts option={option} style={{ height: 420 }} notMerge />
       ) : (
         <p className="py-16 text-center text-[var(--muted)]">No hay datos para graficar.</p>

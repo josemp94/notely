@@ -899,6 +899,8 @@ export const dbRouter = router({
         yFieldId?: string | null;
         agg?: string;
         dateBucket?: string;
+        omitZero?: boolean;
+        breakdownFieldId?: string | null;
       };
       const fields = col.fields.map((f) => ({ id: f.id, name: f.name, type: f.type, config: f.config })) as DbField[];
       const all: DbRecord[] = col.records.map((r) => ({
@@ -963,7 +965,11 @@ export const dbRouter = router({
         return text === "" ? "Sin valor" : text;
       };
 
+      // Desglose (2ª dimensión): barras apiladas por el valor de otro campo.
+      const bdField = cfg.breakdownFieldId ? fields.find((f) => f.id === cfg.breakdownFieldId) : undefined;
       const groups = new Map<string, (number | null)[]>();
+      const bdGroups = new Map<string, Map<string, (number | null)[]>>();
+      const bdNames = new Set<string>();
       for (const rec of records) {
         const label = xLabel(xField, rec);
         // Sin campo Y, cada fila cuenta 1; las celdas vacías no cuentan para media/mín/máx.
@@ -975,6 +981,15 @@ export const dbRouter = router({
         const arr = groups.get(label) ?? [];
         arr.push(y);
         groups.set(label, arr);
+        if (bdField) {
+          const bd = xLabel(bdField, rec);
+          bdNames.add(bd);
+          const m = bdGroups.get(label) ?? new Map<string, (number | null)[]>();
+          const barr = m.get(bd) ?? [];
+          barr.push(y);
+          m.set(bd, barr);
+          bdGroups.set(label, m);
+        }
       }
 
       const round2 = (x: number) => Math.round(x * 100) / 100;
@@ -995,15 +1010,30 @@ export const dbRouter = router({
       };
 
       // "Sin valor" siempre al final, como en Notion.
-      const categories = [...groups.keys()].sort((a, b) =>
-        a === "Sin valor" ? 1 : b === "Sin valor" ? -1 : a.localeCompare(b),
-      );
-      const values = categories.map((c) => aggOf(groups.get(c)!));
+      const sinValorAlFinal = (a: string, b: string) =>
+        a === "Sin valor" ? 1 : b === "Sin valor" ? -1 : a.localeCompare(b);
+      let categories = [...groups.keys()].sort(sinValorAlFinal);
+      let values = categories.map((c) => aggOf(groups.get(c)!));
+      if (cfg.omitZero) {
+        const keep = values.map((v) => v !== 0);
+        categories = categories.filter((_, i) => keep[i]);
+        values = values.filter((_, i) => keep[i]);
+      }
+      const series = bdField
+        ? [...bdNames].sort(sinValorAlFinal).map((name) => ({
+            name,
+            values: categories.map((c) => aggOf(bdGroups.get(c)?.get(name) ?? [])),
+          }))
+        : undefined;
+      // Para la gráfica de tipo "número" (KPI): la agregación sobre todos los filtrados.
+      const total = aggOf([...groups.values()].flat());
 
       return {
         chartType: cfg.chartType ?? "bar",
         categories,
         values,
+        series,
+        total,
         xName: xField?.name ?? "",
         yName: agg === "count" ? "Registros" : yField?.name ?? "",
       };
