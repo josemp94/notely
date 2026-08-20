@@ -54,6 +54,11 @@ services:
       OIDC_CLIENT_SECRET: "2ZAb6KOLZ9A6LnpbGqCMCsc2SEBnUJtl"
       OIDC_REDIRECT_URI: "https://notiono.monrealperez.com/api/auth/oidc/callback"
       OIDC_PROVIDER_NAME: "Synology"
+      # Huella de la firma del APK de Android: con ella, /.well-known/assetlinks.json
+      # confirma que esa app es de este dominio y Chrome le quita la barra de
+      # direcciones. Sale del almacén de claves (ver docs/android.md); si algún día
+      # se firma con otro almacén, hay que cambiarla aquí y volver a desplegar.
+      ANDROID_CERT_FINGERPRINT: "8C:9B:B7:DC:6C:FB:0F:64:49:42:A3:E8:0A:B3:95:CA:8E:D8:C3:2F:4A:B7:18:25:C8:67:E3:0F:40:CB:8E:9A"
     ports:
       - "3010:3000"
     healthcheck:

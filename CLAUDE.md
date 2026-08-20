@@ -20,6 +20,7 @@ El inventario fiable de qué existe y qué no está en `docs/notion-parity.md`, 
 - **Edición simultánea (Yjs): HECHA y COMPROBADA en producción (20-ago-2026, dos pestañas escribiendo a la vez).** La sirve la propia app en `/collab` (servidor propio `server.mjs` + `collab/hocuspocus.ts`; por eso Next ya **no** usa `output: standalone`), con permiso de sala firmado con `AUTH_SECRET` y estado en `Page.ydoc`. El proxy del DSM ya tiene la cabecera WebSocket (Jose, 20-ago-2026). El primer despliegue **no sincronizaba**: dos fallos, el socket no enganchado a Hocuspocus 4 y `ensureYdoc` reventando en el servidor (ambos arreglados el 20-ago-2026, ver `docs/colaboracion.md`). **Aviso**: que el proxy pase el upgrade NO prueba que sincronice; la prueba buena es `npm run check` (dos clientes) y dos navegadores en la misma página.
 - Lo siguiente: pulir lo que salga al usarlo en producción. (Congelar hasta N columnas y las columnas del editor ya están.)
 - Diagnóstico sin entrar al servidor: `/api/health` dice si la colaboración quedó activa, y **Ajustes → Estado** lo enseña en la propia app.
+- **App de Android**: un APK que por dentro es Chrome abriendo la web (TWA). Ver `docs/android.md`. El APK **no lleva la app dentro**: al desplegar la web, el móvil se actualiza solo. La clave de firma vive en `~/notiono-apk/` (FUERA del repo) y si se pierde no se puede actualizar la app instalada.
 
 ## Convenciones (IMPORTANTE, seguir siempre)
 - **TypeScript estricto**; `npm run build` debe quedar LIMPIO antes de commitear.
