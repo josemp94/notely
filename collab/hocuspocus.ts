@@ -11,6 +11,7 @@
  * búsqueda, la publicación, el export y las versiones) la sigue escribiendo el
  * editor del navegador con su autosave.
  */
+import type { IncomingMessage } from "node:http";
 import { Hocuspocus } from "@hocuspocus/server";
 import { Database } from "@hocuspocus/extension-database";
 import { PrismaClient } from "@prisma/client";
@@ -40,6 +41,27 @@ async function authorize(token: string | null, pageId: string) {
   });
   if (!member) return null;
   return { userId: claim.userId, role: member.role };
+}
+
+/**
+ * Engancha al servidor un WebSocket ya aceptado.
+ *
+ * Hocuspocus 4 es agnóstico del transporte: `handleConnection` NO escucha el
+ * socket, hay que darle cada mensaje y avisarle del cierre. Sin esto la conexión
+ * se abre, el navegador manda sus mensajes y el servidor no contesta jamás: no
+ * sincroniza nada y sin un solo error, ni en el navegador ni en el servidor.
+ * Está aquí, y no suelto en server.mjs, para que `npm run check` lo verifique.
+ */
+export function attachConnection(
+  hocuspocus: Hocuspocus,
+  ws: { on(evento: string, cb: (...args: never[]) => void): unknown },
+  request: IncomingMessage,
+) {
+  const conexion = hocuspocus.handleConnection(ws as never, request as never);
+  ws.on("message", ((datos: Uint8Array) => conexion.handleMessage(new Uint8Array(datos))) as never);
+  ws.on("close", ((code: number, reason: unknown) =>
+    conexion.handleClose({ code, reason: String(reason) })) as never);
+  return conexion;
 }
 
 export function createHocuspocus() {

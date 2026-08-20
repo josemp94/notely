@@ -192,4 +192,55 @@ assert.equal(computeCalc("max", precio, filasCalc), "10,5 €");
 assert.equal(computeCalc("sum", precio, [r("x", {})]), "—"); // sin números, no se inventa un 0
 assert.equal(computeCalc("", precio, filasCalc), ""); // sin cálculo elegido, celda vacía
 
-console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces, reglas y cálculos");
+// --- Edición simultánea: que el socket quede de verdad enganchado ---
+// Se levanta un servidor real con dos clientes porque este fallo no da la cara:
+// si el enganche se rompe, la conexión se abre igual, nadie da error y
+// sencillamente no se sincroniza nada. Así estuvo, roto y en silencio.
+async function compruebaColaboracion() {
+  const { createServer } = await import("node:http");
+  const { WebSocketServer } = await import("ws");
+  const { Hocuspocus } = await import("@hocuspocus/server");
+  const { HocuspocusProvider } = await import("@hocuspocus/provider");
+  const Y = await import("yjs");
+  const { attachConnection } = await import("../collab/hocuspocus");
+
+  const hocuspocus = new Hocuspocus({});
+  const wss = new WebSocketServer({ noServer: true });
+  const server = createServer((_req, res) => res.end("ok"));
+  server.on("upgrade", (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => attachConnection(hocuspocus, ws, request));
+  });
+  await new Promise<void>((listo) => server.listen(0, "127.0.0.1", listo));
+  const { port } = server.address() as { port: number };
+
+  const cliente = () => {
+    const doc = new Y.Doc();
+    const provider = new HocuspocusProvider({ url: `ws://127.0.0.1:${port}`, name: "pagina", document: doc });
+    return { doc, provider };
+  };
+  const a = cliente();
+  const b = cliente();
+  await Promise.race([
+    new Promise<void>((sincronizado) => b.provider.on("synced", () => sincronizado())),
+    new Promise((_, falla) =>
+      setTimeout(() => falla(new Error("el servidor de colaboración no contesta: ¿sigue enganchado el socket?")), 5000),
+    ),
+  ]);
+  a.doc.getText("t").insert(0, "hola");
+  await new Promise((espera) => setTimeout(espera, 300));
+  assert.equal(b.doc.getText("t").toString(), "hola", "el servidor de colaboración no reparte los cambios");
+
+  a.provider.destroy();
+  b.provider.destroy();
+  server.close();
+}
+
+compruebaColaboracion()
+  .then(() => {
+    console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces, reglas, cálculos y colaboración");
+    process.exit(0);
+  })
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });

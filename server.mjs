@@ -13,7 +13,7 @@
 import { createServer } from "node:http";
 import next from "next";
 import { WebSocketServer } from "ws";
-import { createHocuspocus } from "./collab/dist/hocuspocus.mjs";
+import { attachConnection, createHocuspocus } from "./collab/dist/hocuspocus.mjs";
 
 const port = Number(process.env.PORT || 3000);
 const hostname = process.env.HOSTNAME || "0.0.0.0";
@@ -37,9 +37,7 @@ server.on("upgrade", (request, socket, head) => {
     socket.destroy();
     return;
   }
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    hocuspocus.handleConnection(ws, request);
-  });
+  wss.handleUpgrade(request, socket, head, (ws) => attachConnection(hocuspocus, ws, request));
 });
 
 server.listen(port, hostname, () => {
