@@ -7,7 +7,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Tu espacio: notas, bases de datos y gráficas reales. Self-hosted.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
+    // El mismo naranja que el icono: la pantalla de arranque es una N blanca sobre
+    // la marca, no un destello en blanco.
+    background_color: "#ff5c28",
     theme_color: "#ff5c28",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },

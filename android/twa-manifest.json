@@ -10,12 +10,12 @@
   "navigationColorDark": "#191918",
   "navigationDividerColor": "#E8E6E2",
   "navigationDividerColorDark": "#2C2C29",
-  "backgroundColor": "#FFFFFF",
+  "backgroundColor": "#FF5C28",
   "enableNotifications": true,
   "startUrl": "/",
   "iconUrl": "https://notiono.monrealperez.com/icon-512.png",
   "maskableIconUrl": "https://notiono.monrealperez.com/icon-512.png",
-  "appVersionCode": 1,
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://notiono.monrealperez.com/manifest.webmanifest",
@@ -35,5 +35,5 @@
     "alias": "notiono"
   },
   "splashScreenFadeOutDuration": 300,
-  "appVersion": "1.0.0"
+  "appVersion": "1.1.0"
 }
