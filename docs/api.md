@@ -82,7 +82,8 @@ Cuerpo:
 }
 ```
 
-Eventos: `record.created`, `record.updated` (incluye `fieldId`) y `record.deleted`.
+Eventos: `record.created`, `record.updated` (incluye `fieldId`), `record.deleted`,
+`page.created` y `page.published` (incluye la ruta pública).
 
 Cabeceras:
 
@@ -98,5 +99,8 @@ const esperado = crypto.createHmac("sha256", SECRETO).update(cuerpoCrudo).digest
 const valido = esperado === req.headers["x-notiono-signature"];
 ```
 
-El secreto se muestra **una sola vez** al crear el aviso. Notiono no reintenta los envíos
-fallidos: en Ajustes se ve el código del último intento (`0` = no respondió).
+El secreto se muestra **una sola vez** al crear el aviso.
+
+Si tu servicio no responde o falla por su lado (5xx), Notiono reintenta **tres veces**
+(1 s, 5 s y 25 s). Si el destino rechaza la petición (4xx) no insiste, porque reintentarlo
+daría el mismo resultado. En Ajustes se ve el código del último intento (`0` = no respondió).

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { trpc } from "@/trpc/react";
+import { WEBHOOK_EVENTS } from "@/lib/webhookEvents";
 
 export default function SettingsPage() {
   const { data: me } = trpc.auth.me.useQuery();
@@ -262,8 +263,9 @@ function WebhooksSection() {
     <section className="mt-8">
       <h2 className="font-display mb-1 font-bold">Avisos salientes (webhooks)</h2>
       <p className="mb-3 text-xs text-[var(--muted)]">
-        Cada vez que se cree, edite o borre una fila, Notiono enviará un POST con el cambio a esta
-        dirección. El cuerpo va firmado en la cabecera <code>X-Notiono-Signature</code> (HMAC-SHA256
+        Notiono enviará un POST a esta dirección cuando se cree, edite o borre una fila, se cree
+        una página o se publique una en la web. Si tu servicio no responde, lo reintenta tres veces
+        (1 s, 5 s y 25 s). El cuerpo va firmado en la cabecera <code>X-Notiono-Signature</code> (HMAC-SHA256
         con el secreto), para que puedas comprobar que el aviso viene de aquí.
       </p>
       <div className="flex gap-2">
@@ -276,7 +278,7 @@ function WebhooksSection() {
         <button
           onClick={() =>
             url.trim() &&
-            create.mutate({ url: url.trim(), events: ["record.created", "record.updated", "record.deleted"] })
+            create.mutate({ url: url.trim(), events: [...WEBHOOK_EVENTS] })
           }
           disabled={create.isPending || !url.trim()}
           className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50"

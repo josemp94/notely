@@ -1,8 +1,12 @@
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
+import { WEBHOOK_EVENTS, type WebhookEvent } from "@/lib/webhookEvents";
 
-export const WEBHOOK_EVENTS = ["record.created", "record.updated", "record.deleted"] as const;
-export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
+export { WEBHOOK_EVENTS, type WebhookEvent };
+
+/** Esperas entre reintentos. Tres intentos bastan para un servicio que se reinicia. */
+const REINTENTOS_MS = [1000, 5000, 25000];
+
 
 /** Firma del cuerpo, para que quien recibe pueda comprobar que el aviso es nuestro. */
 export function signPayload(secret: string, body: string): string {
@@ -28,22 +32,7 @@ export function dispatchWebhooks(workspaceId: string, event: WebhookEvent, data:
       const body = JSON.stringify({ event, workspaceId, at: new Date().toISOString(), data });
       await Promise.all(
         targets.map(async (hook) => {
-          let status = 0;
-          try {
-            const res = await fetch(hook.url, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-Notiono-Event": event,
-                "X-Notiono-Signature": signPayload(hook.secret, body),
-              },
-              body,
-              signal: AbortSignal.timeout(5000),
-            });
-            status = res.status;
-          } catch {
-            status = 0; // no respondió: se anota para poder diagnosticarlo en Ajustes
-          }
+          const status = await deliver(hook.url, hook.secret, event, body);
           await db.webhook.update({
             where: { id: hook.id },
             data: { lastStatus: status, lastAt: new Date() },
@@ -54,4 +43,35 @@ export function dispatchWebhooks(workspaceId: string, event: WebhookEvent, data:
       // Un fallo enviando avisos nunca debe romper la operación que los provocó.
     }
   })();
+}
+
+/**
+ * Envía el aviso y reintenta si el destino no responde o falla por su lado (5xx).
+ * Un rechazo del propio destino (4xx) no se reintenta: reintentarlo daría igual.
+ * Devuelve el código del último intento (0 = no respondió).
+ */
+export async function deliver(url: string, secret: string, event: string, body: string): Promise<number> {
+  let status = 0;
+  for (let intento = 0; intento <= REINTENTOS_MS.length; intento++) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Notiono-Event": event,
+          "X-Notiono-Signature": signPayload(secret, body),
+        },
+        body,
+        signal: AbortSignal.timeout(5000),
+      });
+      status = res.status;
+      if (res.ok || (res.status >= 400 && res.status < 500)) return status;
+    } catch {
+      status = 0; // no respondió (servicio caído, DNS, timeout…)
+    }
+    const espera = REINTENTOS_MS[intento];
+    if (espera === undefined) break;
+    await new Promise((r) => setTimeout(r, espera));
+  }
+  return status;
 }

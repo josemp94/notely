@@ -7,6 +7,7 @@ import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { TEMPLATES } from "@/lib/templates";
 import { fetchLinkPreview } from "../linkPreview";
 import { createCollabToken } from "../collabToken";
+import { dispatchWebhooks } from "../webhooks";
 
 /** Días que aguanta una página en la papelera antes de la auto-purga (también en /trash). */
 const TRASH_TTL_DAYS = 30;
@@ -173,7 +174,7 @@ export const pagesRouter = router({
         orderBy: { order: "desc" },
         select: { order: true },
       });
-      return ctx.db.page.create({
+      const creada = await ctx.db.page.create({
         data: {
           workspaceId: ctx.workspace.id,
           parentId: input.parentId ?? null,
@@ -182,6 +183,12 @@ export const pagesRouter = router({
           content: [],
         },
       });
+      dispatchWebhooks(ctx.workspace.id, "page.created", {
+        pageId: creada.id,
+        title: creada.title,
+        parentId: creada.parentId,
+      });
+      return creada;
     }),
 
   /** Crea una página o base de datos prehecha a partir de una plantilla de la galería. */
@@ -378,11 +385,17 @@ export const pagesRouter = router({
       });
       if (!page) throw new TRPCError({ code: "NOT_FOUND" });
       if (page.publicToken) return { id: page.id, publicToken: page.publicToken };
-      return ctx.db.page.update({
+      const publicada = await ctx.db.page.update({
         where: { id: page.id },
         data: { publicToken: randomBytes(16).toString("base64url") },
-        select: { id: true, publicToken: true },
+        select: { id: true, publicToken: true, title: true },
       });
+      dispatchWebhooks(ctx.workspace.id, "page.published", {
+        pageId: publicada.id,
+        title: publicada.title,
+        url: `/s/${publicada.publicToken}`,
+      });
+      return publicada;
     }),
 
   /** Retira la página de la web (invalida la URL pública). */

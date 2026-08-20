@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "../trpc";
-import { WEBHOOK_EVENTS } from "../webhooks";
+import { WEBHOOK_EVENTS } from "@/lib/webhookEvents";
 
 /** Avisos salientes del espacio. Solo el propietario los gestiona. */
 export const webhooksRouter = router({
