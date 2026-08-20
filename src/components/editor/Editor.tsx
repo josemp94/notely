@@ -4,8 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Database, Download, FileText, Lightbulb, Link as LinkIcon, Link2, ListTree } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
-import { getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
+import {
+  FloatingComposerController,
+  FloatingThreadController,
+  getDefaultReactSlashMenuItems,
+  SuggestionMenuController,
+  useCreateBlockNote,
+} from "@blocknote/react";
 import { es } from "@blocknote/core/locales";
+import { CommentsExtension } from "@blocknote/core/comments";
 import { withCollaboration } from "@blocknote/core/yjs";
 import { useCollaboration } from "./useCollaboration";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -71,12 +78,18 @@ export function Editor({
       ? withCollaboration({
           dictionary: es,
           schema: editorSchema,
+          // Comentarios en línea: los hilos viven en el mismo documento compartido,
+          // así que se sincronizan y se guardan con él, sin modelo aparte.
+          extensions: [
+            CommentsExtension({ threadStore: collab.threadStore, resolveUsers: collab.userStore }),
+          ],
           collaboration: {
             // El proveedor expone awareness como null hasta conectar; el tipo de
             // BlockNote lo espera opcional.
             provider: collab.provider as unknown as { awareness: undefined },
             fragment: collab.fragment,
             user: collab.user,
+            resolveUsers: collab.userStore,
             showCursorLabels: "activity",
           },
         })
@@ -177,6 +190,14 @@ export function Editor({
       </div>
 
       <BlockNoteView editor={editor} editable={canEdit} onChange={scheduleSave} slashMenu={false} theme={theme}>
+        {/* Comentar una selección: el compositor y el hilo flotante solo existen
+            con la edición simultánea activa, que es donde viven los hilos. */}
+        {collab && (
+          <>
+            <FloatingComposerController />
+            <FloatingThreadController />
+          </>
+        )}
         <MentionMenu editor={editor} pageId={pageId} />
         {/* Menú "/" propio: los ítems por defecto + "Base de datos" embebida. */}
         <SuggestionMenuController

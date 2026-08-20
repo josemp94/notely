@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
+import { createUserStore } from "@blocknote/core";
+import { DefaultThreadStoreAuth } from "@blocknote/core/comments";
+import { YjsThreadStore } from "@blocknote/core/yjs";
 import { trpc } from "@/trpc/react";
 
 /** Colores de cursor: estables por usuario, para reconocerse de un vistazo. */
@@ -14,6 +17,10 @@ export type Collaboration = {
   fragment: Y.XmlFragment;
   provider: HocuspocusProvider;
   user: { name: string; color: string };
+  /** Hilos de comentarios en línea: viven en el mismo documento, así que se guardan solos. */
+  threadStore: YjsThreadStore;
+  /** Cache compartida de nombres y avatares, para cursores y comentarios. */
+  userStore: ReturnType<typeof createUserStore>;
 };
 
 /**
@@ -30,6 +37,7 @@ export function useCollaboration(
 ): Collaboration | null {
   const url = process.env.NEXT_PUBLIC_COLLAB_URL;
   const [ready, setReady] = useState<string | null>(null); // token de la sala
+  const utils = trpc.useUtils();
   const ensureYdoc = trpc.pages.ensureYdoc.useMutation();
   const collabToken = trpc.pages.collabToken.useMutation();
 
@@ -60,12 +68,28 @@ export function useCollaboration(
       // Permiso firmado de corta vida emitido por la web para esta página.
       token: ready,
     });
+    // Los miembros del espacio, para poner cara y nombre a cursores y comentarios.
+    const userStore = createUserStore(async (userIds: string[]) => {
+      const miembros = await utils.workspace.members.fetch();
+      return userIds.map((id) => {
+        const m = miembros?.members?.find((x) => x.userId === id);
+        return { id, username: m?.name || m?.email || "Alguien", avatarUrl: "" };
+      });
+    });
+
     return {
       provider,
       fragment: doc.getXmlFragment("document-store"),
       user: { name: me.name || me.email || "Alguien", color: colorFor(me.id) },
+      threadStore: new YjsThreadStore(
+        me.id,
+        doc.getMap("threads"),
+        // Un invitado de solo lectura no puede comentar: el servidor rechaza sus escrituras.
+        new DefaultThreadStoreAuth(me.id, "editor"),
+      ),
+      userStore,
     };
-  }, [url, ready, me, pageId]);
+  }, [url, ready, me, pageId, utils]);
 
   // Al cambiar de página se cierra la conexión anterior.
   useEffect(() => {
