@@ -297,7 +297,7 @@ export function DbToolbar({
                     {fields
                       .filter((f) =>
                         view.type === "kanban"
-                          ? f.type === "select" || f.type === "status"
+                          ? ["select", "status", "person", "checkbox"].includes(f.type)
                           : !["rollup", "formula", "relation", "files", "created_by", "last_edited_by", "created_time", "last_edited_time"].includes(
                               f.type,
                             ),

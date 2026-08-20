@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { trpc } from "@/trpc/react";
 import { optionsOf, type FieldLite } from "@/lib/cellText";
+import { usePeople } from "./Cell";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
@@ -43,9 +44,12 @@ export function KanbanView({
   const updateCell = trpc.db.updateCell.useMutation({ onSuccess: invalidate });
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const [dragId, setDragId] = useState<string | null>(null);
+  const people = usePeople();
 
-  // Estado y Selección comparten formato de opciones: ambos pueden agrupar el tablero.
-  const groupable = (f: FieldLite) => f.type === "select" || f.type === "status";
+  // Además de Selección y Estado, el tablero puede repartirse por responsable
+  // (una columna por miembro) o por una casilla (hecho / sin hacer).
+  const groupable = (f: FieldLite) =>
+    f.type === "select" || f.type === "status" || f.type === "person" || f.type === "checkbox";
   const groupField =
     fields.find((f) => f.id === groupByFieldId && groupable(f)) ?? fields.find(groupable);
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
@@ -55,32 +59,60 @@ export function KanbanView({
   if (!groupField) {
     return (
       <p className="px-2 py-6 text-[var(--muted)]">
-        Añade un campo de tipo <b>Selección</b> para usar la vista Kanban.
+        Añade un campo de tipo <b>Selección</b>, <b>Estado</b>, <b>Persona</b> o <b>Casilla</b> para
+        usar la vista Kanban.
       </p>
     );
   }
 
-  const options = optionsOf(groupField);
-  const columns = [
-    ...options.map((o) => ({ id: o.id, label: o.label, color: o.color ?? "gray" })),
-    { id: "", label: "Sin asignar", color: "gray" },
-  ];
+  // Cada tipo arma sus columnas de forma distinta, pero todas son { id, label, color }.
+  const columns =
+    groupField.type === "person"
+      ? [
+          ...[...people.entries()].map(([id, name]) => ({ id, label: name, color: "blue" })),
+          { id: "", label: "Sin asignar", color: "gray" },
+        ]
+      : groupField.type === "checkbox"
+        ? [
+            { id: "true", label: "Hecho", color: "green" },
+            { id: "", label: "Sin hacer", color: "gray" },
+          ]
+        : [
+            ...optionsOf(groupField).map((o) => ({ id: o.id, label: o.label, color: o.color ?? "gray" })),
+            { id: "", label: "Sin asignar", color: "gray" },
+          ];
 
   const cardTitle = (r: Rec) => {
     const v = titleField ? r.cells?.[titleField.id] : undefined;
     return (typeof v === "string" && v) || "Sin título";
   };
 
+  /** Valor que hay que guardar al soltar una tarjeta en una columna, según el tipo. */
+  function valueForColumn(colId: string): unknown {
+    if (!colId) return null;
+    if (groupField!.type === "person") return [colId]; // el campo Persona guarda una lista
+    if (groupField!.type === "checkbox") return true;
+    return colId;
+  }
+
+  /** ¿A qué columna pertenece una fila? */
+  function columnOf(r: Rec): string {
+    const v = r.cells?.[groupField!.id];
+    if (groupField!.type === "person") return Array.isArray(v) && v.length ? String(v[0]) : "";
+    if (groupField!.type === "checkbox") return v ? "true" : "";
+    return String(v ?? "");
+  }
+
   function drop(colId: string) {
     if (!dragId) return;
-    updateCell.mutate({ recordId: dragId, fieldId: groupField!.id, value: colId || null });
+    updateCell.mutate({ recordId: dragId, fieldId: groupField!.id, value: valueForColumn(colId) });
     setDragId(null);
   }
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-4">
       {columns.map((col) => {
-        const cards = records.filter((r) => (r.cells?.[groupField.id] ?? "") === col.id);
+        const cards = records.filter((r) => columnOf(r) === col.id);
         return (
           <div
             key={col.id || "none"}
@@ -115,7 +147,10 @@ export function KanbanView({
             </div>
             <button
               onClick={() =>
-                addRecord.mutate({ collectionId, cells: col.id ? { [groupField.id]: col.id } : {} })
+                addRecord.mutate({
+                  collectionId,
+                  cells: col.id ? { [groupField.id]: valueForColumn(col.id) } : {},
+                })
               }
               className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-[var(--muted)] hover:text-brand"
             >

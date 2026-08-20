@@ -778,7 +778,7 @@ export const dbRouter = router({
       const names: Record<string, string> = { table: "Tabla", kanban: "Kanban", calendar: "Calendario", gallery: "Galería", chart: "Gráfica", list: "Lista", form: "Formulario", timeline: "Cronograma" };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let config: any = {};
-      if (input.type === "kanban") config = { groupByFieldId: firstOf("select") };
+      if (input.type === "kanban") config = { groupByFieldId: firstOf("select") ?? firstOf("status") ?? firstOf("person") };
       else if (input.type === "calendar" || input.type === "timeline") config = { dateFieldId: firstOf("date") };
       else if (input.type === "chart") config = { chartType: "bar", xFieldId: firstOf("select"), yFieldId: null, agg: "count" };
       return ctx.db.view.create({
@@ -850,7 +850,7 @@ export const dbRouter = router({
       const prev = (v.config as any) ?? {};
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let config: any = { filters: prev.filters, sorts: prev.sorts };
-      if (input.type === "kanban") config.groupByFieldId = prev.groupByFieldId ?? firstOf("select");
+      if (input.type === "kanban") config.groupByFieldId = prev.groupByFieldId ?? firstOf("select") ?? firstOf("status") ?? firstOf("person");
       else if (input.type === "calendar" || input.type === "timeline") config.dateFieldId = prev.dateFieldId ?? firstOf("date");
       else if (input.type === "chart")
         config = { ...config, chartType: prev.chartType ?? "bar", xFieldId: prev.xFieldId ?? firstOf("select"), yFieldId: prev.yFieldId ?? null, agg: prev.agg ?? "count" };
