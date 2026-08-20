@@ -31,21 +31,14 @@ Está construido con **Yjs** y un servidor **Hocuspocus** propio.
 
 ## Puesta en marcha en el NAS
 
-**Todo va por `notiono.monrealperez.com`, sin subdominio.** Un nginx pequeño dentro del
-propio compose (`notiono-proxy`, `nginx/notiono.conf`) escucha en el puerto **3010** —el
-que el DSM ya conocía— y reparte: `/collab` al servidor de colaboración y el resto a la
-web. La app y el servidor de colaboración dejan de publicar puertos al host.
-
-1. En el DSM, la regla de proxy inverso **sigue igual** (`notiono.monrealperez.com` →
-   `localhost:3010`). Solo hay que añadirle, en **Personalizar cabecera**, el botón
-   **Crear → WebSocket** (mete `Upgrade` y `Connection`). Sin eso, la conexión se corta.
-2. `NEXT_PUBLIC_COLLAB_URL` se incrusta **al compilar** (variable `NEXT_PUBLIC_`), por eso
-   va en `args` del build de `app`. Si cambias de dominio hay que reconstruir la imagen,
-   no basta con reiniciar el contenedor.
-3. Desplegar con `docker compose up -d --build`.
-4. Comprobación: dos navegadores en la misma página; al escribir en uno aparece en el otro
-   con el cursor de la otra persona. Si no, `docker logs notiono-collab` y
-   `docker logs notiono-proxy`.
-
-Nota: el proxy fija `client_max_body_size 16m` porque las portadas se suben por ahí; con el
-valor por defecto de nginx (1 MB) fallarían las imágenes grandes.
+1. En `docker-compose.yml` ya está el servicio `collab` (puerto host **3011**).
+2. `NEXT_PUBLIC_COLLAB_URL` se incrusta **al compilar** (es una variable `NEXT_PUBLIC_`),
+   así que va como `args` del build de `app`, no como variable de entorno del contenedor.
+   Si cambias el dominio, hay que reconstruir la imagen, no basta con reiniciar.
+3. En **DSM → Portal de inicio de sesión → Avanzado → Proxy inverso**, crear una regla:
+   - Origen: `HTTPS` · `collab.notiono.monrealperez.com` · puerto `443`
+   - Destino: `HTTP` · `localhost` · puerto `3011`
+   - En **Personalizar cabecera**, botón **Crear → WebSocket** (añade `Upgrade` y `Connection`).
+4. El subdominio debe resolver (registro DNS/Cloudflare igual que `notiono`).
+5. Comprobación: dos navegadores en la misma página; al escribir en uno aparece en el otro
+   con el cursor de la otra persona. Si no, mirar `docker logs notiono-collab`.

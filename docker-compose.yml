@@ -50,6 +50,8 @@ services:
         condition: service_completed_successfully
     expose:
       - "1234"
+    ports:
+      - "3011:1234"
     restart: unless-stopped
 
   app:
@@ -74,28 +76,13 @@ services:
       OIDC_CLIENT_SECRET: "2ZAb6KOLZ9A6LnpbGqCMCsc2SEBnUJtl"
       OIDC_REDIRECT_URI: "https://notiono.monrealperez.com/api/auth/oidc/callback"
       OIDC_PROVIDER_NAME: "Synology"
-    expose:
-      - "3000"
+    ports:
+      - "3010:3000"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
-
-  proxy:
-    # Un único puerto para todo: la web y, bajo /collab, el WebSocket de la
-    # edición simultánea. Así el proxy inverso del DSM sigue apuntando a un solo
-    # sitio y no hace falta subdominio.
-    image: nginx:1.27-alpine
-    container_name: notiono-proxy
-    volumes:
-      - ./nginx/notiono.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - app
-      - collab
-    ports:
-      - "3010:80"
     restart: unless-stopped
 
 volumes:
