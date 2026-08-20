@@ -165,6 +165,7 @@ export function TableView({
       ? fields.find((f) => f.id === cfg.subGroupByFieldId)
       : undefined;
   const hasCalcs = fields.some((f) => calcs[f.id]);
+  const wrap: boolean = Boolean(cfg.wrapText);
 
   /** Una fila de la tabla; `depth`/`hasChildren` solo se usan sin agrupar (árbol de subtareas). */
   const renderRow = ({ rec: r, depth, hasChildren }: { rec: Rec; depth: number; hasChildren: boolean }) => (
@@ -241,6 +242,7 @@ export function TableView({
             <Cell
               field={f}
               value={r.cells?.[f.id]}
+              wrap={wrap}
               createdAt={r.createdAt}
               updatedAt={r.updatedAt}
               createdById={r.createdById}
@@ -253,7 +255,7 @@ export function TableView({
         const style = w ? { maxWidth: w, width: w } : undefined;
         if (i !== 0)
           return (
-            <td key={f.id} className="overflow-hidden px-2 py-1" style={style}>
+            <td key={f.id} className={`px-2 py-1 ${wrap ? "align-top" : "overflow-hidden"}`} style={style}>
               {cell}
             </td>
           );
@@ -261,7 +263,7 @@ export function TableView({
         return (
           <td
             key={f.id}
-            className="sticky left-14 z-10 overflow-hidden px-2 py-1"
+            className={`sticky left-14 z-10 px-2 py-1 ${wrap ? "align-top" : "overflow-hidden"}`}
             style={{ ...style, background: colorOf(r) ?? "var(--background)" }}
           >
             <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>

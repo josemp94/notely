@@ -26,6 +26,7 @@ export function Cell({
   createdById,
   updatedById,
   seq,
+  wrap = false,
 }: {
   field: FieldLite;
   value: unknown;
@@ -36,6 +37,8 @@ export function Cell({
   createdById?: string | null;
   updatedById?: string | null;
   seq?: number;
+  /** La vista pide envolver el texto largo en vez de recortarlo. */
+  wrap?: boolean;
 }) {
   // ID incremental (solo lectura), con prefijo opcional
   if (field.type === "id") {
@@ -135,12 +138,38 @@ export function Cell({
   }
 
   // text (no controlado; commit al salir)
+  if (wrap) return <WrappedTextCell value={value} onCommit={onCommit} />;
   return (
     <input
       type="text"
       defaultValue={value == null ? "" : String(value)}
       onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
       className="w-full bg-transparent px-1 py-0.5 text-sm outline-none"
+    />
+  );
+}
+
+/**
+ * Celda de texto con el contenido envuelto en varias líneas (opción «Envolver
+ * texto» de la vista). Crece con lo escrito en vez de recortar.
+ */
+function WrappedTextCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const ajustar = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useEffect(() => ajustar(ref.current), [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      defaultValue={value == null ? "" : String(value)}
+      onInput={(e) => ajustar(e.currentTarget)}
+      onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
+      className="w-full resize-none bg-transparent px-1 py-0.5 text-sm outline-none"
     />
   );
 }

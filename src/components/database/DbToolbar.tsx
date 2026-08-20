@@ -345,6 +345,17 @@ export function DbToolbar({
                 )}
               </div>
             )}
+            {view.type === "table" && (
+              <label className="my-1 flex items-center justify-between gap-2 border-t border-[var(--border)] px-2 pt-2 text-sm">
+                <span>Envolver texto</span>
+                <input
+                  type="checkbox"
+                  checked={Boolean(view.config?.wrapText)}
+                  onChange={(e) => saveConfig({ wrapText: e.target.checked })}
+                  className="size-4 accent-[var(--color-brand,#ff5c28)]"
+                />
+              </label>
+            )}
             {(view.type === "table" || view.type === "gallery") && (
               <div className="my-1 border-t border-[var(--border)] pt-1">
                 <label className="flex items-center justify-between gap-2 px-2 py-1 text-sm">
