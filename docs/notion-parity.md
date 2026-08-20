@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~cbfd03a). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~414ca6c). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -71,9 +71,10 @@ Hecho:
 
 Falta:
 - ✅ **Agrupar** en Tabla, Kanban, Lista y Galería, y **subagrupar** en la Tabla.
+- ✅ **Duplicar vista** con todos sus ajustes.
 - ❌ **Panel de registro** en Kanban; modos side/center/full; navegar entre registros; comentarios de fila.
 - ✅ **Ancho de columna** ajustable arrastrando y persistente por vista (doble clic vuelve al automático).
-- ✅ **Primera columna congelada** al desplazar en horizontal. ❌ Envolver texto y elegir hasta qué columna congelar.
+- ✅ **Primera columna congelada** al desplazar en horizontal y **envolver texto** por vista. ❌ Elegir hasta qué columna congelar.
 - ✅ **Reordenar filas arrastrando** (cuando la vista no tiene orden ni agrupación) y **duplicar fila** con sus subtareas.
 - ❌ Reordenar columnas arrastrando.
 - ❌ Fila de cálculos fuera de la Tabla.
@@ -174,8 +175,10 @@ el panel de registro, el historial y las páginas publicadas.
 > webhooks con más eventos y reintentos · edición simultánea servida por la propia app en
 > `/collab` · edición sin conexión (y-indexeddb) · subagrupar en la Tabla.
 
+> Hecho también: envolver texto · duplicar vista · Kanban por responsable o por casilla.
+
 **A — Lo siguiente, barato y visible**
-1. Envolver texto en celdas y elegir hasta qué columna congelar.
+1. Elegir hasta qué columna congelar (necesita saber el ancho de cada una).
 2. **Columnas** en el editor (a mano: el paquete oficial de BlockNote es de pago).
 4. Más eventos de webhook (páginas, comentarios) y reintentos con espera.
 5. Envolver texto en celdas y elegir hasta qué columna congelar.
