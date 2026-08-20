@@ -10,3 +10,6 @@ export function isTyping(target: EventTarget | null): boolean {
   const tag = el.tagName;
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
+
+/** Clic derecho sobre la pestaña de una vista: abre su menú de opciones. */
+export const VIEW_MENU_EVENT = "notiono:menu-vista";

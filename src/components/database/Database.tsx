@@ -3,12 +3,13 @@
 import { useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
+import { VIEW_MENU_EVENT } from "@/lib/shortcuts";
 import { PageIcon } from "@/components/PageIcon";
 import { AddCoverButton, CoverBand } from "@/components/PageCover";
 import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
 import { usePeople } from "./Cell";
 import { displayValue } from "@/lib/cellText";
-import { DbToolbar, ViewIcon } from "./DbToolbar";
+import { AddViewButton, DbToolbar, ViewIcon } from "./DbToolbar";
 import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
 import { ChartView } from "./ChartView";
@@ -125,7 +126,7 @@ export function Database({
       )}
 
       <div className="mb-4 flex items-end justify-between gap-2 border-b border-[var(--border)]">
-        <div className="flex gap-1 overflow-x-auto">
+        <div className="flex items-center gap-0.5 overflow-x-auto">
           {col.views.map((v) => (
             <button
               key={v.id}
@@ -133,9 +134,18 @@ export function Database({
                 setActiveViewId(v.id);
                 onViewChange?.(v.id);
               }}
+              // Clic derecho: las opciones de la vista, donde uno las busca.
+              onContextMenu={(e) => {
+                if (!canEdit) return;
+                e.preventDefault();
+                setActiveViewId(v.id);
+                onViewChange?.(v.id);
+                window.dispatchEvent(new Event(VIEW_MENU_EVENT));
+              }}
+              title={canEdit ? `${v.name} · clic derecho para sus opciones` : v.name}
               className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm ${
                 active?.id === v.id
-                  ? "border-b-2 border-brand font-medium text-brand"
+                  ? "border-b-2 border-brand font-medium text-[var(--foreground)]"
                   : "text-[var(--muted)] hover:text-[var(--foreground)]"
               }`}
             >
@@ -143,6 +153,9 @@ export function Database({
               {v.name}
             </button>
           ))}
+          {canEdit && (
+            <AddViewButton pageId={pageId} collectionId={col.id} onViewCreated={(id) => setActiveViewId(id)} />
+          )}
         </div>
         <div className="flex items-center gap-1 pb-1">
           {searchOpen ? (

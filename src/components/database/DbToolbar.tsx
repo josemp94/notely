@@ -1,10 +1,12 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowUpDown, BarChart3, Calendar, ClipboardList, Columns3, Copy, Download, Eye, EyeOff, Filter as FilterIcon, GanttChart, LayoutGrid, List, Pencil, Plus, Settings, Table, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
+import { VIEW_MENU_EVENT } from "@/lib/shortcuts";
 import {
   countFilters,
   isFilterGroup,
@@ -36,6 +38,18 @@ export function ViewIcon({ type, size = 14 }: { type: string; size?: number }) {
   return <I size={size} />;
 }
 
+/**
+ * Menú colgante de un botón (filtros, opciones de columna, tipos de vista…).
+ *
+ * Se pinta FUERA del árbol de la página, pegado a su botón por coordenadas. Antes
+ * colgaba del botón con posición absoluta y, dentro de la tabla —que se desplaza en
+ * horizontal—, el menú quedaba recortado: el de «añadir columna» se veía a medias.
+ * Al sacarlo del árbol ya no hay caja que lo recorte, y de paso se le pone tope de
+ * altura y se le impide salirse de la pantalla.
+ *
+ * `className` sigue diciendo el ancho y hacia qué lado alinea (`right-0` = por la
+ * derecha, que es como lo piden casi todos los botones de la barra).
+ */
 export function Popover({
   children,
   onClose,
@@ -45,21 +59,64 @@ export function Popover({
   onClose: () => void;
   className?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ancla = useRef<HTMLSpanElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+  const porLaDerecha = className.includes("right-0");
+
+  useLayoutEffect(() => {
+    const colocar = () => {
+      const boton = ancla.current?.parentElement?.getBoundingClientRect();
+      const caja = panel.current?.getBoundingClientRect();
+      if (!boton) return;
+      const ancho = caja?.width || 320;
+      const alto = caja?.height || 240;
+      const margen = 8;
+      const izq = porLaDerecha ? boton.right - ancho : boton.left;
+      // Debajo del botón, que es donde se espera. Solo se va arriba si no cabe
+      // debajo Y arriba hay más sitio: subirlo a un hueco aún más pequeño sería
+      // cambiar un menú apretado por otro peor.
+      const huecoAbajo = window.innerHeight - boton.bottom - margen;
+      const huecoArriba = boton.top - margen;
+      const debajo = alto <= huecoAbajo || huecoAbajo >= huecoArriba;
+      setPos({
+        top: debajo ? boton.bottom + 4 : Math.max(margen, boton.top - Math.min(alto, huecoArriba) - 4),
+        left: Math.max(margen, Math.min(izq, window.innerWidth - ancho - margen)),
+        maxHeight: debajo ? huecoAbajo : huecoArriba,
+      });
+    };
+    colocar();
+    // Si la página se mueve bajo el menú, el menú se mueve con ella.
+    window.addEventListener("scroll", colocar, true);
+    window.addEventListener("resize", colocar);
+    return () => {
+      window.removeEventListener("scroll", colocar, true);
+      window.removeEventListener("resize", colocar);
+    };
+  }, [porLaDerecha]);
+
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as globalThis.Node)) onClose();
+      if (panel.current && !panel.current.contains(e.target as globalThis.Node)) onClose();
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [onClose]);
+
   return (
-    <div
-      ref={ref}
-      className={`absolute top-full z-30 mt-1 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl ${className}`}
-    >
-      {children}
-    </div>
+    <>
+      <span ref={ancla} className="hidden" />
+      {createPortal(
+        <div
+          ref={panel}
+          style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, maxHeight: pos?.maxHeight }}
+          className={`fixed z-[60] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl ${className.replace(/\b(right|left)-0\b/g, "")}`}
+        >
+          {children}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -107,6 +164,15 @@ export function DbToolbar({
     },
   });
 
+  // El clic derecho sobre la pestaña de una vista abre este mismo menú: la acción
+  // viaja por un evento de ventana, como los atajos, para no tener que subir el
+  // estado del menú hasta la tabla y volver a bajarlo.
+  useEffect(() => {
+    const abrir = () => setOpen("cfg");
+    window.addEventListener(VIEW_MENU_EVENT, abrir);
+    return () => window.removeEventListener(VIEW_MENU_EVENT, abrir);
+  }, []);
+
   const filters: FilterNode[] = Array.isArray(view.config?.filters) ? view.config.filters : [];
   const nFilters = countFilters(filters);
   const filterOp: "and" | "or" = view.config?.filterOp === "or" ? "or" : "and";
@@ -122,9 +188,12 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "filter" ? null : "filter")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--hover)] ${nFilters ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${nFilters ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+          title={nFilters ? `Filtrar (${nFilters})` : "Filtrar"}
+          aria-label="Filtrar"
         >
-          <FilterIcon size={14} /> Filtrar{nFilters ? ` (${nFilters})` : ""}
+          <FilterIcon size={15} />
+          {!!nFilters && <span className="text-[11px] font-medium">{nFilters}</span>}
         </button>
         {open === "filter" && (
           <Popover onClose={() => setOpen(null)}>
@@ -157,9 +226,12 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "sort" ? null : "sort")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--hover)] ${sorts.length ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${sorts.length ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+          title={sorts.length ? `Ordenar (${sorts.length})` : "Ordenar"}
+          aria-label="Ordenar"
         >
-          <ArrowUpDown size={14} /> Ordenar{sorts.length ? ` (${sorts.length})` : ""}
+          <ArrowUpDown size={15} />
+          {!!sorts.length && <span className="text-[11px] font-medium">{sorts.length}</span>}
         </button>
         {open === "sort" && (
           <Popover onClose={() => setOpen(null)}>
@@ -220,9 +292,14 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "props" ? null : "props")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--hover)] ${hidden.length ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-[var(--hover)] ${hidden.length ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+          title="Propiedades: qué columnas se ven"
+          aria-label="Propiedades"
         >
-          <Eye size={14} /> Propiedades{hidden.length ? ` (${fields.length - hidden.length}/${fields.length})` : ""}
+          <Eye size={15} />
+          {!!hidden.length && (
+            <span className="text-[11px] font-medium">{fields.length - hidden.length}</span>
+          )}
         </button>
         {open === "props" && (
           <Popover onClose={() => setOpen(null)}>
@@ -422,35 +499,65 @@ export function DbToolbar({
           const { name, csv } = await utils.db.exportCsv.fetch({ collectionId });
           downloadText(`${name}.csv`, csv, "text/csv");
         }}
-        className="flex items-center gap-1 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--hover)]"
-        title="Exportar CSV"
+        className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
+        title="Exportar a CSV"
+        aria-label="Exportar a CSV"
       >
-        <Download size={14} /> CSV
+        <Download size={15} />
       </button>
 
-      {/* Añadir vista */}
-      <div className="relative">
-        <button
-          onClick={() => setOpen(open === "add" ? null : "add")}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--hover)]"
-        >
-          <Plus size={14} /> Vista
-        </button>
-        {open === "add" && (
-          <Popover onClose={() => setOpen(null)}>
-            <div className="mb-1 text-xs font-medium text-[var(--muted)]">Nueva vista</div>
-            {VIEW_TYPES.map((vt) => (
-              <button
-                key={vt.type}
-                onClick={() => addView.mutate({ collectionId, type: vt.type })}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]"
-              >
-                <vt.icon size={14} /> {vt.label}
-              </button>
-            ))}
-          </Popover>
-        )}
-      </div>
+    </div>
+  );
+}
+
+/**
+ * Botón «+» de añadir vista. Va pegado a las pestañas, que es donde se busca, y por
+ * eso no necesita decir «Vista»: se entiende por dónde está. Antes vivía al final de
+ * la barra de acciones, lejos de lo que crea.
+ */
+export function AddViewButton({
+  pageId,
+  collectionId,
+  onViewCreated,
+}: {
+  pageId: string;
+  collectionId: string;
+  onViewCreated: (id: string) => void;
+}) {
+  const utils = trpc.useUtils();
+  const [open, setOpen] = useState(false);
+  const addView = trpc.db.addView.useMutation({
+    onSuccess: async (v) => {
+      await utils.db.get.invalidate({ pageId });
+      onViewCreated(v.id);
+      setOpen(false);
+    },
+  });
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
+        title="Añadir una vista"
+        aria-label="Añadir una vista"
+      >
+        <Plus size={15} />
+      </button>
+      {open && (
+        <Popover onClose={() => setOpen(false)}>
+          <div className="mb-1 text-xs font-medium text-[var(--muted)]">Nueva vista</div>
+          {VIEW_TYPES.map((vt) => (
+            <button
+              key={vt.type}
+              onClick={() => addView.mutate({ collectionId, type: vt.type })}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]"
+            >
+              <vt.icon size={14} /> {vt.label}
+            </button>
+          ))}
+        </Popover>
+      )}
     </div>
   );
 }
