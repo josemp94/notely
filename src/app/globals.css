@@ -249,3 +249,12 @@ td input[type="text"] {
     --prev-level: 1.2em;
   }
 }
+
+/* Los menús colgantes son listas largas de opciones (los tipos de columna son 16).
+   Con el dedo, renglones de 28 px son una lotería: en táctil se separan. */
+@media (pointer: coarse) {
+  [data-menu] button,
+  [data-menu] a {
+    min-height: 40px;
+  }
+}

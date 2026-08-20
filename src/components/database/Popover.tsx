@@ -80,6 +80,7 @@ export function Popover({
       {createPortal(
         <div
           ref={panel}
+          data-menu=""
           // El tope de ancho es para el móvil: un menú de 320 px no cabe en una
           // pantalla de 320, y prefiero que se estreche a que se salga.
           style={{
