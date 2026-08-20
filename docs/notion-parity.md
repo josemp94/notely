@@ -1,7 +1,7 @@
 # Notiono — Biblia de paridad con Notion
 
 > Documento maestro para llevar Notiono lo más cerca posible de Notion 1:1.
-> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~406a37a). Sustituye al
+> **Inventario verificado leyendo el código el 19-ago-2026** (última revisión: commit ~cbfd03a). Sustituye al
 > gap-analysis de agosto-2026, que se había quedado muy desfasado.
 > Leyenda: ✅ hecho · 🟡 parcial · ❌ falta.
 >
@@ -70,7 +70,7 @@ Hecho:
 - ✅ Renombrar/borrar vista, «Mostrar como», exportar CSV, campo de fecha del Calendario, inicio/fin del Cronograma, config de Gráfica (barras/líneas/tarta/donut × contar/sumar/media).
 
 Falta:
-- ✅ **Agrupar** en Tabla, Kanban, Lista y Galería. ❌ Subagrupar (segundo nivel).
+- ✅ **Agrupar** en Tabla, Kanban, Lista y Galería, y **subagrupar** en la Tabla.
 - ❌ **Panel de registro** en Kanban; modos side/center/full; navegar entre registros; comentarios de fila.
 - ✅ **Ancho de columna** ajustable arrastrando y persistente por vista (doble clic vuelve al automático).
 - ✅ **Primera columna congelada** al desplazar en horizontal. ❌ Envolver texto y elegir hasta qué columna congelar.
@@ -170,13 +170,13 @@ el panel de registro, el historial y las páginas publicadas.
 > Hecho también el 19-ago-2026 (cuarta tanda): reglas de color · borrado reversible de filas ·
 > papelera de filas · webhooks salientes · **notificaciones push reales**.
 
-> Hecho también el 20-ago-2026: comentarios en línea · presencia · webhooks con más eventos
-> y reintentos · la edición simultánea servida por la propia app en `/collab`.
+> Hecho también el 20-ago-2026: comentarios en línea y su panel lateral · presencia ·
+> webhooks con más eventos y reintentos · edición simultánea servida por la propia app en
+> `/collab` · edición sin conexión (y-indexeddb) · subagrupar en la Tabla.
 
 **A — Lo siguiente, barato y visible**
-1. **Subagrupar** (segundo nivel) y panel lateral de hilos de comentarios (`ThreadsSidebar`).
-2. Envolver texto en celdas y elegir hasta qué columna congelar (necesita anchos conocidos).
-3. **Columnas** en el editor (a mano: el paquete oficial de BlockNote es de pago).
+1. Envolver texto en celdas y elegir hasta qué columna congelar.
+2. **Columnas** en el editor (a mano: el paquete oficial de BlockNote es de pago).
 4. Más eventos de webhook (páginas, comentarios) y reintentos con espera.
 5. Envolver texto en celdas y elegir hasta qué columna congelar.
 
