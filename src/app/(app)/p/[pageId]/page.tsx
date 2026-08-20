@@ -111,7 +111,7 @@ function Breadcrumbs({ pageId }: { pageId: string }) {
     <nav className="flex min-w-0 items-center gap-1 text-sm text-[var(--muted)]">
       <Link
         href="/"
-        className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
+        className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
       >
         {me?.workspace?.icon ? <span>{me.workspace.icon}</span> : <Folder size={13} />}
         <span className="max-w-32 truncate">{me?.workspace?.name ?? "Espacio"}</span>
@@ -127,7 +127,7 @@ function Breadcrumbs({ pageId }: { pageId: string }) {
           ) : (
             <Link
               href={`/p/${p.id}`}
-              className="flex min-w-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
+              className="flex min-w-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
             >
               {p.icon ? <span className="shrink-0">{p.icon}</span> : <FileText size={13} className="shrink-0" />}
               <span className="max-w-32 truncate">{p.title || "Sin título"}</span>
@@ -166,7 +166,7 @@ function PageMenu({ page }: { page: { id: string; type: string; fullWidth: boole
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+        className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
         title="Opciones de página"
       >
         <MoreHorizontal size={16} />
@@ -176,7 +176,7 @@ function PageMenu({ page }: { page: { id: string; type: string; fullWidth: boole
           {page.type !== "database" && (
             <button
               onClick={toggleFullWidth}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+              className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--hover)]"
             >
               <MoveHorizontal size={16} />
               Ancho completo
@@ -188,7 +188,7 @@ function PageMenu({ page }: { page: { id: string; type: string; fullWidth: boole
               setOpen(false);
               setMoving(true);
             }}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--hover)]"
           >
             <FolderInput size={16} />
             Mover a…
@@ -212,7 +212,7 @@ function FavoriteButton({ pageId }: { pageId: string }) {
     <button
       onClick={() => toggle.mutate({ pageId })}
       disabled={toggle.isPending}
-      className={`rounded-md px-2 py-1 text-sm hover:bg-brand-50 ${isFav ? "text-brand" : "text-[var(--muted)] hover:text-brand"}`}
+      className={`rounded-md px-2 py-1 text-sm hover:bg-[var(--hover)] ${isFav ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
       title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}
     >
       <Star size={16} fill={isFav ? "currentColor" : "none"} />

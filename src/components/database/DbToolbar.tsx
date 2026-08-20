@@ -122,7 +122,7 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "filter" ? null : "filter")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${nFilters ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--hover)] ${nFilters ? "text-brand" : "text-[var(--muted)]"}`}
         >
           <FilterIcon size={14} /> Filtrar{nFilters ? ` (${nFilters})` : ""}
         </button>
@@ -157,7 +157,7 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "sort" ? null : "sort")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${sorts.length ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--hover)] ${sorts.length ? "text-brand" : "text-[var(--muted)]"}`}
         >
           <ArrowUpDown size={14} /> Ordenar{sorts.length ? ` (${sorts.length})` : ""}
         </button>
@@ -220,7 +220,7 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "props" ? null : "props")}
-          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--border)]/40 ${hidden.length ? "text-brand" : "text-[var(--muted)]"}`}
+          className={`flex items-center gap-1 rounded-md px-2 py-1 hover:bg-[var(--hover)] ${hidden.length ? "text-brand" : "text-[var(--muted)]"}`}
         >
           <Eye size={14} /> Propiedades{hidden.length ? ` (${fields.length - hidden.length}/${fields.length})` : ""}
         </button>
@@ -234,7 +234,7 @@ export function DbToolbar({
                   <button
                     key={f.id}
                     onClick={() => toggleHidden(f.id)}
-                    className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--border)]/40"
+                    className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--hover)]"
                   >
                     <span className={visible ? "" : "opacity-40"}>{f.name}</span>
                     <span className="ml-auto text-[var(--muted)]">{visible ? <Eye size={14} /> : <EyeOff size={14} />}</span>
@@ -250,7 +250,7 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "cfg" ? null : "cfg")}
-          className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--border)]/40"
+          className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--hover)]"
           title="Ajustes de la vista"
         >
           <Settings size={16} />
@@ -263,7 +263,7 @@ export function DbToolbar({
                 if (name && name.trim()) renameView.mutate({ id: view.id, name: name.trim() });
                 setOpen(null);
               }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]"
             >
               <Pencil size={14} /> Renombrar vista
             </button>
@@ -274,7 +274,7 @@ export function DbToolbar({
                   <button
                     key={vt.type}
                     onClick={() => setViewType.mutate({ id: view.id, type: vt.type })}
-                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-brand-50 ${view.type === vt.type ? "bg-brand-50 text-brand" : ""}`}
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-[var(--hover)] ${view.type === vt.type ? "bg-[var(--active)] font-medium" : ""}`}
                     title={vt.label}
                   >
                     <vt.icon size={13} /> {vt.label}
@@ -400,7 +400,7 @@ export function DbToolbar({
             )}
             <button
               onClick={() => duplicateView.mutate({ id: view.id })}
-              className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+              className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]"
             >
               <Copy size={14} /> Duplicar vista
             </button>
@@ -408,7 +408,7 @@ export function DbToolbar({
               onClick={() => {
                 if (window.confirm(`¿Borrar la vista "${view.name}"?`)) deleteView.mutate({ id: view.id });
               }}
-              className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-red-500 hover:bg-[var(--border)]/40"
+              className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-red-500 hover:bg-[var(--hover)]"
             >
               <Trash2 size={14} /> Borrar vista
             </button>
@@ -422,7 +422,7 @@ export function DbToolbar({
           const { name, csv } = await utils.db.exportCsv.fetch({ collectionId });
           downloadText(`${name}.csv`, csv, "text/csv");
         }}
-        className="flex items-center gap-1 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--border)]/40"
+        className="flex items-center gap-1 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--hover)]"
         title="Exportar CSV"
       >
         <Download size={14} /> CSV
@@ -432,7 +432,7 @@ export function DbToolbar({
       <div className="relative">
         <button
           onClick={() => setOpen(open === "add" ? null : "add")}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[var(--hover)]"
         >
           <Plus size={14} /> Vista
         </button>
@@ -443,7 +443,7 @@ export function DbToolbar({
               <button
                 key={vt.type}
                 onClick={() => addView.mutate({ collectionId, type: vt.type })}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-brand-50"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]"
               >
                 <vt.icon size={14} /> {vt.label}
               </button>
@@ -536,7 +536,7 @@ function FilterNodesEditor({
               const c = newCondition();
               onChange([...nodes, { type: "group", op: "and", filters: c ? [c] : [] }]);
             }}
-            className="flex items-center gap-1 text-[var(--muted)] hover:text-brand hover:underline"
+            className="flex items-center gap-1 text-[var(--muted)] hover:text-[var(--foreground)] hover:underline"
           >
             <Plus size={12} /> Añadir grupo
           </button>
@@ -670,7 +670,7 @@ function ColorRulesEditor({
     <div className="px-2 pb-1">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between py-1 text-sm hover:text-brand"
+        className="flex w-full items-center justify-between py-1 text-sm hover:text-[var(--foreground)]"
       >
         <span>Reglas de color</span>
         <span className="text-xs text-[var(--muted)]">{rules.length || "ninguna"}</span>

@@ -103,7 +103,7 @@ export function GalleryView({
         {g.key === groups.at(-1)?.key && (
           <button
             onClick={() => addRecord.mutate({ collectionId })}
-            className="flex min-h-[92px] items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-sm text-[var(--muted)] transition hover:border-brand hover:text-brand"
+            className="flex min-h-[92px] items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-sm text-[var(--muted)] transition hover:border-brand hover:text-[var(--foreground)]"
           >
             + Nueva tarjeta
           </button>

@@ -175,7 +175,7 @@ export function Editor({
         {collab && (
           <button
             onClick={() => setShowThreads((v) => !v)}
-            className={`flex items-center gap-1 rounded px-1.5 hover:bg-brand-50 hover:text-brand ${showThreads ? "text-brand" : ""}`}
+            className={`flex items-center gap-1 rounded px-1.5 hover:bg-[var(--hover)] ${showThreads ? "text-brand" : ""}`}
             title="Comentarios del texto"
           >
             <MessageSquare size={12} />
@@ -196,7 +196,7 @@ export function Editor({
           onClick={() =>
             downloadText(`${title.trim() || "Sin título"}.md`, editor.blocksToMarkdownLossy(editor.document), "text/markdown")
           }
-          className="flex items-center gap-1 rounded px-1.5 hover:bg-brand-50 hover:text-brand"
+          className="flex items-center gap-1 rounded px-1.5 hover:bg-[var(--hover)]"
           title="Exportar a Markdown"
         >
           <Download size={12} /> MD
@@ -237,7 +237,7 @@ export function Editor({
                   <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
                     Comentarios del texto
                   </span>
-                  <button onClick={() => setShowThreads(false)} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+                  <button onClick={() => setShowThreads(false)} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
                     <X size={14} />
                   </button>
                 </div>
@@ -354,7 +354,7 @@ function Backlinks({ pageId }: { pageId: string }) {
       <ul className="flex flex-wrap gap-x-4 gap-y-1">
         {data.map((p) => (
           <li key={p.id}>
-            <Link href={`/p/${p.id}`} className="flex items-center gap-1.5 py-0.5 text-sm hover:text-brand">
+            <Link href={`/p/${p.id}`} className="flex items-center gap-1.5 py-0.5 text-sm hover:text-[var(--foreground)]">
               <span className="flex items-center text-[var(--muted)]">
                 {p.icon ?? (p.type === "database" ? <Database size={14} /> : <FileText size={14} />)}
               </span>

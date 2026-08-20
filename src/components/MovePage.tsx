@@ -57,7 +57,7 @@ export function MovePageModal({ pageId, onClose }: { pageId: string; onClose: ()
           <h2 className="flex items-center gap-2 font-display text-lg font-bold">
             <FolderInput size={18} /> Mover a
           </h2>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -72,7 +72,7 @@ export function MovePageModal({ pageId, onClose }: { pageId: string; onClose: ()
           <button
             disabled={move.isPending}
             onClick={() => move.mutate({ id: pageId, parentId: null })}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40 disabled:opacity-50"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--hover)] disabled:opacity-50"
           >
             <Folder size={14} className="shrink-0 text-[var(--muted)]" />
             <span className="truncate">Raíz de {me?.workspace?.name ?? "este espacio"}</span>
@@ -82,7 +82,7 @@ export function MovePageModal({ pageId, onClose }: { pageId: string; onClose: ()
               key={p.id}
               disabled={move.isPending}
               onClick={() => move.mutate({ id: pageId, parentId: p.id })}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40 disabled:opacity-50"
+              className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--hover)] disabled:opacity-50"
             >
               {p.icon ? (
                 <span className="w-4 shrink-0 text-center">{p.icon}</span>

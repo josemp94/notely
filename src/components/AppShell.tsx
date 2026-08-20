@@ -81,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2 md:hidden">
           <button
             onClick={() => setOpen(true)}
-            className="rounded p-1 text-[var(--muted)] hover:text-brand"
+            className="rounded p-1 text-[var(--muted)] hover:text-[var(--foreground)]"
             aria-label="Abrir menú"
           >
             <Menu size={20} />
@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {collapsed && (
           <button
             onClick={toggleSidebar}
-            className="absolute left-2 top-2 z-20 hidden rounded p-1 text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-brand md:block"
+            className="absolute left-2 top-2 z-20 hidden rounded p-1 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)] md:block"
             title="Mostrar el panel (Ctrl+\\)"
           >
             <PanelLeft size={18} />

@@ -92,12 +92,12 @@ export function RecordPanel({
               const name = prompt("Nombre de la plantilla", title || "Plantilla");
               if (name?.trim()) saveTemplate.mutate({ recordId: record.id, name: name.trim() });
             }}
-            className="text-xs text-[var(--muted)] hover:text-brand"
+            className="text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
             title="Guardar estos valores como plantilla de fila"
           >
             Guardar como plantilla
           </button>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar"><X size={16} /></button>
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar"><X size={16} /></button>
         </div>
 
         <div className="px-8 pb-10 pt-2">

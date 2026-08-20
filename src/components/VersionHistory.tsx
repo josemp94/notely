@@ -28,7 +28,7 @@ export function HistoryButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+      className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
       title="Historial de versiones"
     >
       <History size={16} />
@@ -80,7 +80,7 @@ export function VersionHistoryModal({
             <h2 className="flex items-center gap-2 font-display text-sm font-bold">
               <History size={16} /> Historial de versiones
             </h2>
-            <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+            <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
               <X size={16} />
             </button>
           </div>
@@ -90,7 +90,7 @@ export function VersionHistoryModal({
                 key={v.id}
                 onClick={() => setSelectedId(v.id)}
                 className={`block w-full rounded-lg px-3 py-2 text-left ${
-                  selected?.id === v.id ? "bg-brand-50 text-brand" : "hover:bg-[var(--border)]/40"
+                  selected?.id === v.id ? "bg-[var(--active)] font-medium" : "hover:bg-[var(--hover)]"
                 }`}
               >
                 <div className="text-sm font-medium">{rel(v.createdAt)}</div>

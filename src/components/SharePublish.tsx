@@ -31,7 +31,7 @@ export function ShareButton({ pageId, publicToken }: { pageId: string; publicTok
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`rounded-md px-2 py-1 text-sm hover:bg-brand-50 hover:text-brand ${
+        className={`rounded-md px-2 py-1 text-sm hover:bg-[var(--hover)] ${
           publicToken ? "text-brand" : "text-[var(--muted)]"
         }`}
         title="Compartir / Publicar en la web"

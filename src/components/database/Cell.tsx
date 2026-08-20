@@ -329,7 +329,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
                     </div>
                   )}
                   {inGroup.map((o) => (
-                    <div key={o.id} className="group/opt flex items-center gap-1 rounded hover:bg-[var(--border)]/40">
+                    <div key={o.id} className="group/opt flex items-center gap-1 rounded hover:bg-[var(--hover)]">
                       <button onClick={() => toggle(o.id)} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-left text-sm">
                         <span className="truncate rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"] }}>
                           {o.label}
@@ -354,7 +354,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
               );
             })}
             {q && !opts.some((o) => o.label.toLowerCase() === q.toLowerCase()) && (
-              <button onClick={addOption} className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm text-brand hover:bg-brand-50">
+              <button onClick={addOption} className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm text-brand hover:bg-[var(--hover)]">
                 + Crear «{q}»
               </button>
             )}
@@ -446,7 +446,7 @@ function PersonCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown
               <button
                 key={m.userId}
                 onClick={() => toggle(m.userId)}
-                className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--border)]/40"
+                className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm hover:bg-[var(--hover)]"
               >
                 <Avatar name={m.name || m.email} />
                 <span className="min-w-0 flex-1 truncate">{m.name || m.email}</span>
@@ -522,7 +522,7 @@ function FilesCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown)
       <button
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="rounded px-1 text-xs text-[var(--muted)] hover:bg-[var(--border)]/40 disabled:opacity-60"
+        className="rounded px-1 text-xs text-[var(--muted)] hover:bg-[var(--hover)] disabled:opacity-60"
       >
         {busy ? "Subiendo…" : files.length ? "+" : "+ Adjuntar"}
       </button>

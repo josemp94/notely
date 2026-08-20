@@ -103,7 +103,7 @@ export function SearchPalette() {
               onClick={() => go(p.id)}
               onMouseEnter={() => setSel(i)}
               className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm ${
-                i === selIdx ? "bg-brand-50 text-brand" : ""
+                i === selIdx ? "bg-[var(--active)] font-medium" : ""
               }`}
             >
               <span className="flex shrink-0 items-center text-[var(--muted)]">

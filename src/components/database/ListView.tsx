@@ -82,7 +82,7 @@ export function ListView({
 
       <button
         onClick={() => addRecord.mutate({ collectionId })}
-        className="mt-2 text-sm text-[var(--muted)] hover:text-brand"
+        className="mt-2 text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
       >
         + Nueva fila
       </button>

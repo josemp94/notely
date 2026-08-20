@@ -85,7 +85,7 @@ export function AddFieldButton({
     <div className="relative inline-block">
       <button
         onClick={() => (open ? reset() : setOpen(true))}
-        className="rounded px-2 py-0.5 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+        className="rounded px-2 py-0.5 text-[var(--muted)] hover:bg-[var(--hover)]"
         title="Añadir columna"
       >
         <Plus size={16} />
@@ -98,7 +98,7 @@ export function AddFieldButton({
                 <button
                   key={t}
                   onClick={() => addField.mutate({ collectionId, name: FIELD_LABELS[t], type: t })}
-                  className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                  className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
                 >
                   {FIELD_LABELS[t]}
                 </button>
@@ -106,21 +106,21 @@ export function AddFieldButton({
               <div className="my-1 border-t border-[var(--border)]" />
               <button
                 onClick={() => setView("relation")}
-                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
               >
                 <Link2 size={14} /> Relación <ChevronRight size={12} className="ml-auto" />
               </button>
               <button
                 onClick={() => setView("rollup")}
                 disabled={relationFields.length === 0}
-                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm enabled:hover:bg-brand-50 enabled:hover:text-brand disabled:opacity-40"
+                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm enabled:hover:bg-[var(--hover)] enabled:hover:text-[var(--foreground)] disabled:opacity-40"
                 title={relationFields.length === 0 ? "Crea antes un campo de Relación" : ""}
               >
                 <Sigma size={14} /> Rollup <ChevronRight size={12} className="ml-auto" />
               </button>
               <button
                 onClick={() => setView("formula")}
-                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
               >
                 <FunctionSquare size={14} /> Fórmula <ChevronRight size={12} className="ml-auto" />
               </button>
@@ -129,7 +129,7 @@ export function AddFieldButton({
 
           {view === "formula" && (
             <div className="w-64 p-1">
-              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 text-left text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
                 <ChevronLeft size={12} /> Nueva fórmula
               </button>
               <input
@@ -153,7 +153,7 @@ export function AddFieldButton({
                     <button
                       key={f.id}
                       onClick={() => setExpr((x) => `${x}prop("${f.name}")`)}
-                      className="mr-1 rounded bg-[var(--border)]/40 px-1 hover:text-brand"
+                      className="mr-1 rounded bg-[var(--border)]/40 px-1 hover:text-[var(--foreground)]"
                     >
                       {f.name}
                     </button>
@@ -172,14 +172,14 @@ export function AddFieldButton({
 
           {view === "relation" && (
             <>
-              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
                 <ChevronLeft size={12} /> Vincular con…
               </button>
               {(databases ?? []).map((d) => (
                 <button
                   key={d.collectionId}
                   onClick={() => addRelation.mutate({ collectionId, name: `→ ${d.title || "BD"}`, targetCollectionId: d.collectionId })}
-                  className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                  className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
                 >
                   {d.icon ? <span>{d.icon}</span> : <Database size={14} className="shrink-0 text-[var(--muted)]" />}
                   <span className="truncate">{d.title || "Sin título"}</span>
@@ -193,14 +193,14 @@ export function AddFieldButton({
 
           {view === "rollup" && !relField && (
             <>
-              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+              <button onClick={() => setView("root")} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
                 <ChevronLeft size={12} /> Rollup sobre la relación…
               </button>
               {relationFields.map((rf) => (
                 <button
                   key={rf.id}
                   onClick={() => setRelField(rf)}
-                  className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                  className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
                 >
                   {rf.name}
                 </button>
@@ -210,7 +210,7 @@ export function AddFieldButton({
 
           {view === "rollup" && relField && !agg && (
             <>
-              <button onClick={() => setRelField(null)} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+              <button onClick={() => setRelField(null)} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
                 <ChevronLeft size={12} /> Cómo agregar
               </button>
               {AGGS.map(([v, l]) => (
@@ -223,7 +223,7 @@ export function AddFieldButton({
                       setAgg(v);
                     }
                   }}
-                  className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                  className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
                 >
                   {l}
                 </button>
@@ -233,7 +233,7 @@ export function AddFieldButton({
 
           {view === "rollup" && relField && agg && (
             <>
-              <button onClick={() => setAgg(null)} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-brand">
+              <button onClick={() => setAgg(null)} className="mb-1 flex items-center gap-1 px-2 py-1 text-left text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
                 <ChevronLeft size={12} /> Campo a agregar
               </button>
               {(targetOf(relField)?.fields ?? [])
@@ -250,7 +250,7 @@ export function AddFieldButton({
                         agg: agg as "sum" | "avg" | "min" | "max" | "values",
                       })
                     }
-                    className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-brand-50 hover:text-brand"
+                    className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
                   >
                     {tf.name}
                   </button>

@@ -229,7 +229,7 @@ export function TableView({
           )}
           <button
             onClick={() => setOpenRec(r)}
-            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
+            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--foreground)] group-hover:opacity-100"
             title="Abrir ficha"
           >
             <Maximize2 size={14} />
@@ -287,7 +287,7 @@ export function TableView({
               {hasChildren ? (
                 <button
                   onClick={() => toggle(r.id)}
-                  className="flex w-4 shrink-0 items-center justify-center text-[var(--muted)] hover:text-brand"
+                  className="flex w-4 shrink-0 items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)]"
                   title={collapsed.has(r.id) ? "Expandir subtareas" : "Plegar subtareas"}
                 >
                   {collapsed.has(r.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
@@ -304,7 +304,7 @@ export function TableView({
         <div className="flex items-center gap-1">
           <button
             onClick={() => addSub(r.id)}
-            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-brand group-hover:opacity-100"
+            className="text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--foreground)] group-hover:opacity-100"
             title="Añadir subtarea"
           >
             <Plus size={14} />
@@ -424,7 +424,7 @@ export function TableView({
                           return next;
                         })
                       }
-                      className="flex items-center gap-1 text-sm font-medium hover:text-brand"
+                      className="flex items-center gap-1 text-sm font-medium hover:text-[var(--foreground)]"
                     >
                       {folded ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                       {g.label}
@@ -485,14 +485,14 @@ export function TableView({
       <div className="relative mt-2 flex items-center">
         <button
           onClick={() => addRecord.mutate({ collectionId })}
-          className="px-2 py-1 text-sm text-[var(--muted)] hover:text-brand"
+          className="px-2 py-1 text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
         >
           + Nueva fila
         </button>
         {templates.length > 0 && (
           <button
             onClick={() => setNewMenu((o) => !o)}
-            className="rounded px-1 py-1 text-[var(--muted)] hover:text-brand"
+            className="rounded px-1 py-1 text-[var(--muted)] hover:text-[var(--foreground)]"
             title="Crear desde una plantilla"
           >
             <ChevronDown size={14} />
@@ -507,7 +507,7 @@ export function TableView({
                     addRecord.mutate({ collectionId, cells: t.cells });
                     setNewMenu(false);
                   }}
-                  className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+                  className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]"
                 >
                   {t.name}
                 </button>
@@ -525,7 +525,7 @@ export function TableView({
       </div>
       <div className="mt-1 flex items-center gap-3 px-2 text-xs text-[var(--muted)]">
         <span>{rows.length} de {records.length} filas</span>
-        <button onClick={() => setTrashOpen(true)} className="flex items-center gap-1 hover:text-brand">
+        <button onClick={() => setTrashOpen(true)} className="flex items-center gap-1 hover:text-[var(--foreground)]">
           <Trash2 size={12} /> Papelera
         </button>
       </div>
@@ -620,7 +620,7 @@ function FieldMenu({
   onDelete: () => void;
 }) {
   const cfg = (field.config as { prefix?: string; format?: string; max?: number; time?: boolean; range?: boolean } | null) ?? {};
-  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40";
+  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]";
   return (
     <Popover onClose={onClose} className="left-0 w-64 p-2 font-normal normal-case">
       <button onClick={onRename} className={item}>
@@ -756,7 +756,7 @@ function RecordTrash({
       >
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-display font-bold">Papelera de filas</h3>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
             <X size={16} />
           </button>
         </div>

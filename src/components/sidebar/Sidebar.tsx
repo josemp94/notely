@@ -138,79 +138,81 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-dvh w-64 flex-col border-r border-[var(--border)]">
-      <div className="flex items-center justify-between px-4 pt-4">
+    <aside className="flex h-dvh w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)]">
+      <div className="flex items-center justify-between px-3 pt-3">
         <Link href="/" className="font-display text-lg font-bold">
           No<span className="text-brand">tio</span>no
         </Link>
-        <div className="flex items-center gap-1 text-sm">
-          {canEdit && (
-            <>
-              <button
-                onClick={() => create.mutate({ parentId: null })}
-                className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
-                title="Nueva página"
-              >
-                <FilePlus size={16} />
-              </button>
-              <button
-                onClick={() => window.dispatchEvent(new Event(TOGGLE_SIDEBAR_EVENT))}
-                className="hidden rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand md:block"
-                title="Plegar el panel (Ctrl+\\)"
-              >
-                <PanelLeftClose size={16} />
-              </button>
-              <button
-                onClick={() => createDb.mutate({ parentId: null })}
-                className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
-                title="Nueva base de datos"
-              >
-                <Database size={16} />
-              </button>
-              <button
-                onClick={() => importInput.current?.click()}
-                className="rounded-md px-2 py-1 text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
-                title="Importar Markdown (página) o CSV (base de datos)"
-              >
-                <Upload size={16} />
-              </button>
-              <input
-                ref={importInput}
-                type="file"
-                accept=".md,.markdown,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = ""; // permite reimportar el mismo archivo
-                  if (f) onImportFile(f);
-                }}
-              />
-            </>
-          )}
-        </div>
+        {/* Plegar el panel: también para quien solo mira, que también quiere sitio. */}
+        <button
+          onClick={() => window.dispatchEvent(new Event(TOGGLE_SIDEBAR_EVENT))}
+          className={`hidden md:block ${accionPanel}`}
+          title="Plegar el panel · Ctrl+\\"
+          aria-label="Plegar el panel"
+        >
+          <PanelLeftClose size={16} />
+        </button>
       </div>
 
       <WorkspaceBar me={me} />
 
-      <button
-        onClick={openSearchPalette}
-        className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
-      >
-        <Search size={16} /> Buscar
-        <span className="ml-auto font-mono text-[10px] text-[var(--muted)]">Ctrl K</span>
-      </button>
-
-      <NotificationsBell />
-
-      {canEdit && (
-        <button
-          onClick={() => setShowTemplates(true)}
-          className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
-          title="Crear desde una plantilla"
-        >
-          <Sparkles size={16} /> Plantillas
+      {/* Acciones del panel: solo iconos, el nombre va en el título emergente. */}
+      <div className="mx-2 mb-1 flex items-center gap-0.5">
+        <button onClick={openSearchPalette} className={accionPanel} title="Buscar · Ctrl+K" aria-label="Buscar">
+          <Search size={16} />
         </button>
-      )}
+        <NotificationsBell />
+        {canEdit && (
+          <button
+            onClick={() => setShowTemplates(true)}
+            className={accionPanel}
+            title="Crear desde una plantilla"
+            aria-label="Plantillas"
+          >
+            <Sparkles size={16} />
+          </button>
+        )}
+        <span className="flex-1" />
+        {canEdit && (
+          <>
+            <button
+              onClick={() => create.mutate({ parentId: null })}
+              className={accionPanel}
+              title="Nueva página · Ctrl+Alt+N"
+              aria-label="Nueva página"
+            >
+              <FilePlus size={16} />
+            </button>
+            <button
+              onClick={() => createDb.mutate({ parentId: null })}
+              className={accionPanel}
+              title="Nueva base de datos"
+              aria-label="Nueva base de datos"
+            >
+              <Database size={16} />
+            </button>
+            <button
+              onClick={() => importInput.current?.click()}
+              className={accionPanel}
+              title="Importar Markdown (página) o CSV (base de datos)"
+              aria-label="Importar"
+            >
+              <Upload size={16} />
+            </button>
+            <input
+              ref={importInput}
+              type="file"
+              accept=".md,.markdown,.csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = ""; // permite reimportar el mismo archivo
+                if (f) onImportFile(f);
+              }}
+            />
+          </>
+        )}
+      </div>
       {showTemplates && <TemplatesGallery onClose={() => setShowTemplates(false)} />}
 
       <nav className="flex-1 overflow-y-auto px-2 pb-6">
@@ -220,13 +222,13 @@ export function Sidebar() {
       </nav>
       <Link
         href="/my-tasks"
-        className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted)] hover:text-brand"
+        className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
       >
         <CircleCheck size={16} /> Mis tareas
       </Link>
       <Link
         href="/trash"
-        className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)] hover:text-brand"
+        className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
       >
         <Trash2 size={16} /> Papelera
       </Link>
@@ -260,7 +262,7 @@ function SectionLink({ page }: { page: { id: string; title: string; icon: string
     <Link
       href={`/p/${page.id}`}
       className={`flex items-center gap-1 truncate rounded-md px-2 py-1 text-sm ${
-        active ? "bg-brand-50 text-brand" : "hover:bg-[var(--border)]/40"
+        active ? "bg-[var(--active)] font-medium" : "hover:bg-[var(--hover)]"
       }`}
     >
       <span className="truncate">
@@ -313,6 +315,14 @@ function when(d: Date) {
 }
 
 /** Campana con contador de no leídas y bandeja de notificaciones (menciones @persona). */
+/**
+ * Botón de la barra de acciones del panel: solo icono. El nombre y el atajo van en
+ * el título emergente, para que la barra no se llene de texto; todos los atajos
+ * están además juntos en la ventana de Atajos.
+ */
+const accionPanel =
+  "rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]";
+
 function NotificationsBell() {
   const utils = trpc.useUtils();
   const router = useRouter();
@@ -341,13 +351,14 @@ function NotificationsBell() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--foreground)]"
-        title="Notificaciones"
+        className={`relative ${accionPanel}`}
+        title={unread ? `Notificaciones (${unread} sin leer)` : "Notificaciones"}
+        aria-label="Notificaciones"
       >
-        <Bell size={16} /> Notificaciones
+        <Bell size={16} />
         {!!unread && (
-          <span className="ml-auto rounded-full bg-brand px-1.5 text-[10px] font-medium leading-4 text-white">
-            {unread > 99 ? "99+" : unread}
+          <span className="absolute right-0.5 top-0.5 min-w-3 rounded-full bg-brand px-1 text-[9px] font-semibold leading-3 text-white">
+            {unread > 9 ? "9+" : unread}
           </span>
         )}
       </button>
@@ -369,12 +380,12 @@ function NotificationsBell() {
                     <button
                       onClick={() => markAll.mutate()}
                       disabled={markAll.isPending}
-                      className="rounded px-2 py-1 text-xs text-[var(--muted)] hover:bg-brand-50 hover:text-brand disabled:opacity-50"
+                      className="rounded px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--hover)] disabled:opacity-50"
                     >
                       Marcar todas como leídas
                     </button>
                   )}
-                  <button onClick={() => setOpen(false)} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+                  <button onClick={() => setOpen(false)} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
                     <X size={16} />
                   </button>
                 </div>
@@ -445,7 +456,7 @@ function TemplatesGallery({ onClose }: { onClose: () => void }) {
           <h2 className="flex items-center gap-2 font-display text-lg font-bold">
             <Sparkles size={18} /> Plantillas
           </h2>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -456,7 +467,7 @@ function TemplatesGallery({ onClose }: { onClose: () => void }) {
               key={key}
               disabled={create.isPending}
               onClick={() => create.mutate({ key })}
-              className="rounded-lg border border-[var(--border)] p-3 text-left transition-colors hover:border-brand hover:bg-brand-50 disabled:opacity-50"
+              className="rounded-lg border border-[var(--border)] p-3 text-left transition-colors hover:border-brand hover:bg-[var(--hover)] disabled:opacity-50"
             >
               <div className="text-2xl">{t.icon}</div>
               <div className="mt-1 text-sm font-medium">{t.name}</div>
@@ -497,7 +508,7 @@ function WorkspaceBar({ me }: { me: Me }) {
       <div className="flex items-center gap-1">
         <button
           onClick={() => setOpenList((o) => !o)}
-          className="flex min-w-0 flex-1 items-center gap-1 rounded-md px-2 py-1 text-left text-xs text-[var(--muted)] hover:bg-[var(--border)]/40"
+          className="flex min-w-0 flex-1 items-center gap-1 rounded-md px-2 py-1 text-left text-xs text-[var(--muted)] hover:bg-[var(--hover)]"
           title="Cambiar de espacio"
         >
           <span className="truncate">
@@ -509,7 +520,7 @@ function WorkspaceBar({ me }: { me: Me }) {
         {me?.wsRole === "owner" && (
           <button
             onClick={() => setShare(true)}
-            className="shrink-0 rounded-md px-2 py-1 text-xs text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+            className="shrink-0 rounded-md px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--hover)]"
             title="Compartir este espacio"
           >
             <Users size={14} />
@@ -528,7 +539,7 @@ function WorkspaceBar({ me }: { me: Me }) {
                 if (s.id === current?.id) return;
                 await switchWs.mutateAsync({ workspaceId: s.id });
               }}
-              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-brand-50 ${
+              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-[var(--hover)] ${
                 s.id === current?.id ? "text-brand" : ""
               }`}
             >
@@ -585,7 +596,7 @@ function ShareDialog({ onClose, onChange }: { onClose: () => void; onChange: () 
           <h2 className="flex items-center gap-2 font-display text-lg font-bold">
             <Users size={18} /> Compartir espacio
           </h2>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -668,7 +679,7 @@ function AccountFooter({ me }: { me: Me }) {
     <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] px-4 py-3">
       <Link
         href="/settings"
-        className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-[var(--muted)] hover:text-brand"
+        className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
         title={me?.email ?? ""}
       >
         <Settings size={14} />
@@ -677,7 +688,7 @@ function AccountFooter({ me }: { me: Me }) {
       <ThemeToggle />
       <button
         onClick={() => logout.mutate()}
-        className="shrink-0 rounded px-2 py-1 text-xs text-[var(--muted)] hover:text-brand"
+        className="shrink-0 rounded px-2 py-1 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
         title="Cerrar sesión"
       >
         Salir
@@ -692,7 +703,7 @@ function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="shrink-0 rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:text-brand"
+      className="shrink-0 rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
       title={theme === "dark" ? "Tema claro" : "Tema oscuro"}
     >
       {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
@@ -773,7 +784,7 @@ function TreeItem({
     <li>
       <div
         className={`group flex items-center gap-1 rounded-md pr-1 text-sm ${
-          active ? "bg-brand-50 text-brand" : "hover:bg-[var(--border)]/40"
+          active ? "bg-[var(--active)] font-medium" : "hover:bg-[var(--hover)]"
         } ${
           dropPos === "inside"
             ? "bg-brand-50 ring-1 ring-brand"
@@ -831,7 +842,7 @@ function TreeItem({
           <div className="flex items-center opacity-0 transition-opacity group-hover:opacity-100">
             <button
               onClick={() => addSub.mutate({ parentId: node.id })}
-              className="rounded px-1 text-[var(--muted)] hover:text-brand"
+              className="rounded px-1 text-[var(--muted)] hover:text-[var(--foreground)]"
               title="Añadir subpágina"
             >
               <Plus size={14} />
@@ -841,7 +852,7 @@ function TreeItem({
                 const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
                 setMenu({ x: r.left, y: r.bottom });
               }}
-              className="rounded px-1 text-[var(--muted)] hover:text-brand"
+              className="rounded px-1 text-[var(--muted)] hover:text-[var(--foreground)]"
               title="Más acciones"
             >
               <MoreHorizontal size={14} />
@@ -925,7 +936,7 @@ function RowMenu({
             it.onClick();
             onClose();
           }}
-          className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--border)]/40 ${
+          className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-[var(--hover)] ${
             it.danger ? "text-red-500" : ""
           }`}
         >

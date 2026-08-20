@@ -167,7 +167,7 @@ export function Database({
           ) : (
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--border)]/40"
+              className="flex items-center rounded-md px-2 py-1.5 text-[var(--muted)] hover:bg-[var(--hover)]"
               title="Buscar en la base de datos"
             >
               <Search size={15} />

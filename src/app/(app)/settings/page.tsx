@@ -113,7 +113,7 @@ function ApiTokensSection() {
             <code className="min-w-0 flex-1 break-all text-xs">{newToken}</code>
             <button
               onClick={() => navigator.clipboard.writeText(newToken)}
-              className="shrink-0 rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--border)]/40"
+              className="shrink-0 rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--hover)]"
             >
               Copiar
             </button>
@@ -268,7 +268,7 @@ function PushSection() {
       ) : suscrito ? (
         <button
           onClick={desactivar}
-          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm hover:border-brand hover:text-brand"
+          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm hover:border-brand hover:text-[var(--foreground)]"
         >
           Desactivar en este dispositivo
         </button>

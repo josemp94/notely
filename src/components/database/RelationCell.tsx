@@ -63,7 +63,7 @@ export function RelationCell({
           ))}
           <button
             onClick={() => setOpen(false)}
-            className="mt-1 w-full rounded px-2 py-1 text-xs text-[var(--muted)] hover:text-brand"
+            className="mt-1 w-full rounded px-2 py-1 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
           >
             Cerrar
           </button>

@@ -35,7 +35,7 @@ export function PageIcon({
       {icon ? (
         <button
           onClick={() => editable && setOpen((o) => !o)}
-          className={`text-6xl leading-none ${editable ? "cursor-pointer rounded-lg p-1 hover:bg-[var(--border)]/40" : "cursor-default"}`}
+          className={`text-6xl leading-none ${editable ? "cursor-pointer rounded-lg p-1 hover:bg-[var(--hover)]" : "cursor-default"}`}
           title={editable ? "Cambiar icono" : undefined}
         >
           {icon}
@@ -43,7 +43,7 @@ export function PageIcon({
       ) : (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="rounded-md px-2 py-1 text-sm text-[var(--muted)] opacity-0 transition-opacity hover:bg-[var(--border)]/40 hover:text-[var(--foreground)] group-hover/header:opacity-100"
+          className="rounded-md px-2 py-1 text-sm text-[var(--muted)] opacity-0 transition-opacity hover:bg-[var(--hover)] hover:text-[var(--foreground)] group-hover/header:opacity-100"
         >
           😀 Añadir icono
         </button>
@@ -59,7 +59,7 @@ export function PageIcon({
                   onChange(e);
                   setOpen(false);
                 }}
-                className="rounded-md p-1 text-xl hover:bg-brand-50"
+                className="rounded-md p-1 text-xl hover:bg-[var(--hover)]"
               >
                 {e}
               </button>

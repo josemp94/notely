@@ -100,7 +100,7 @@ function CoverPicker({
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-2 py-1.5 text-sm text-[var(--muted)] hover:border-brand hover:text-brand disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-2 py-1.5 text-sm text-[var(--muted)] hover:border-brand hover:text-[var(--foreground)] disabled:opacity-50"
         >
           <Upload size={14} /> {uploading ? "Subiendo…" : "Elegir archivo (máx. 8 MB)"}
         </button>
@@ -189,7 +189,7 @@ export function AddCoverButton({ onChange }: { onChange: (cover: string) => void
     <div className="relative inline-block">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-[var(--muted)] transition-opacity hover:bg-[var(--border)]/40 hover:text-[var(--foreground)] group-hover/header:opacity-100 ${
+        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-[var(--muted)] transition-opacity hover:bg-[var(--hover)] hover:text-[var(--foreground)] group-hover/header:opacity-100 ${
           open ? "opacity-100" : "opacity-0"
         }`}
       >

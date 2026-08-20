@@ -39,7 +39,7 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
         <h2 className="flex items-center gap-2 font-display text-sm font-bold">
           <MessageSquare size={16} /> Comentarios
         </h2>
-        <button onClick={onClose} className="text-[var(--muted)] hover:text-brand" title="Cerrar">
+        <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
           <X size={16} />
         </button>
       </div>
@@ -60,7 +60,7 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
                 <span className="ml-auto flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     onClick={() => toggle.mutate({ id: c.id })}
-                    className="rounded px-1 text-xs text-[var(--muted)] hover:text-brand"
+                    className="rounded px-1 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
                     title={c.resolved ? "Reabrir" : "Marcar como resuelto"}
                   >
                     <Check size={14} />
@@ -116,7 +116,7 @@ export function CommentsButton({ pageId, onClick }: { pageId: string; onClick: (
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-brand-50 hover:text-brand"
+      className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
       title="Comentarios"
     >
       <MessageSquare size={16} /> {comments?.length ?? 0}

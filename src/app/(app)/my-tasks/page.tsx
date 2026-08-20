@@ -34,7 +34,7 @@ export default function MyTasksPage() {
         <section key={pageId} className="mb-6">
           <Link
             href={`/p/${pageId}`}
-            className="mb-2 flex items-center gap-2 text-sm font-medium hover:text-brand"
+            className="mb-2 flex items-center gap-2 text-sm font-medium hover:text-[var(--foreground)]"
           >
             <span className="flex items-center text-[var(--muted)]">
               {items[0].dbIcon ?? <Database size={15} />}

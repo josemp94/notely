@@ -10,20 +10,32 @@
 }
 
 /* Tema claro/oscuro por data-theme en <html>; lo fija un script inline en el layout
-   (localStorage.theme o, si no hay preferencia, prefers-color-scheme) antes de pintar. */
+   (localStorage.theme o, si no hay preferencia, prefers-color-scheme) antes de pintar.
+
+   Los grises son cálidos a propósito, para que convivan con el naranja de la marca
+   sin que este chille. Regla de la casa: el naranja es para lo SELECCIONADO y para
+   la marca; el resto del chrome (pasar el ratón, lo activo en el panel) va en gris.
+   Antes cada botón se ponía naranja al pasar por encima y la pantalla parecía una
+   guirnalda. */
 :root {
-  --background: #ffffff;
-  --foreground: #1a1a1a;
-  --muted: #6b6b6b;
-  --border: #ececec;
-  --brand-50: #fff2ec;
+  --background: #ffffff;  /* el papel: la zona de contenido */
+  --surface: #f7f6f3;     /* el mueble: panel lateral y barras */
+  --foreground: #1c1b19;
+  --muted: #7a7872;
+  --border: #e8e6e2;
+  --hover: rgba(28, 27, 25, 0.055);   /* al pasar el ratón */
+  --active: rgba(28, 27, 25, 0.085);  /* la página en la que estás */
+  --brand-50: #fff2ec;    /* tinte de marca, solo para lo seleccionado */
 }
 
 :root[data-theme="dark"] {
-  --background: #0e0e0f;
-  --foreground: #ededed;
-  --muted: #9a9a9a;
-  --border: #232325;
+  --background: #191918;
+  --surface: #212120;     /* en oscuro el mueble va MÁS claro que el papel */
+  --foreground: #ededec;
+  --muted: #9b9994;
+  --border: #2c2c29;
+  --hover: rgba(255, 255, 255, 0.06);
+  --active: rgba(255, 255, 255, 0.095);
   --brand-50: #3a2015;
 }
 

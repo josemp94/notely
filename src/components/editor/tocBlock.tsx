@@ -72,7 +72,7 @@ function Toc({ editor }: { editor: BlockNoteEditor<any, any, any> }) {
         <ul className="space-y-0.5">
           {headings.map((h) => (
             <li key={h.id} style={{ paddingLeft: (Math.min(h.level, 4) - 1) * 14 }}>
-              <button onClick={() => go(h.id)} className="text-left text-sm hover:text-brand hover:underline">
+              <button onClick={() => go(h.id)} className="text-left text-sm hover:text-[var(--foreground)] hover:underline">
                 {h.text}
               </button>
             </li>

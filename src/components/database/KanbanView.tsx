@@ -152,7 +152,7 @@ export function KanbanView({
                   cells: col.id ? { [groupField.id]: valueForColumn(col.id) } : {},
                 })
               }
-              className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-[var(--muted)] hover:text-brand"
+              className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
             >
               + Nueva
             </button>
