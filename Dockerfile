@@ -18,20 +18,28 @@ ARG NEXT_PUBLIC_COLLAB_URL=""
 ENV NEXT_PUBLIC_COLLAB_URL=$NEXT_PUBLIC_COLLAB_URL
 RUN npx prisma generate && npm run build
 
+# ---- dependencias de producción ----
+# El servidor propio (server.mjs) no puede usar el modo standalone de Next —la
+# documentación de Next dice que son incompatibles—, así que el runner necesita
+# node_modules de verdad, pero solo los de producción.
+FROM node:22-slim AS prod-deps
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci --omit=dev && npx prisma generate
+
 # ---- runner ----
 FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
-# App standalone
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
-# Prisma (para migrate deploy y seed en el arranque)
+COPY --from=build /app/collab/dist ./collab/dist
 COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/node_modules/prisma ./node_modules/prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY package.json next.config.ts server.mjs ./
 EXPOSE 3000
-CMD ["node","server.js"]
+# Sirve la web y, en el mismo puerto, la edición simultánea bajo /collab.
+CMD ["node","server.mjs"]

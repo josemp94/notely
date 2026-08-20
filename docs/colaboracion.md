@@ -7,7 +7,8 @@ Está construido con **Yjs** y un servidor **Hocuspocus** propio.
 
 | Pieza | Dónde | Qué hace |
 |---|---|---|
-| `collab/server.ts` | contenedor `notiono-collab` | WebSocket: autentica, transporta cambios y guarda el estado en `Page.ydoc` |
+| `server.mjs` | contenedor `notiono-app` | servidor propio: sirve la web y, en el mismo puerto, el WebSocket bajo `/collab` |
+| `collab/hocuspocus.ts` | dentro del mismo proceso | autentica la sala, transporta los cambios y guarda el estado en `Page.ydoc` |
 | `src/server/collabToken.ts` | web y servidor de colaboración | firma y valida el permiso de sala (HMAC con `AUTH_SECRET`) |
 | `pages.collabToken` | web | emite el permiso, tras comprobar que la página es de tu espacio |
 | `pages.ensureYdoc` | web | la primera vez, convierte el contenido existente a estado Yjs |
@@ -15,6 +16,14 @@ Está construido con **Yjs** y un servidor **Hocuspocus** propio.
 
 ## Decisiones
 
+- **Todo en el mismo dominio y el mismo puerto.** El proxy inverso de Synology solo
+  enruta por **host y puerto**: no admite rutas. Para servir `notiono.monrealperez.com/collab`
+  sin subdominio y sin meter otro proxy, el WebSocket lo atiende el propio servidor de la
+  app (`server.mjs`), que además sirve Next. Eso obliga a renunciar al modo `standalone`
+  de Next, que según su documentación es incompatible con un servidor propio.
+- **Un solo proceso**: no hay contenedor aparte para la colaboración. Si algún día se
+  quisieran varias réplicas de la app habría que sacarlo fuera, porque cada proceso
+  tendría su propia copia del documento en memoria.
 - **El servidor de colaboración no sabe de BlockNote.** Solo guarda el estado Yjs. La
   versión legible (`Page.content`), que usan la búsqueda, la publicación, el export y
   las versiones, la sigue escribiendo el editor del navegador con su autosave. Así el

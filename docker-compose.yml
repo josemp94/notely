@@ -29,36 +29,12 @@ services:
         condition: service_healthy
     restart: "no"
 
-  collab:
-    # Servidor de edición simultánea (Yjs sobre WebSocket). Usa la etapa de build,
-    # que ya trae node_modules y el cliente de Prisma generado.
-    build:
-      context: .
-      target: build
-    container_name: notiono-collab
-    command: sh -c "npx tsx collab/server.ts"
-    environment:
-      DATABASE_URL: "postgresql://notely:notely@db:5432/notely"
-      COLLAB_PORT: "1234"
-      # Debe ser el MISMO valor que usa la app: con él se firman y validan los
-      # permisos de sala. Si no coincide, nadie puede entrar a editar.
-      AUTH_SECRET: "dev-secret-cambiar-en-prod"
-    depends_on:
-      db:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    expose:
-      - "1234"
-    ports:
-      - "3011:1234"
-    restart: unless-stopped
-
   app:
     build:
       context: .
       args:
-        # Debe apuntar al proxy inverso del DSM que expone el WebSocket.
+        # Misma dirección que la web con la ruta /collab: el propio servidor de
+        # la app atiende ahí el WebSocket de la edición simultánea.
         NEXT_PUBLIC_COLLAB_URL: "wss://notiono.monrealperez.com/collab"
     container_name: notiono-app
     command: ["node", "server.js"]
