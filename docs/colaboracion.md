@@ -79,6 +79,11 @@ separarlo obligaría a un subdominio o a meter otro proxy.
   la colaboración cuando en realidad el servidor no contestaba a nada (ver el arreglo del
   enganche). La prueba que vale es la de dos clientes intercambiando un cambio, que es la
   que hace `npm run check`, y la de dos navegadores en la misma página.
+- **Comprobado ya en producción con dos pestañas**: lo escrito en una aparece en la otra
+  con la etiqueta del cursor, en los dos sentidos; el documento se estrena con el contenido
+  que ya tenía la página, sobrevive a recargar (queda en `Page.ydoc`) y la copia legible
+  (`Page.content`) se sigue guardando con los cambios de ambas, que es de lo que viven la
+  búsqueda, la publicación y el export.
 - `pages.ensureYdoc` devolvía 500 y el editor se quedaba sin colaboración **en silencio**;
   ahora eso se ve en la propia página («Sin sincronizar»).
 - Diagnóstico desde fuera: `curl -s https://notiono.monrealperez.com/api/health` debe traer
