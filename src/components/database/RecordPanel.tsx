@@ -86,7 +86,7 @@ export function RecordPanel({
         className="h-dvh w-full max-w-xl overflow-y-auto border-l border-[var(--border)] bg-[var(--background)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-8 pt-5">
+        <div className="zona-segura-arriba flex items-center justify-between px-4 md:px-8">
           <button
             onClick={() => {
               const name = prompt("Nombre de la plantilla", title || "Plantilla");
@@ -100,19 +100,19 @@ export function RecordPanel({
           <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar"><X size={16} /></button>
         </div>
 
-        <div className="px-8 pb-10 pt-2">
+        <div className="px-4 pb-10 pt-2 md:px-8">
           <input
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder="Sin título"
-            className="font-display mb-5 w-full bg-transparent text-3xl font-extrabold outline-none placeholder:text-[var(--border)]"
+            className="font-display mb-5 w-full bg-transparent text-2xl font-extrabold outline-none placeholder:text-[var(--border)] md:text-3xl"
           />
 
           <div className="space-y-2">
             {propFields.map((f) => (
-              <div key={f.id} className="grid grid-cols-[130px_1fr] items-center gap-3">
+              <div key={f.id} className="grid grid-cols-[110px_1fr] items-center gap-3 md:grid-cols-[130px_1fr]">
                 <span className="truncate text-sm text-[var(--muted)]">{f.name}</span>
-                <div className="rounded px-1 hover:bg-[var(--border)]/20">
+                <div className="min-w-0 rounded px-1 hover:bg-[var(--border)]/20">
                   {f.type === "relation" ? (
                     <RelationCell
                       field={f}
@@ -136,7 +136,7 @@ export function RecordPanel({
               </div>
             ))}
             {collectionId && (
-              <div className="grid grid-cols-[130px_1fr] items-center gap-3">
+              <div className="grid grid-cols-[110px_1fr] items-center gap-3 md:grid-cols-[130px_1fr]">
                 <span className="text-sm text-[var(--muted)]">
                   <AddFieldButton collectionId={collectionId} fields={fields} onDone={invalidate} />
                 </span>
