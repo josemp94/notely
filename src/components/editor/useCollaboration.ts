@@ -37,8 +37,9 @@ export type Collaboration = {
  * (NEXT_PUBLIC_COLLAB_URL). Sin esa variable devuelve null y el editor sigue
  * funcionando como siempre, con su autosave: la colaboración es opcional.
  *
- * El token es la cookie de sesión, que el servidor de colaboración valida contra
- * la misma tabla Session que la web.
+ * El permiso de sala NO es la cookie: el WebSocket no pasa por el resto de la app,
+ * así que la web emite un token firmado (una hora, solo para esta página) que viaja
+ * dentro del protocolo de Hocuspocus.
  */
 export function useCollaboration(
   pageId: string,
@@ -52,8 +53,8 @@ export function useCollaboration(
   const ensureYdoc = trpc.pages.ensureYdoc.useMutation();
   const collabToken = trpc.pages.collabToken.useMutation();
 
-  // Antes de conectar hay que asegurarse de que el documento tiene estado Yjs,
-  // o el primero en entrar vería la página vacía.
+  // Antes de conectar hay que preparar el documento: quien llega primero se lleva
+  // el contenido de la página para estrenarlo, o el primero en entrar la vería vacía.
   const ensureMutate = ensureYdoc.mutateAsync;
   const tokenMutate = collabToken.mutateAsync;
   useEffect(() => {
