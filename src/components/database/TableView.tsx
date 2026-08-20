@@ -340,7 +340,8 @@ export function TableView({
   );
 
   return (
-    <div className="overflow-x-auto">
+    <div>
+      <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-y border-[var(--border)] text-left text-[var(--muted)]">
@@ -511,6 +512,7 @@ export function TableView({
           </tr>
         </tfoot>
       </table>
+      </div>
 
       <div className="relative mt-2 flex items-center">
         <button
