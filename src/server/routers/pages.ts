@@ -8,6 +8,7 @@ import { TEMPLATES } from "@/lib/templates";
 import { fetchLinkPreview } from "../linkPreview";
 import { createCollabToken } from "../collabToken";
 import { dispatchWebhooks } from "../webhooks";
+import { createPage } from "../services/pages";
 
 /** Días que aguanta una página en la papelera antes de la auto-purga (también en /trash). */
 const TRASH_TTL_DAYS = 30;
@@ -167,26 +168,10 @@ export const pagesRouter = router({
   create: workspaceProcedure
     .input(z.object({ parentId: z.string().nullish(), title: z.string().default("") }))
     .mutation(async ({ ctx, input }) => {
-      const last = await ctx.db.page.findFirst({
-        where: { workspaceId: ctx.workspace.id, parentId: input.parentId ?? null },
-        orderBy: { order: "desc" },
-        select: { order: true },
-      });
-      const creada = await ctx.db.page.create({
-        data: {
-          workspaceId: ctx.workspace.id,
-          parentId: input.parentId ?? null,
-          title: input.title,
-          order: rankAtEnd(last?.order ?? null),
-          content: [],
-        },
-      });
-      dispatchWebhooks(ctx.workspace.id, "page.created", {
-        pageId: creada.id,
-        title: creada.title,
-        parentId: creada.parentId,
-      });
-      return creada;
+      return createPage(
+        { db: ctx.db, workspaceId: ctx.workspace.id, userId: ctx.user.id },
+        { title: input.title, parentId: input.parentId ?? null },
+      );
     }),
 
   /** Crea una página o base de datos prehecha a partir de una plantilla de la galería. */
