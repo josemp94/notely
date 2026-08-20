@@ -45,14 +45,15 @@ assert.equal(
   "b,c,a",
 );
 
-// Estado y Persona ofrecen "es/no es", no "contiene".
-for (const type of ["status", "person"]) {
-  const ops = opsFor(type).map((o) => o.value);
-  assert.deepEqual(ops.slice(0, 2), ["is", "isnot"]);
-  assert.ok(!ops.includes("contains"));
-}
-// Todo tipo puede filtrarse por vacío / no vacío.
-for (const type of ["text", "number", "date", "person", "status", "files"]) {
+// Operadores por tipo, como Notion: Estado "es/no es"; Persona "contiene/no contiene";
+// la casilla no tiene "vacío" y Archivos SOLO tiene vacío/no vacío.
+assert.deepEqual(opsFor("status").map((o) => o.value).slice(0, 2), ["is", "is_not"]);
+assert.ok(!opsFor("status").some((o) => o.value === "contains"));
+assert.deepEqual(opsFor("person").map((o) => o.value).slice(0, 2), ["contains", "not_contains"]);
+assert.deepEqual(opsFor("files").map((o) => o.value), ["is_empty", "not_empty"]);
+assert.deepEqual(opsFor("checkbox").map((o) => o.value), ["is", "is_not"]);
+// Todo tipo con vacío posible puede filtrarse por vacío / no vacío.
+for (const type of ["text", "number", "date", "person", "status", "files", "relation", "url"]) {
   assert.ok(opsFor(type).some((o) => o.value === "is_empty"), type);
 }
 
@@ -81,6 +82,67 @@ assert.equal(new Date(domingo + "T00:00:00").getDay(), 0);
 // Rango de mes: primer y último día reales (incluye meses de 28/30/31).
 assert.deepEqual(relativeRange("this_month", new Date(2026, 1, 15)), ["2026-02-01", "2026-02-28"]);
 assert.deepEqual(relativeRange("last_7_days", new Date(2026, 0, 3)), ["2025-12-28", "2026-01-03"]);
+
+// --- Matriz completa de fechas relativas (Notion: pasado/este/próximo × semana/mes/año) ---
+assert.deepEqual(relativeRange("past_month", new Date(2026, 0, 15)), ["2025-12-01", "2025-12-31"]);
+assert.deepEqual(relativeRange("next_month", new Date(2026, 0, 15)), ["2026-02-01", "2026-02-28"]);
+assert.deepEqual(relativeRange("this_year", new Date(2026, 5, 1)), ["2026-01-01", "2026-12-31"]);
+assert.deepEqual(relativeRange("past_year", new Date(2026, 5, 1)), ["2025-01-01", "2025-12-31"]);
+assert.deepEqual(relativeRange("next_year", new Date(2026, 5, 1)), ["2027-01-01", "2027-12-31"]);
+assert.deepEqual(relativeRange("tomorrow", new Date(2026, 0, 31)), ["2026-02-01", "2026-02-01"]);
+assert.deepEqual(relativeRange("yesterday", new Date(2026, 2, 1)), ["2026-02-28", "2026-02-28"]);
+assert.deepEqual(relativeRange("past_week", new Date(2026, 0, 10)), ["2026-01-03", "2026-01-10"]);
+assert.deepEqual(relativeRange("next_week", new Date(2026, 0, 10)), ["2026-01-10", "2026-01-17"]);
+
+// --- Operadores nuevos de texto y número ---
+const trecs = [r("t1", { nota: "Factura enero" }), r("t2", { nota: "presupuesto" }), r("t3", {})];
+const tf = (op: string, value: unknown) =>
+  ids(applyViewConfig(trecs, [f("nota", "text")], { filters: [{ fieldId: "nota", op, value }] }));
+assert.equal(tf("is", "factura enero"), "t1"); // exacto, sin distinguir mayúsculas
+assert.equal(tf("is_not", "factura enero"), "t2,t3");
+assert.equal(tf("not_contains", "factura"), "t2,t3");
+assert.equal(tf("starts_with", "fact"), "t1");
+assert.equal(tf("ends_with", "puesto"), "t2");
+const nrecs = [r("n1", { x: 5 }), r("n2", { x: 10 }), r("n3", {})];
+const nf = (op: string, value: unknown) =>
+  ids(applyViewConfig(nrecs, [f("x", "number")], { filters: [{ fieldId: "x", op, value }] }));
+assert.equal(nf("gte", 10), "n2");
+assert.equal(nf("lte", 5), "n1");
+assert.equal(nf("neq", 5), "n2,n3"); // "≠" incluye las vacías, como en Notion
+
+// --- Persona: "contiene / no contiene" con el valor especial "Yo" (me) ---
+assert.equal(
+  ids(applyViewConfig(records, fields, { filters: [{ fieldId: "people", op: "contains", value: "me" }] }, "u2")),
+  "a,b",
+);
+assert.equal(
+  ids(applyViewConfig(records, fields, { filters: [{ fieldId: "people", op: "not_contains", value: "me" }] }, "u1")),
+  "b,c",
+);
+
+// --- Fecha: "en o antes/después" y anclas relativas {rel:"today"} en operadores absolutos ---
+const drecs2 = [r("d1", { cuando: hoy }), r("d2", { cuando: "1999-01-01" }), r("d3", {})];
+const df2 = (op: string, value: unknown) =>
+  ids(applyViewConfig(drecs2, [f("cuando", "date")], { filters: [{ fieldId: "cuando", op, value }] }));
+assert.equal(df2("on_or_before", { rel: "today" }), "d1,d2");
+assert.equal(df2("on_or_after", { rel: "yesterday" }), "d1");
+assert.equal(df2("after", { rel: "one_year_ago" }), "d1");
+assert.equal(df2("on", { rel: "today" }), "d1");
+
+// --- Estado por grupo entero (group:done) ---
+const estG = f("est", "status", {
+  options: [{ id: "o1", label: "Por hacer", group: "todo" }, { id: "o2", label: "Hecho", group: "done" }],
+});
+const grecs = [r("g1", { est: "o2" }), r("g2", { est: "o1" })];
+assert.equal(ids(applyViewConfig(grecs, [estG], { filters: [{ fieldId: "est", op: "is", value: "group:done" }] })), "g1");
+assert.equal(ids(applyViewConfig(grecs, [estG], { filters: [{ fieldId: "est", op: "is_not", value: "group:done" }] })), "g2");
+
+// --- Meta-campos: Creado por / Fecha de creación no viven en cells, vienen del registro ---
+const metaFields = [f("autor", "created_by"), f("alta", "created_time")];
+const metaRec: DbRecord = { id: "m", cells: {}, order: "m", createdById: "u1", createdAt: "2026-08-20T10:00:00.000Z" };
+assert.ok(matchesFilters(metaRec, metaFields, [{ fieldId: "autor", op: "contains", value: "me" }], "u1"));
+assert.ok(!matchesFilters(metaRec, metaFields, [{ fieldId: "autor", op: "contains", value: "me" }], "u2"));
+assert.ok(matchesFilters(metaRec, metaFields, [{ fieldId: "alta", op: "on", value: "2026-08-20" }]));
 
 // --- Texto visible de las celdas ---
 const gente = new Map([["u1", "Jose"], ["u2", "Ana"]]);

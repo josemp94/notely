@@ -9,6 +9,7 @@ import { downloadText } from "@/lib/download";
 import { VIEW_MENU_EVENT, type ViewMenuDetail } from "@/lib/shortcuts";
 import {
   countFilters,
+  DATE_ANCHORS,
   isFilterGroup,
   type ColorRule,
   NO_VALUE_OPS,
@@ -18,6 +19,7 @@ import {
   type FilterNode,
   type Sort,
 } from "@/lib/viewData";
+import { STATUS_GROUPS } from "@/lib/cellText";
 
 type View = { id: string; name: string; type: string; config: any };
 
@@ -625,7 +627,9 @@ function FilterValue({ field, op, value, onChange }: { field?: DbField; op: stri
       </select>
     );
   }
-  if (field.type === "person") return <PersonFilterValue value={value} onChange={onChange} />;
+  if (["person", "created_by", "last_edited_by"].includes(field.type))
+    return <PersonFilterValue value={value} onChange={onChange} />;
+  if (field.type === "relation") return <RelationFilterValue field={field} value={value} onChange={onChange} />;
   if (field.type === "select" || field.type === "multiselect" || field.type === "status") {
     const opts: any[] = field.config?.options ?? [];
     return (
@@ -634,10 +638,44 @@ function FilterValue({ field, op, value, onChange }: { field?: DbField; op: stri
         {opts.map((o) => (
           <option key={o.id} value={o.id}>{o.label}</option>
         ))}
+        {/* En Estado también se puede filtrar por grupo entero, como en Notion. */}
+        {field.type === "status" && (
+          <optgroup label="Grupos">
+            {STATUS_GROUPS.map(([g, l]) => (
+              <option key={g} value={`group:${g}`}>{l}</option>
+            ))}
+          </optgroup>
+        )}
       </select>
     );
   }
-  const inputType = field.type === "date" ? "date" : field.type === "number" ? "number" : "text";
+  if (["date", "created_time", "last_edited_time"].includes(field.type)) {
+    // Fecha exacta o ancla relativa (Hoy, Mañana…), que se guarda como {rel:"today"}.
+    const rel = value && typeof value === "object" ? ((value as { rel?: string }).rel ?? "") : "";
+    return (
+      <span className="flex min-w-0 flex-1 items-center gap-1">
+        <select
+          value={rel}
+          onChange={(e) => onChange(e.target.value ? { rel: e.target.value } : "")}
+          className="min-w-0 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+        >
+          <option value="">Fecha exacta</option>
+          {DATE_ANCHORS.map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
+        {!rel && (
+          <input
+            type="date"
+            value={typeof value === "string" ? value : ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+          />
+        )}
+      </span>
+    );
+  }
+  const inputType = field.type === "number" || field.type === "id" ? "number" : "text";
   return (
     <input
       type={inputType}
@@ -648,7 +686,7 @@ function FilterValue({ field, op, value, onChange }: { field?: DbField; op: stri
   );
 }
 
-/** Valor de filtro para campos "Persona": desplegable de miembros del espacio. */
+/** Valor de filtro para campos de persona: miembros del espacio + el especial "Yo". */
 function PersonFilterValue({ value, onChange }: { value: any; onChange: (v: any) => void }) {
   const { data } = trpc.workspace.members.useQuery();
   return (
@@ -658,8 +696,30 @@ function PersonFilterValue({ value, onChange }: { value: any; onChange: (v: any)
       className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
     >
       <option value="">—</option>
+      <option value="me">Yo</option>
       {(data?.members ?? []).map((m) => (
         <option key={m.userId} value={m.userId}>{m.name || m.email}</option>
+      ))}
+    </select>
+  );
+}
+
+/** Valor de filtro para relaciones: registros de la BD destino. */
+function RelationFilterValue({ field, value, onChange }: { field: DbField; value: any; onChange: (v: any) => void }) {
+  const targetCollectionId = (field.config as { targetCollectionId?: string })?.targetCollectionId;
+  const { data } = trpc.db.relationOptions.useQuery(
+    { collectionId: targetCollectionId ?? "" },
+    { enabled: !!targetCollectionId },
+  );
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+    >
+      <option value="">—</option>
+      {(data ?? []).map((o) => (
+        <option key={o.id} value={o.id}>{o.title}</option>
       ))}
     </select>
   );

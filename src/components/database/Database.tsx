@@ -57,6 +57,8 @@ export function Database({
   const [q, setQ] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const people = usePeople();
+  // Para el valor especial "Yo" (me) de los filtros de persona.
+  const { data: me } = trpc.auth.me.useQuery();
 
   const rename = trpc.pages.rename.useMutation({ onSuccess: () => utils.pages.tree.invalidate() });
   const setCoverM = trpc.pages.setCover.useMutation();
@@ -82,8 +84,8 @@ export function Database({
   const fields = col?.fields ?? [];
   const rawRecords = col?.records ?? [];
   const viewRecords = useMemo(
-    () => applyViewConfig(rawRecords as unknown as DbRecord[], fields as unknown as DbField[], active?.config),
-    [rawRecords, fields, active],
+    () => applyViewConfig(rawRecords as unknown as DbRecord[], fields as unknown as DbField[], active?.config, me?.id),
+    [rawRecords, fields, active, me?.id],
   );
   // Búsqueda interna (la lupa): sobre el texto visible de cada celda, después de filtros y orden.
   const shownRecords = useMemo(() => {
