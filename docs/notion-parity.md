@@ -111,7 +111,8 @@ el panel de registro, el historial y las páginas publicadas.
 - ✅ De BlockNote 0.53 (**ahora en español**: el diccionario `es` estaba sin usar): párrafo, encabezados 1-6 y **encabezado plegable**, listas (viñeta, numerada, tareas, toggle), cita, código, divisor, imagen, vídeo, audio, fichero, tabla, enlaces.
 - ✅ Propios: bloques **`database`** (BD embebida o enlazada, que recuerda su vista), **`callout`** («Llamada»), **`toc`** (tabla de contenidos) y **`bookmark`** («Enlace web»: tarjeta OpenGraph o reproductor de YouTube/Vimeo); inline **`mention`** (@página) y **`personMention`** (@persona, que notifica).
 - ✅ Autosave (800 ms contenido / 600 ms título), export a Markdown, portada, icono emoji, ancho completo, solo-lectura para `viewer`.
-- ❌ **Columnas/layout** (BlockNote solo las trae en su paquete de pago `xl-multi-column`: habría que implementarlas a mano), **sync block**, **breadcrumb block**, **botón**, embeds de Maps/Figma/PDF, **ecuación**, **subpágina embebida** como bloque.
+- ✅ **Columnas** (dos o tres, desde el menú `/`): hechas a mano con los mismos nombres de bloque que el paquete de pago de BlockNote (`columnList`/`column`), cuyas clases CSS ya vienen en la hoja de estilos. En el móvil se apilan. ❌ Cambiar el ancho de cada columna arrastrando, y añadir columnas a un bloque ya creado.
+- ❌ **Sync block**, **breadcrumb block**, **botón**, embeds de Maps/Figma/PDF, **ecuación**, **subpágina embebida** como bloque.
 - ✅ **Comentarios en línea** sobre una selección, con respuestas y resolver (`YjsThreadStore`: los hilos viajan dentro del documento compartido).
 - ❌ **@fecha** en el editor.
 - ❌ Menú contextual de bloque completo (Convertir en, Mover a, Copiar enlace al bloque, Color), selección multibloque con acciones masivas.

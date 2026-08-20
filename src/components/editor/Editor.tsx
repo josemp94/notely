@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Database, Download, FileText, Lightbulb, Link as LinkIcon, Link2, ListTree, MessageSquare, X } from "lucide-react";
+import { Check, Columns2, Columns3, Database, Download, FileText, Lightbulb, Link as LinkIcon, Link2, ListTree, MessageSquare, X } from "lucide-react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import {
   FloatingComposerController,
@@ -22,6 +22,7 @@ import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { editorSchema, MentionMenu, type NotionoPartialBlock } from "./mention";
+import { emptyColumn } from "./columnBlock";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
 import { useTheme } from "@/lib/theme";
@@ -277,6 +278,23 @@ export function Editor({
                     insertOrUpdateBlockForSlashMenu(editor, { type: "bookmark", props: preview });
                   },
                 },
+                ...[2, 3].map((n) => ({
+                  title: n === 2 ? "Dos columnas" : "Tres columnas",
+                  subtext: "Reparte el ancho de la página",
+                  aliases: ["columna", "columnas", "column", "lado", n === 2 ? "dos" : "tres"],
+                  group: "Bloques básicos",
+                  icon: n === 2 ? <Columns2 size={18} /> : <Columns3 size={18} />,
+                  onItemClick: () => {
+                    insertOrUpdateBlockForSlashMenu(editor, {
+                      type: "columnList",
+                      children: Array.from({ length: n }, emptyColumn),
+                    });
+                    // El cursor al primer hueco, para poder escribir sin buscarlo.
+                    const lista = editor.getTextCursorPosition().block;
+                    const primero = lista.children?.[0]?.children?.[0];
+                    if (primero) editor.setTextCursorPosition(primero, "end");
+                  },
+                })),
                 {
                   title: "Tabla de contenidos",
                   subtext: "Índice de los encabezados de la página",

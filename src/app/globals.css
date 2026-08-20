@@ -63,3 +63,43 @@ h1, h2, h3, .font-display {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+
+/* --- Columnas del editor ---------------------------------------------------
+   Los bloques `columnList` y `column` los ponemos nosotros (BlockNote solo los
+   trae en su paquete de pago), pero SUS clases y su flex ya vienen en la hoja de
+   estilos de BlockNote. Lo que falta es que los hijos de un `columnList` —que
+   BlockNote saca en un `.bn-block-group` aparte del contenido del bloque— se
+   repartan el ancho en vez de apilarse. El `:has()` con y sin `.react-renderer`
+   es porque los bloques hechos en React llevan ese envoltorio de por medio; la
+   propia hoja de BlockNote hace lo mismo con el bloque plegable. */
+.bn-block:has(> .bn-block-content[data-content-type="columnList"]) > .bn-block-group,
+.bn-block:has(> .react-renderer > .bn-block-content[data-content-type="columnList"]) > .bn-block-group {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.5rem;
+  margin-left: 0 !important; /* si no, se indentan como los bloques anidados */
+}
+.bn-block:has(> .bn-block-content[data-content-type="columnList"]) > .bn-block-group > .bn-block-outer,
+.bn-block:has(> .react-renderer > .bn-block-content[data-content-type="columnList"]) > .bn-block-group > .bn-block-outer {
+  flex: 1 1 0;
+  min-width: 0; /* sin esto, un texto largo ensancha su columna y aplasta las demás */
+}
+/* Lo de dentro de cada columna se apila normal, pegado al borde de su columna. */
+.bn-block:has(> .bn-block-content[data-content-type="column"]) > .bn-block-group,
+.bn-block:has(> .react-renderer > .bn-block-content[data-content-type="column"]) > .bn-block-group {
+  margin-left: 0 !important;
+}
+/* En el móvil, tres columnas de 80px no se leen: se apilan, como en Notion. */
+@media (max-width: 640px) {
+  .bn-block:has(> .bn-block-content[data-content-type="columnList"]) > .bn-block-group,
+  .bn-block:has(> .react-renderer > .bn-block-content[data-content-type="columnList"]) > .bn-block-group {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+/* Los dos bloques no pintan nada por sí mismos: lo que se ve son sus hijos. */
+.bn-block-content[data-content-type="columnList"],
+.bn-block-content[data-content-type="column"] {
+  padding: 0;
+}
