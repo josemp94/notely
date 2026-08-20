@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { cellToText, peopleOf } from "@/server/routers/db";
+import { cellToText, peopleOf } from "@/server/services/cells";
 import type { PublicDbTable } from "@/components/editor/databaseBlock";
 import { PublicView } from "./PublicView";
 

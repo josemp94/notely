@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, workspaceProcedure, authedProcedure } from "../trpc";
-import { cellToText } from "./db";
+import { cellToText } from "../services/cells";
 import { dayOf } from "@/lib/cellText";
 import { sendPush } from "../push";
 

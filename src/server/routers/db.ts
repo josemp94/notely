@@ -6,80 +6,17 @@ import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
 import { dispatchWebhooks } from "../webhooks";
-import { dateValue, dayOf } from "@/lib/cellText";
+import { dayOf } from "@/lib/cellText";
+import { cellToText, peopleOf } from "../services/cells";
+import * as dbService from "../services/db";
+import { DbError, FIELD_TYPES, VIEW_TYPES } from "../services/db";
 
 /** Días que sobreviven las filas borradas antes de desaparecer para siempre. */
 export const RECORD_TRASH_TTL_DAYS = 30;
 
-// Tipos de campo soportados en Fase 2
-export const FIELD_TYPES = ["text", "number", "select", "multiselect", "status", "person", "files", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "created_by", "last_edited_by", "id"] as const;
-
-/** Valor de una celda como texto plano (export CSV y vista pública). */
-export function cellToText(
-  f: { type: string; config: unknown },
-  v: unknown,
-  r: { createdAt: Date; updatedAt: Date; seq: number | null; createdById?: string | null; updatedById?: string | null },
-  /** userId -> nombre, para los campos de tipo "person" (ver peopleOf). */
-  people?: Map<string, string>,
-): string {
-  if (f.type === "created_time") return r.createdAt.toISOString();
-  if (f.type === "last_edited_time") return r.updatedAt.toISOString();
-  if (f.type === "id") return r.seq == null ? "" : String(r.seq);
-  if (f.type === "created_by" || f.type === "last_edited_by") {
-    const uid = f.type === "created_by" ? r.createdById : r.updatedById;
-    return uid ? (people?.get(uid) ?? uid) : "";
-  }
-  if (v === undefined || v === null || v === "") return "";
-  const opts = ((f.config as { options?: { id: string; label: string }[] })?.options) ?? [];
-  if (f.type === "select" || f.type === "status") return opts.find((o) => o.id === v)?.label ?? String(v);
-  if (f.type === "multiselect")
-    return (Array.isArray(v) ? v : [v]).map((x) => opts.find((o) => o.id === x)?.label ?? String(x)).join(", ");
-  if (f.type === "files")
-    return (Array.isArray(v) ? v : []).map((x) => (x as { name?: string })?.name ?? "").filter(Boolean).join(", ");
-  if (f.type === "person")
-    return (Array.isArray(v) ? v : [v]).map((x) => people?.get(String(x)) ?? String(x)).join(", ");
-  // ISO a propósito: el CSV debe poder reimportarse y abrirse en una hoja de cálculo.
-  if (f.type === "date") {
-    const d = dateValue(v);
-    return d ? (d.end ? `${d.start} → ${d.end}` : d.start) : "";
-  }
-  if (f.type === "checkbox") return v ? "true" : "false";
-  if (Array.isArray(v)) return v.map(String).join(", ");
-  return String(v);
-}
-
-/** Mapa userId -> nombre de los miembros del espacio; vacío si la BD no usa campos "person". */
-export async function peopleOf(
-  db: typeof import("@/lib/db").db,
-  workspaceId: string,
-  fields: { type: string }[],
-): Promise<Map<string, string>> {
-  if (!fields.some((f) => ["person", "created_by", "last_edited_by"].includes(f.type))) return new Map();
-  const ms = await db.member.findMany({
-    where: { workspaceId },
-    select: { user: { select: { id: true, name: true, email: true } } },
-  });
-  return new Map(ms.map((m) => [m.user.id, m.user.name || m.user.email]));
-}
-
-/** Colección recién nacida, como en Notion: campo "Nombre", vista Tabla y 3 filas vacías. */
-async function seedCollection(db: typeof import("@/lib/db").db, pageId: string, name: string) {
-  const collection = await db.collection.create({ data: { pageId, name } });
-  await db.field.create({
-    data: { collectionId: collection.id, name: "Nombre", type: "text", order: rankAtEnd(null), config: {} },
-  });
-  await db.view.create({
-    data: { collectionId: collection.id, name: "Tabla", type: "table", config: {} },
-  });
-  let ord: string | null = null;
-  for (let i = 0; i < 3; i++) {
-    ord = rankAtEnd(ord);
-    await db.record.create({
-      data: { collectionId: collection.id, order: ord, seq: i + 1, cells: {} },
-    });
-  }
-  return collection;
-}
+// Los tipos de campo y las vistas los define la capa de servicio, que es quien los
+// crea; aquí solo se validan las entradas contra ella.
+export { FIELD_TYPES } from "../services/db";
 
 async function assertPage(ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } }, pageId: string) {
   const p = await ctx.db.page.findFirst({
@@ -101,28 +38,41 @@ async function assertCollection(
   return c;
 }
 
+/** El ámbito con el que el servicio trabaja, sacado del contexto de tRPC. */
+const scopeOf = (ctx: { db: typeof import("@/lib/db").db; workspace: { id: string }; user: { id: string } }) => ({
+  db: ctx.db,
+  workspaceId: ctx.workspace.id,
+  userId: ctx.user.id,
+});
+
+/** El servicio lanza intenciones (no encontrado / petición inválida); aquí se traducen. */
+async function conTRPC<T>(p: Promise<T>): Promise<T> {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof DbError) {
+      throw new TRPCError({
+        code: e.code === "not_found" ? "NOT_FOUND" : "BAD_REQUEST",
+        message: e.message,
+      });
+    }
+    throw e;
+  }
+}
+
 export const dbRouter = router({
   /** Crea una página de tipo base de datos, con colección, campos, vistas y filas de ejemplo. */
   create: workspaceProcedure
     .input(z.object({ parentId: z.string().nullish(), title: z.string().default("Base de datos") }))
     .mutation(async ({ ctx, input }) => {
-      const last = await ctx.db.page.findFirst({
-        where: { workspaceId: ctx.workspace.id, parentId: input.parentId ?? null },
-        orderBy: { order: "desc" },
-        select: { order: true },
-      });
-      const page = await ctx.db.page.create({
-        data: {
-          workspaceId: ctx.workspace.id,
-          parentId: input.parentId ?? null,
+      // Nace con 3 filas vacías, como en Notion, para que la tabla no parezca rota.
+      const { page } = await conTRPC(
+        dbService.createDatabase(scopeOf(ctx), {
           title: input.title,
-          icon: "🗃️",
-          type: "database",
-          order: rankAtEnd(last?.order ?? null),
-          content: [],
-        },
-      });
-      await seedCollection(ctx.db, page.id, input.title);
+          parentId: input.parentId ?? null,
+          seedRows: 3,
+        }),
+      );
       return page;
     }),
 
@@ -131,18 +81,9 @@ export const dbRouter = router({
    * página contenedora oculta (embedded=true, excluida del árbol y de la búsqueda).
    */
   createInline: workspaceProcedure.mutation(async ({ ctx }) => {
-    const page = await ctx.db.page.create({
-      data: {
-        workspaceId: ctx.workspace.id,
-        title: "Base de datos",
-        icon: "🗃️",
-        type: "database",
-        embedded: true,
-        order: rankAtEnd(null),
-        content: [],
-      },
-    });
-    const collection = await seedCollection(ctx.db, page.id, "Base de datos");
+    const { page, collection } = await conTRPC(
+      dbService.createDatabase(scopeOf(ctx), { title: "Base de datos", embedded: true, seedRows: 3 }),
+    );
     return { pageId: page.id, collectionId: collection.id };
   }),
 
@@ -300,49 +241,13 @@ export const dbRouter = router({
   addField: workspaceProcedure
     .input(z.object({ collectionId: z.string(), name: z.string().default("Campo"), type: z.enum(FIELD_TYPES) }))
     .mutation(async ({ ctx, input }) => {
-      await assertCollection(ctx, input.collectionId);
-      const last = await ctx.db.field.findFirst({
-        where: { collectionId: input.collectionId },
-        orderBy: { order: "desc" },
-        select: { order: true },
-      });
-      return ctx.db.field.create({
-        data: {
-          collectionId: input.collectionId,
-          name: input.name,
-          type: input.type,
-          order: rankAtEnd(last?.order ?? null),
-          config:
-            input.type === "status"
-              ? {
-                  options: [
-                    { id: "st_todo", label: "Sin empezar", color: "gray", group: "todo" },
-                    { id: "st_doing", label: "En curso", color: "blue", group: "doing" },
-                    { id: "st_done", label: "Hecho", color: "green", group: "done" },
-                  ],
-                }
-              : input.type === "select" || input.type === "multiselect"
-                ? { options: [] }
-                : {},
-        },
-      });
+      return conTRPC(dbService.addField(scopeOf(ctx), input));
     }),
 
   updateField: workspaceProcedure
     .input(z.object({ id: z.string(), name: z.string().optional(), config: z.any().optional() }))
     .mutation(async ({ ctx, input }) => {
-      const f = await ctx.db.field.findFirst({
-        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
-        select: { id: true },
-      });
-      if (!f) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.field.update({
-        where: { id: input.id },
-        data: {
-          ...(input.name !== undefined ? { name: input.name } : {}),
-          ...(input.config !== undefined ? { config: input.config } : {}),
-        },
-      });
+      return conTRPC(dbService.updateField(scopeOf(ctx), input));
     }),
 
   /**
@@ -351,122 +256,18 @@ export const dbRouter = router({
    */
   setFieldType: workspaceProcedure
     .input(z.object({ id: z.string(), type: z.enum(FIELD_TYPES) }))
-    .mutation(async ({ ctx, input }) => {
-      const field = await ctx.db.field.findFirst({
-        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
-      });
-      if (!field) throw new TRPCError({ code: "NOT_FOUND" });
-      if (["relation", "rollup", "formula"].includes(field.type)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Ese tipo de campo no se puede convertir." });
-      }
-      if (field.type === input.type) return { ok: true };
-
-      const records = await ctx.db.record.findMany({
-        where: { collectionId: field.collectionId, archivedAt: null },
-        select: { id: true, cells: true, createdAt: true, updatedAt: true, seq: true },
-      });
-
-      // Texto de partida de cada celda; de ahí se deriva el valor en el tipo nuevo.
-      const texts = new Map<string, string>();
-      for (const r of records) {
-        const cells = (r.cells ?? {}) as Record<string, unknown>;
-        texts.set(r.id, cellToText(field, cells[field.id], r));
-      }
-
-      // Al pasar a etiquetas, cada texto distinto se convierte en una opción.
-      const options: { id: string; label: string; color: string }[] = [];
-      const COLORS = ["gray", "orange", "green", "blue", "red", "yellow"];
-      const optionFor = (label: string) => {
-        const found = options.find((o) => o.label.toLowerCase() === label.toLowerCase());
-        if (found) return found.id;
-        const id = "opt_" + Math.random().toString(36).slice(2, 9);
-        options.push({ id, label, color: COLORS[options.length % COLORS.length] });
-        return id;
-      };
-
-      const convert = (text: string): unknown => {
-        if (!text) return null;
-        switch (input.type) {
-          case "text":
-          case "url":
-          case "email":
-          case "phone":
-            return text;
-          case "number": {
-            const n = Number(text.replace(/[^\d,.-]/g, "").replace(",", "."));
-            return Number.isFinite(n) ? n : null;
-          }
-          case "checkbox":
-            return !["", "false", "no", "0"].includes(text.trim().toLowerCase());
-          case "date": {
-            const iso = text.match(/\d{4}-\d{2}-\d{2}/);
-            return iso ? iso[0] : null;
-          }
-          case "select":
-          case "status":
-            return optionFor(text);
-          case "multiselect":
-            return text.split(",").map((part) => optionFor(part.trim())).filter(Boolean);
-          default:
-            // person, files, id, created_time/by, last_edited_time/by: se rellenan solos o no son convertibles.
-            return null;
-        }
-      };
-
-      await ctx.db.$transaction(async (tx) => {
-        for (const r of records) {
-          const cells = { ...((r.cells ?? {}) as Record<string, unknown>) };
-          const next = convert(texts.get(r.id) ?? "");
-          if (next === null || (Array.isArray(next) && !next.length)) delete cells[field.id];
-          else cells[field.id] = next;
-          await tx.record.update({ where: { id: r.id }, data: { cells: cells as Prisma.InputJsonValue } });
-        }
-        // La config vieja (opciones, formato, prefijo) no vale para el tipo nuevo.
-        await tx.field.update({
-          where: { id: field.id },
-          data: { type: input.type, config: options.length ? { options } : {} },
-        });
-      });
-      return { ok: true, converted: records.length };
-    }),
+    .mutation(({ ctx, input }) => conTRPC(dbService.setFieldType(scopeOf(ctx), input))),
 
   deleteField: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const f = await ctx.db.field.findFirst({
-        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
-        select: { id: true },
-      });
-      if (!f) throw new TRPCError({ code: "NOT_FOUND" });
-      await ctx.db.field.delete({ where: { id: input.id } });
-      return { ok: true };
+      return conTRPC(dbService.deleteField(scopeOf(ctx), input));
     }),
 
   addRecord: workspaceProcedure
     .input(z.object({ collectionId: z.string(), cells: z.record(z.string(), z.any()).optional() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCollection(ctx, input.collectionId);
-      const last = await ctx.db.record.findFirst({
-        where: { collectionId: input.collectionId },
-        orderBy: { order: "desc" },
-        select: { order: true },
-      });
-      const maxSeq = await ctx.db.record.aggregate({
-        where: { collectionId: input.collectionId },
-        _max: { seq: true },
-      });
-      const created = await ctx.db.record.create({
-        data: {
-          collectionId: input.collectionId,
-          order: rankAtEnd(last?.order ?? null),
-          seq: (maxSeq._max.seq ?? 0) + 1,
-          cells: input.cells ?? {},
-          createdById: ctx.user.id,
-          updatedById: ctx.user.id,
-        },
-      });
-      dispatchWebhooks(ctx.workspace.id, "record.created", { recordId: created.id, collectionId: input.collectionId, cells: created.cells });
-      return created;
+      return conTRPC(dbService.createRecord(scopeOf(ctx), input));
     }),
 
   /** Crea un sub-elemento: registro hijo del indicado, en la misma colección. */
@@ -767,35 +568,16 @@ export const dbRouter = router({
 
   /** Crear una vista nueva en la colección. */
   addView: workspaceProcedure
-    .input(z.object({ collectionId: z.string(), type: z.enum(["table", "kanban", "calendar", "timeline", "gallery", "chart", "list", "form"]), name: z.string().optional() }))
+    .input(z.object({ collectionId: z.string(), type: z.enum(VIEW_TYPES), name: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCollection(ctx, input.collectionId);
-      const fields = await ctx.db.field.findMany({
-        where: { collectionId: input.collectionId },
-        orderBy: { order: "asc" },
-      });
-      const firstOf = (t: string) => fields.find((f) => f.type === t)?.id ?? null;
-      const names: Record<string, string> = { table: "Tabla", kanban: "Kanban", calendar: "Calendario", gallery: "Galería", chart: "Gráfica", list: "Lista", form: "Formulario", timeline: "Cronograma" };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let config: any = {};
-      if (input.type === "kanban") config = { groupByFieldId: firstOf("select") ?? firstOf("status") ?? firstOf("person") };
-      else if (input.type === "calendar" || input.type === "timeline") config = { dateFieldId: firstOf("date") };
-      else if (input.type === "chart") config = { chartType: "bar", xFieldId: firstOf("select"), yFieldId: null, agg: "count" };
-      return ctx.db.view.create({
-        data: { collectionId: input.collectionId, name: input.name?.trim() || names[input.type], type: input.type, config },
-      });
+      return conTRPC(dbService.addView(scopeOf(ctx), input));
     }),
 
   /** Renombrar una vista. */
   renameView: workspaceProcedure
     .input(z.object({ id: z.string(), name: z.string().min(1).max(60) }))
     .mutation(async ({ ctx, input }) => {
-      const v = await ctx.db.view.findFirst({
-        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
-        select: { id: true },
-      });
-      if (!v) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db.view.update({ where: { id: input.id }, data: { name: input.name.trim() } });
+      return conTRPC(dbService.renameView(scopeOf(ctx), input));
     }),
 
   /** Borrar una vista (no la última). */
@@ -821,20 +603,12 @@ export const dbRouter = router({
   deleteView: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const v = await ctx.db.view.findFirst({
-        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
-        select: { id: true, collectionId: true },
-      });
-      if (!v) throw new TRPCError({ code: "NOT_FOUND" });
-      const count = await ctx.db.view.count({ where: { collectionId: v.collectionId } });
-      if (count <= 1) throw new TRPCError({ code: "BAD_REQUEST", message: "No puedes borrar la última vista." });
-      await ctx.db.view.delete({ where: { id: input.id } });
-      return { ok: true };
+      return conTRPC(dbService.deleteView(scopeOf(ctx), input));
     }),
 
   /** Cambiar el tipo de una vista ("Mostrar como"), recalculando su config por defecto. */
   setViewType: workspaceProcedure
-    .input(z.object({ id: z.string(), type: z.enum(["table", "kanban", "calendar", "timeline", "gallery", "chart", "list", "form"]) }))
+    .input(z.object({ id: z.string(), type: z.enum(VIEW_TYPES) }))
     .mutation(async ({ ctx, input }) => {
       const v = await ctx.db.view.findFirst({
         where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
