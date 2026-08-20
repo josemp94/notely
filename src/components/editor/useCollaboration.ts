@@ -6,6 +6,7 @@ import * as Y from "yjs";
 import { createUserStore } from "@blocknote/core";
 import { DefaultThreadStoreAuth } from "@blocknote/core/comments";
 import { YjsThreadStore } from "@blocknote/core/yjs";
+import { IndexeddbPersistence } from "y-indexeddb";
 import { trpc } from "@/trpc/react";
 
 /** Colores de cursor: estables por usuario, para reconocerse de un vistazo. */
@@ -15,6 +16,8 @@ const colorFor = (id: string) =>
 
 export type Collaboration = {
   fragment: Y.XmlFragment;
+  /** Copia local del documento: abre al instante y aguanta sin conexión. */
+  local: IndexeddbPersistence;
   provider: HocuspocusProvider;
   user: { name: string; color: string };
   /** Hilos de comentarios en línea: viven en el mismo documento, así que se guardan solos. */
@@ -77,8 +80,14 @@ export function useCollaboration(
       });
     });
 
+    // Copia en el propio navegador: la página abre con lo último que se vio aunque
+    // no haya red, y lo escrito sin conexión se fusiona al volver (Yjs resuelve el
+    // cruce de cambios; por eso no hace falta preguntar "¿qué versión conservo?").
+    const local = new IndexeddbPersistence(`notiono-${pageId}`, doc);
+
     return {
       provider,
+      local,
       fragment: doc.getXmlFragment("document-store"),
       user: { name: me.name || me.email || "Alguien", color: colorFor(me.id) },
       threadStore: new YjsThreadStore(
@@ -95,6 +104,8 @@ export function useCollaboration(
   useEffect(() => {
     return () => {
       collab?.provider.destroy();
+      // La copia local se cierra, pero NO se borra: es lo que permite abrir sin red.
+      collab?.local.destroy();
     };
   }, [collab]);
 
