@@ -799,6 +799,25 @@ export const dbRouter = router({
     }),
 
   /** Borrar una vista (no la última). */
+  /** Duplica una vista con todos sus ajustes (filtros, orden, columnas, colores…). */
+  duplicateView: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const v = await ctx.db.view.findFirst({
+        where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
+      });
+      if (!v) throw new TRPCError({ code: "NOT_FOUND" });
+      return ctx.db.view.create({
+        data: {
+          collectionId: v.collectionId,
+          name: `${v.name} (copia)`,
+          type: v.type,
+          config: (v.config ?? {}) as Prisma.InputJsonValue,
+        },
+        select: { id: true },
+      });
+    }),
+
   deleteView: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

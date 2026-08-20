@@ -2,26 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowUpDown,
-  BarChart3,
-  Calendar,
-  ClipboardList,
-  Columns3,
-  Download,
-  Eye,
-  EyeOff,
-  Filter as FilterIcon,
-  GanttChart,
-  LayoutGrid,
-  List,
-  Pencil,
-  Plus,
-  Settings,
-  Table,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowUpDown, BarChart3, Calendar, ClipboardList, Columns3, Copy, Download, Eye, EyeOff, Filter as FilterIcon, GanttChart, LayoutGrid, List, Pencil, Plus, Settings, Table, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
 import {
@@ -110,6 +91,13 @@ export function DbToolbar({
     },
   });
   const renameView = trpc.db.renameView.useMutation({ onSuccess: refresh });
+  const duplicateView = trpc.db.duplicateView.useMutation({
+    onSuccess: async (v) => {
+      await refresh();
+      onViewCreated(v.id); // la copia queda seleccionada, como al crear una vista
+      setOpen(null);
+    },
+  });
   const setViewType = trpc.db.setViewType.useMutation({ onSuccess: async () => { await refresh(); setOpen(null); } });
   const deleteView = trpc.db.deleteView.useMutation({
     onSuccess: async () => {
@@ -410,6 +398,12 @@ export function DbToolbar({
                 </label>
               </div>
             )}
+            <button
+              onClick={() => duplicateView.mutate({ id: view.id })}
+              className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--border)]/40"
+            >
+              <Copy size={14} /> Duplicar vista
+            </button>
             <button
               onClick={() => {
                 if (window.confirm(`¿Borrar la vista "${view.name}"?`)) deleteView.mutate({ id: view.id });
