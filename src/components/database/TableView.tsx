@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
@@ -159,6 +159,11 @@ export function TableView({
     colorByRules(r as unknown as DbRecord, fields as unknown as DbField[], cfg.colorRules) ??
     rowColor(colorField, r.cells);
   const groups = groupBy(records, groupField, people);
+  // Segundo nivel: solo tiene sentido si ya hay un primero y es otro campo.
+  const subGroupField =
+    groupField && cfg.subGroupByFieldId !== groupField.id
+      ? fields.find((f) => f.id === cfg.subGroupByFieldId)
+      : undefined;
   const hasCalcs = fields.some((f) => calcs[f.id]);
 
   /** Una fila de la tabla; `depth`/`hasChildren` solo se usan sin agrupar (árbol de subtareas). */
@@ -403,7 +408,22 @@ export function TableView({
                     </button>
                   </td>
                 </tr>
-                {!folded && g.records.map((r) => renderRow({ rec: r, depth: 0, hasChildren: false }))}
+                {!folded &&
+                  (subGroupField
+                    ? groupBy(g.records, subGroupField, people).map((sg) => (
+                        <Fragment key={sg.key}>
+                          <tr className="border-b border-[var(--border)]">
+                            <td colSpan={fields.length + 2} className="px-1 py-0.5 pl-6">
+                              <span className="flex items-center gap-1 text-xs text-[var(--muted)]">
+                                {sg.label}
+                                <span className="opacity-70">{sg.records.length}</span>
+                              </span>
+                            </td>
+                          </tr>
+                          {sg.records.map((r) => renderRow({ rec: r, depth: 0, hasChildren: false }))}
+                        </Fragment>
+                      ))
+                    : g.records.map((r) => renderRow({ rec: r, depth: 0, hasChildren: false })))}
                 {!folded && hasCalcs && (
                   <tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]">
                     <td />
