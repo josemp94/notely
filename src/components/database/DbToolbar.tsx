@@ -58,7 +58,12 @@ export function DbToolbar({
 }) {
   const utils = trpc.useUtils();
   const [open, setOpen] = useState<null | "filter" | "sort" | "props" | "add" | "cfg">(null);
-  const refresh = () => utils.db.get.invalidate({ pageId });
+  // La gráfica agrega en el servidor respetando los filtros de la vista: al tocar
+  // cualquier config hay que refrescar también sus datos, no solo db.get.
+  const refresh = () => {
+    utils.db.chartData.invalidate();
+    return utils.db.get.invalidate({ pageId });
+  };
 
   const update = trpc.db.updateView.useMutation({ onSuccess: refresh });
   const addView = trpc.db.addView.useMutation({

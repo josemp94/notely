@@ -7,6 +7,7 @@ import { toCsv } from "@/lib/csv";
 import { evalFormula } from "../formula";
 import { dispatchWebhooks } from "../webhooks";
 import { dayOf } from "@/lib/cellText";
+import { applyViewConfig, cellValue, type DbField, type DbRecord } from "@/lib/viewData";
 import { cellToText, peopleOf } from "../services/cells";
 import * as dbService from "../services/db";
 import { DbError, FIELD_TYPES, VIEW_TYPES } from "../services/db";
@@ -877,14 +878,18 @@ export const dbRouter = router({
       return { relationLabels, rollups };
     }),
 
-  /** Datos agregados para una vista de gráfica (se calcula en el servidor). */
+  /**
+   * Datos agregados para una vista de gráfica (se calcula en el servidor).
+   * Como en Notion, la gráfica ES una vista: primero se aplican SUS filtros con el
+   * mismo motor que la tabla, y solo después se agrupa y agrega.
+   */
   chartData: workspaceProcedure
     .input(z.object({ pageId: z.string(), viewId: z.string() }))
     .query(async ({ ctx, input }) => {
       await assertPage(ctx, input.pageId);
       const col = await ctx.db.collection.findUnique({
         where: { pageId: input.pageId },
-        include: { fields: true, records: true, views: true },
+        include: { fields: true, records: { where: { archivedAt: null } }, views: true },
       });
       if (!col) throw new TRPCError({ code: "NOT_FOUND" });
       const view = col.views.find((v) => v.id === input.viewId);
@@ -893,45 +898,107 @@ export const dbRouter = router({
         xFieldId?: string;
         yFieldId?: string | null;
         agg?: string;
+        dateBucket?: string;
       };
-      const xField = col.fields.find((f) => f.id === cfg.xFieldId);
-      const yField = cfg.yFieldId ? col.fields.find((f) => f.id === cfg.yFieldId) : null;
+      const fields = col.fields.map((f) => ({ id: f.id, name: f.name, type: f.type, config: f.config })) as DbField[];
+      const all: DbRecord[] = col.records.map((r) => ({
+        id: r.id,
+        cells: (r.cells ?? {}) as Record<string, unknown>,
+        order: r.order ?? "",
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        createdById: r.createdById,
+        updatedById: r.updatedById,
+      }));
+      // Filtrar ANTES de agregar; ctx.user resuelve el valor especial "Yo" (me).
+      const records = applyViewConfig(all, fields, view?.config ?? {}, ctx.user.id);
+      const byId = new Map(col.records.map((r) => [r.id, r]));
+
+      const xField = fields.find((f) => f.id === cfg.xFieldId);
+      const yField = cfg.yFieldId ? fields.find((f) => f.id === cfg.yFieldId) : null;
       const agg = cfg.agg ?? "count";
+      const people = await peopleOf(ctx.db, ctx.workspace.id, col.fields);
 
-      // Etiqueta del valor del eje X según el tipo de campo.
-      const xLabel = (val: unknown): string => {
-        if (val === null || val === undefined || val === "") return "Sin valor";
-        if (xField?.type === "select") {
-          const opts = ((xField.config as { options?: { id: string; label: string }[] }).options) ?? [];
-          return opts.find((o) => o.id === val)?.label ?? String(val);
+      const DATE_TYPES = ["date", "created_time", "last_edited_time"];
+      const bucket = cfg.dateBucket ?? "month";
+      const pad2 = (x: number) => String(x).padStart(2, "0");
+      const localDay = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+      /** "YYYY-MM-DD" del valor (celda de fecha o Date de los meta-campos). */
+      const dayFrom = (val: unknown): string | null => {
+        if (val instanceof Date) return localDay(val);
+        const d = dayOf(val);
+        return d && /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : null;
+      };
+      /** Cubo del eje X para fechas: día, semana (lunes), mes, trimestre o año. */
+      const dateLabel = (dayStr: string): string => {
+        const [y, m, d] = dayStr.split("-").map(Number);
+        switch (bucket) {
+          case "day":
+            return dayStr;
+          case "week": {
+            const dt = new Date(y, m - 1, d);
+            dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); // lunes de esa semana
+            return localDay(dt);
+          }
+          case "quarter":
+            return `${y} T${Math.floor((m - 1) / 3) + 1}`;
+          case "year":
+            return String(y);
+          default:
+            return dayStr.slice(0, 7); // mes
         }
-        if (xField?.type === "date") return (dayOf(val) ?? String(val)).slice(0, 7); // agrupa por mes YYYY-MM
-        if (xField?.type === "checkbox") return val ? "Sí" : "No";
-        return String(val);
       };
 
-      const groups = new Map<string, number[]>();
-      for (const r of col.records) {
-        const cells = (r.cells ?? {}) as Record<string, unknown>;
-        const label = xLabel(xField ? cells[xField.id] : undefined);
-        let y = 1;
+      /** Etiqueta del eje X de un registro según el tipo del campo. */
+      const xLabel = (field: DbField | undefined, rec: DbRecord): string => {
+        if (!field) return "Sin valor";
+        const val = cellValue(rec, field);
+        if (DATE_TYPES.includes(field.type)) {
+          const d = dayFrom(val);
+          return d ? dateLabel(d) : "Sin valor";
+        }
+        if (field.type === "checkbox") return val ? "Sí" : "No";
+        const raw = byId.get(rec.id);
+        const text = raw ? cellToText(field, val, raw, people) : String(val ?? "");
+        return text === "" ? "Sin valor" : text;
+      };
+
+      const groups = new Map<string, (number | null)[]>();
+      for (const rec of records) {
+        const label = xLabel(xField, rec);
+        // Sin campo Y, cada fila cuenta 1; las celdas vacías no cuentan para media/mín/máx.
+        let y: number | null = null;
         if (yField) {
-          const n = Number(cells[yField.id]);
-          y = Number.isFinite(n) ? n : 0;
+          const num = Number(cellValue(rec, yField));
+          y = Number.isFinite(num) ? num : null;
         }
         const arr = groups.get(label) ?? [];
         arr.push(y);
         groups.set(label, arr);
       }
 
-      const categories = [...groups.keys()].sort();
-      const values = categories.map((c) => {
-        const arr = groups.get(c)!;
+      const round2 = (x: number) => Math.round(x * 100) / 100;
+      const aggOf = (arr: (number | null)[]): number => {
         if (agg === "count") return arr.length;
-        const sum = arr.reduce((a, b) => a + b, 0);
-        if (agg === "avg") return arr.length ? Math.round((sum / arr.length) * 100) / 100 : 0;
-        return Math.round(sum * 100) / 100; // sum
-      });
+        const nums = arr.filter((x): x is number => x !== null);
+        if (!nums.length) return 0;
+        if (agg === "min") return Math.min(...nums);
+        if (agg === "max") return Math.max(...nums);
+        if (agg === "median") {
+          const sorted = [...nums].sort((a, b) => a - b);
+          const mid = sorted.length >> 1;
+          return round2(sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2);
+        }
+        const sum = nums.reduce((a, b) => a + b, 0);
+        if (agg === "avg") return round2(sum / nums.length);
+        return round2(sum); // sum
+      };
+
+      // "Sin valor" siempre al final, como en Notion.
+      const categories = [...groups.keys()].sort((a, b) =>
+        a === "Sin valor" ? 1 : b === "Sin valor" ? -1 : a.localeCompare(b),
+      );
+      const values = categories.map((c) => aggOf(groups.get(c)!));
 
       return {
         chartType: cfg.chartType ?? "bar",

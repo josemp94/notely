@@ -13,7 +13,10 @@ type ChartConfig = {
   xFieldId?: string;
   yFieldId?: string | null;
   agg?: string;
+  dateBucket?: string;
 };
+
+const DATE_TYPES = ["date", "created_time", "last_edited_time"];
 
 export function ChartView({
   pageId,
@@ -86,6 +89,20 @@ export function ChartView({
           onChange={(v) => save({ xFieldId: v })}
           options={fields.map((f) => [f.id, f.name] as [string, string])}
         />
+        {DATE_TYPES.includes(fields.find((f) => f.id === cfg.xFieldId)?.type ?? "") && (
+          <Select
+            label="Por"
+            value={cfg.dateBucket ?? "month"}
+            onChange={(v) => save({ dateBucket: v })}
+            options={[
+              ["day", "Día"],
+              ["week", "Semana"],
+              ["month", "Mes"],
+              ["quarter", "Trimestre"],
+              ["year", "Año"],
+            ]}
+          />
+        )}
         <Select
           label="Medida"
           value={cfg.agg ?? "count"}
@@ -94,6 +111,9 @@ export function ChartView({
             ["count", "Contar"],
             ["sum", "Sumar"],
             ["avg", "Media"],
+            ["min", "Mínimo"],
+            ["max", "Máximo"],
+            ["median", "Mediana"],
           ]}
         />
         {cfg.agg !== "count" && (
