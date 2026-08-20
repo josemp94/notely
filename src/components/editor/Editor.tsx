@@ -17,6 +17,7 @@ import { CommentsExtension } from "@blocknote/core/comments";
 import { withCollaboration } from "@blocknote/core/yjs";
 import { useCollaboration } from "./useCollaboration";
 import { Presence } from "./Presence";
+import { CollabStatus } from "./CollabStatus";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -149,8 +150,9 @@ export function Editor({
       {cover && <CoverBand cover={cover} onChange={onCoverChange} editable={canEdit} />}
       <div className={`mx-auto ${fullWidth ? "max-w-none" : "max-w-3xl"} px-4 pb-6 md:px-12 md:pb-14 ${cover ? "pt-3" : "pt-6 md:pt-14"}`}>
       <div className={`mb-3 flex h-6 items-center gap-2 font-mono text-[11px] text-[var(--muted)] ${cover ? "justify-end" : ""}`}>
-        {/* Quién más está en la página ahora mismo. */}
+        {/* Quién más está en la página ahora mismo, y si la conexión falla. */}
         {collab && <Presence provider={collab.provider} />}
+        {collab && <CollabStatus provider={collab.provider} />}
         {collab && (
           <button
             onClick={() => setShowThreads((v) => !v)}

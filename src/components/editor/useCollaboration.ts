@@ -39,7 +39,7 @@ export function useCollaboration(
   me?: { id: string; name: string | null; email: string } | null,
 ): Collaboration | null {
   const url = process.env.NEXT_PUBLIC_COLLAB_URL;
-  const [ready, setReady] = useState<string | null>(null); // token de la sala
+  const [ready, setReady] = useState(false); // el documento ya tiene estado Yjs
   const utils = trpc.useUtils();
   const ensureYdoc = trpc.pages.ensureYdoc.useMutation();
   const collabToken = trpc.pages.collabToken.useMutation();
@@ -51,11 +51,10 @@ export function useCollaboration(
   useEffect(() => {
     if (!url || !me) return;
     let cancelled = false;
-    setReady(null);
+    setReady(false);
     ensureMutate({ id: pageId })
-      .then(() => tokenMutate({ id: pageId }))
-      .then((r) => !cancelled && setReady(r.token))
-      .catch(() => !cancelled && setReady(null)); // sin colaboración: el editor sigue funcionando
+      .then(() => !cancelled && setReady(true))
+      .catch(() => !cancelled && setReady(false)); // sin colaboración: el editor sigue funcionando
     return () => {
       cancelled = true;
     };
@@ -68,8 +67,14 @@ export function useCollaboration(
       url,
       name: pageId,
       document: doc,
-      // Permiso firmado de corta vida emitido por la web para esta página.
-      token: ready,
+      /**
+       * Permiso firmado que emite la web para esta página. Es una función a
+       * propósito: el proveedor la llama en cada (re)conexión, así que un permiso
+       * caducado —duran una hora— se renueva solo. Antes, quien dejaba la página
+       * abierta toda la tarde se quedaba sin sincronizar al volver, y encima en
+       * silencio, porque el servidor corta la sesión sin dar explicaciones.
+       */
+      token: async () => (await tokenMutate({ id: pageId })).token,
     });
     // Los miembros del espacio, para poner cara y nombre a cursores y comentarios.
     const userStore = createUserStore(async (userIds: string[]) => {
