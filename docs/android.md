@@ -16,6 +16,35 @@ simultánea— sigue viviendo en el NAS. Por eso:
 - Y por eso mismo, sin conexión al NAS la app abre lo que tuviera guardado el
   navegador, igual que la web.
 
+## Cómo se la instala la familia
+
+**Ajustes → App de Android → Descargar el APK.** El APK va dentro del despliegue
+(`public/notiono.apk`), así que el que se baja cada uno es el de la versión que hay
+puesta y nadie tiene que ir pasándoselo por WhatsApp. Al abrirlo, Android pide
+permiso para instalar algo que no viene de su tienda: es lo normal fuera de Play
+Store.
+
+Sí, eso mete un binario de ~900 KB en el repo. Es a propósito: es la única forma de
+que el APK viaje con el despliegue, y solo cambia cuando cambia el envoltorio (una
+vez cada mucho), no en cada despliegue de la web.
+
+## Que no parezca el navegador
+
+Un APK que es Chrome por dentro se delata por cosas concretas, y cada una tiene su
+arreglo en el repo:
+
+| Lo que canta | Dónde se arregla |
+|---|---|
+| La barra de direcciones arriba | `/.well-known/assetlinks.json` (ver abajo) — **hay que desplegar con `ANDROID_CERT_FINGERPRINT`** |
+| Menú de la esquina de arriba en vez de navegación | `src/components/BarraInferior.tsx`: barra abajo (Inicio · Buscar · Nueva · Tareas · Menú) |
+| Tirar hacia abajo y que recargue | `overscroll-behavior-y: none` en `globals.css`, solo con `display-mode: standalone` |
+| El destello azul al tocar y el «copiar» al mantener pulsado un botón | mismas reglas de `globals.css` |
+| Arrancar en blanco y luego la app | pantalla de arranque naranja de marca (`backgroundColor` del `twa-manifest.json`) |
+
+Lo que **no** se puede quitar: al entrar por primera vez, el SSO de Synology se abre
+en una pestaña de Chrome con su barra. Las apps nativas hacen exactamente eso mismo
+con sus inicios de sesión, y solo pasa la primera vez.
+
 ## Lo que hace falta
 
 | Pieza | Dónde | Para qué |
@@ -70,6 +99,18 @@ distribuirlo al público). Pásate el `.apk` al teléfono —correo, cable, lo q
 ## Publicar una versión nueva del APK
 
 Solo si cambia el envoltorio (nombre, icono, dominio). Sube los dos números de
-`twa-manifest.json` —`appVersionCode` (entero, obligatorio subirlo) y
-`appVersionName` (lo que ve el usuario)— y vuelve a compilar. Firmado con el mismo
-almacén, se instala encima sin perder nada.
+`twa-manifest.json` —`appVersionCode` (entero, obligatorio subirlo) y `appVersion`
+(lo que ve el usuario; ojo, la clave es esa, no `appVersionName`)—, regenera el
+proyecto y compila:
+
+```bash
+bubblewrap update --skipVersionUpgrade   # aplica el twa-manifest al proyecto
+bubblewrap build --skipPwaValidation
+cd .. && npm run apk:publicar            # lo copia a public/ y anota versión y tamaño
+git add public/notiono.apk src/lib/apk.json android/twa-manifest.json
+```
+
+`npm run apk:publicar` es lo que hace que la descarga de Ajustes y el APK compilado
+no puedan discrepar: la versión que enseña la web sale del mismo `twa-manifest.json`
+con el que se acaba de firmar. Firmado con el mismo almacén, se instala encima de la
+que haya sin perder nada.

@@ -9,7 +9,8 @@
     "lint": "eslint",
     "check": "tsx scripts/check.ts",
     "build:collab": "esbuild collab/hocuspocus.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=collab/dist/hocuspocus.mjs",
-    "check:api": "tsx scripts/check-api.ts"
+    "check:api": "tsx scripts/check-api.ts",
+    "apk:publicar": "node scripts/publicar-apk.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

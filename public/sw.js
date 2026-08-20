@@ -30,6 +30,10 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;
   if (url.pathname.startsWith("/api/")) return; // datos: nunca desde caché
+  // El APK se descarga, no se navega: si lo tocara el service worker acabaría un
+  // megabyte en la caché del shell y, sin red, devolviendo el HTML de «/» con
+  // nombre de .apk.
+  if (url.pathname === "/notiono.apk") return;
 
   // Estáticos con hash o inmutables: cache-first
   if (url.pathname.startsWith("/_next/static/") || /\.(png|svg|ico|woff2?)$/.test(url.pathname)) {

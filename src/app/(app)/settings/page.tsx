@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Download, Smartphone } from "lucide-react";
 import { trpc } from "@/trpc/react";
+import apk from "@/lib/apk.json";
 import { WEBHOOK_EVENTS } from "@/lib/webhookEvents";
 
 export default function SettingsPage() {
@@ -57,6 +59,7 @@ export default function SettingsPage() {
         {nameMsg && <p className="mt-2 text-xs text-[var(--muted)]">{nameMsg}</p>}
       </section>
 
+      <AndroidSection />
       <EstadoSection />
       <PushSection />
       <ApiTokensSection />
@@ -150,6 +153,64 @@ function ApiTokensSection() {
  * Estado de la instalación. Sirve para saber, sin entrar al servidor, si el último
  * despliegue dejó activas las piezas que dependen de la configuración.
  */
+/**
+ * La app de Android, para descargar desde aquí.
+ *
+ * El APK viaja dentro del despliegue (`public/notiono.apk`), así que el que se baja
+ * cada uno es siempre el de esta versión y no hay que ir pasándoselo por WhatsApp.
+ * Lo que lleva dentro es el envoltorio —nombre, icono y dirección—; la app en sí
+ * sigue siendo esta web, así que **no hay que reinstalar nada** cuando se despliega.
+ */
+function AndroidSection() {
+  const mb = (apk.bytes / 1024 / 1024).toFixed(1).replace(".", ",");
+
+  return (
+    <section className="mt-10">
+      <h2 className="font-display mb-1 flex items-center gap-2 font-bold">
+        <Smartphone size={16} /> App de Android
+      </h2>
+      {/* Quién lo está leyendo lo decide el CSS, no un efecto: dentro de la app
+          instalada `display-mode: standalone` es verdad y ahí sobra invitar a
+          descargarla. */}
+      <p className="mb-3 text-sm text-[var(--muted)]">
+        <span className="[@media(display-mode:standalone)]:hidden">
+          La misma Notiono, con su icono en el móvil y sin la barra del navegador. Se
+          actualiza sola con la web.
+        </span>
+        <span className="hidden [@media(display-mode:standalone)]:inline">
+          Ya la estás usando. Se actualiza sola con la web: esto solo hace falta si cambia
+          el icono o el nombre.
+        </span>
+      </p>
+      <a
+        href="/notiono.apk"
+        download="notiono.apk"
+        className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white"
+      >
+        <Download size={16} /> Descargar el APK
+      </a>
+      <p className="mt-2 text-xs text-[var(--muted)]">
+        Versión {apk.version} · {mb} MB · Android 6 o superior
+      </p>
+      <details className="mt-3 text-sm text-[var(--muted)]">
+        <summary className="cursor-pointer">Cómo se instala</summary>
+        <ol className="mt-2 list-decimal space-y-1 pl-5">
+          <li>Descarga el archivo en el móvil y ábrelo.</li>
+          <li>
+            Android avisará de que viene de fuera de su tienda: dale permiso a Chrome esa vez.
+            Es lo normal al instalar una app que no está en Play Store.
+          </li>
+          <li>Entra con tu cuenta la primera vez y ya se queda.</li>
+        </ol>
+        <p className="mt-2">
+          En iPhone no hay APK: se abre esta web en Safari y se usa Compartir → «Añadir a
+          pantalla de inicio», que deja el mismo icono.
+        </p>
+      </details>
+    </section>
+  );
+}
+
 function EstadoSection() {
   const [salud, setSalud] = useState<{ collab?: string | null; ts?: string } | null>(null);
   const [error, setError] = useState(false);
