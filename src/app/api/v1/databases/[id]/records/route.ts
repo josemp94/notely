@@ -1,60 +1,40 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { rankAtEnd } from "@/lib/fractional";
-import { authApiRequest, jsonError } from "@/server/apiAuth";
-import type { Prisma } from "@prisma/client";
+import { authApiRequest, jsonFromDbError, readJson } from "@/server/apiAuth";
+import { createRecord } from "@/server/services/db";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
+const nuevoRegistro = z.object({
   cells: z.record(z.string(), z.any()).default({}),
   parentId: z.string().optional(),
 });
 
-/** POST /api/v1/databases/:id/records — crea un registro { cells, parentId? }. */
+/**
+ * POST /api/v1/databases/:id/records — crea un registro { cells, parentId? }.
+ *
+ * Misma respuesta que siempre. Lo que cambia por dentro es que ahora pasa por el
+ * mismo servicio que usa la web: hasta ahora esta ruta traía su propia copia y se
+ * dejaba por el camino los webhooks y el «creado por».
+ */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await authApiRequest(req);
   if (auth instanceof Response) return auth;
+  const body = await readJson(req, nuevoRegistro);
+  if (body instanceof Response) return body;
   const { id } = await params;
-  const col = await db.collection.findFirst({
-    where: { id, page: { workspaceId: auth.workspaceId } },
-    select: { id: true },
-  });
-  if (!col) return jsonError(404, "Base de datos no encontrada.");
 
-  let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return jsonError(400, "Cuerpo JSON inválido.");
+    const rec = await createRecord(
+      { db, workspaceId: auth.workspaceId, userId: auth.userId },
+      { collectionId: id, cells: body.data.cells, parentId: body.data.parentId },
+    );
+    return NextResponse.json(
+      { id: rec.id, cells: rec.cells, parentId: rec.parentId, createdAt: rec.createdAt },
+      { status: 201 },
+    );
+  } catch (e) {
+    return jsonFromDbError(e);
   }
-  const parsed = bodySchema.safeParse(body);
-  if (!parsed.success) return jsonError(400, parsed.error.issues[0]?.message ?? "Cuerpo inválido.");
-
-  if (parsed.data.parentId) {
-    const parent = await db.record.findFirst({
-      where: { id: parsed.data.parentId, collectionId: col.id },
-      select: { id: true },
-    });
-    if (!parent) return jsonError(400, "parentId no pertenece a esta base de datos.");
-  }
-
-  const last = await db.record.findFirst({
-    where: { collectionId: col.id },
-    orderBy: { order: "desc" },
-    select: { order: true },
-  });
-  const maxSeq = await db.record.aggregate({ where: { collectionId: col.id }, _max: { seq: true } });
-  const rec = await db.record.create({
-    data: {
-      collectionId: col.id,
-      parentId: parsed.data.parentId,
-      order: rankAtEnd(last?.order ?? null),
-      seq: (maxSeq._max.seq ?? 0) + 1,
-      cells: parsed.data.cells as Prisma.InputJsonValue,
-    },
-    select: { id: true, cells: true, parentId: true, createdAt: true },
-  });
-  return NextResponse.json(rec, { status: 201 });
 }
