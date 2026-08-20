@@ -28,7 +28,7 @@ export function HistoryButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
+      className="toque inline-flex items-center justify-center rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
       title="Historial de versiones"
     >
       <History size={16} />

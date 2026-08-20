@@ -162,7 +162,7 @@ export function CalendarView({
                     </span>
                     <button
                       onClick={() => addOn(key!)}
-                      className="text-xs text-[var(--muted)] opacity-0 hover:text-[var(--foreground)] group-hover:opacity-100"
+                      className="text-xs text-[var(--muted)] al-pasar hover:text-[var(--foreground)]"
                       title="Añadir aquí"
                     >
                       +

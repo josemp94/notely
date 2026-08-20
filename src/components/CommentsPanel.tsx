@@ -57,7 +57,7 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
               <span className="min-w-0 truncate font-medium">{c.author.name || c.author.email}</span>
               <span className="shrink-0 text-[10px] text-[var(--muted)]">{when(c.createdAt)}</span>
               {canEdit && (
-                <span className="ml-auto flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="ml-auto flex shrink-0 items-center al-pasar">
                   <button
                     onClick={() => toggle.mutate({ id: c.id })}
                     className="rounded px-1 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
@@ -116,7 +116,7 @@ export function CommentsButton({ pageId, onClick }: { pageId: string; onClick: (
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
+      className="toque flex items-center justify-center gap-1 rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
       title="Comentarios"
     >
       <MessageSquare size={16} /> {comments?.length ?? 0}

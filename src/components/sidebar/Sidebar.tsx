@@ -832,7 +832,7 @@ function TreeItem({
           {node.title || "Sin título"}
         </Link>
         {canEdit && (
-          <div className="flex items-center opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex items-center al-pasar">
             <button
               onClick={() => addSub.mutate({ parentId: node.id })}
               className="rounded px-1 text-[var(--muted)] hover:text-[var(--foreground)]"

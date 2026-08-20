@@ -80,7 +80,14 @@ export function Popover({
       {createPortal(
         <div
           ref={panel}
-          style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, maxHeight: pos?.maxHeight }}
+          // El tope de ancho es para el móvil: un menú de 320 px no cabe en una
+          // pantalla de 320, y prefiero que se estreche a que se salga.
+          style={{
+            top: pos?.top ?? -9999,
+            left: pos?.left ?? -9999,
+            maxHeight: pos?.maxHeight,
+            maxWidth: "calc(100vw - 16px)",
+          }}
           className={`fixed z-[60] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl ${className.replace(/\b(right|left)-0\b/g, "")}`}
         >
           {children}

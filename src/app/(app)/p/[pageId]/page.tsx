@@ -166,7 +166,7 @@ function PageMenu({ page }: { page: { id: string; type: string; fullWidth: boole
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
+        className="toque inline-flex items-center justify-center rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--hover)]"
         title="Opciones de página"
       >
         <MoreHorizontal size={16} />
@@ -212,7 +212,7 @@ function FavoriteButton({ pageId }: { pageId: string }) {
     <button
       onClick={() => toggle.mutate({ pageId })}
       disabled={toggle.isPending}
-      className={`rounded-md px-2 py-1 text-sm hover:bg-[var(--hover)] ${isFav ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+      className={`toque inline-flex items-center justify-center rounded-md px-2 py-1 text-sm hover:bg-[var(--hover)] ${isFav ? "text-brand" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
       title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}
     >
       <Star size={16} fill={isFav ? "currentColor" : "none"} />
