@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Maximize2, Search, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { VIEW_MENU_EVENT, type ViewMenuDetail } from "@/lib/shortcuts";
 
@@ -170,6 +170,15 @@ export function Database({
           ))}
           {canEdit && (
             <AddViewButton pageId={pageId} collectionId={col.id} onViewCreated={(id) => setActiveViewId(id)} />
+          )}
+          {embedded && (
+            <a
+              href={`/p/${pageId}`}
+              className="toque flex items-center px-2 py-1.5 text-[var(--muted)] al-pasar hover:text-[var(--foreground)]"
+              title="Abrir como página completa"
+            >
+              <Maximize2 size={14} />
+            </a>
           )}
         </div>
         {/* En el móvil, la barra baja a su propia línea: con los botones a tamaño de
