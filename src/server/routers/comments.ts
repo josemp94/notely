@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "../trpc";
+import { sendPush } from "../push";
 
 async function assertPage(
   ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } },
@@ -30,9 +31,43 @@ export const commentsRouter = router({
     .input(z.object({ pageId: z.string(), body: z.string().trim().min(1).max(4000) }))
     .mutation(async ({ ctx, input }) => {
       await assertPage(ctx, input.pageId);
-      return ctx.db.comment.create({
+      const comment = await ctx.db.comment.create({
         data: { pageId: input.pageId, authorId: ctx.user.id, body: input.body },
       });
+      // Avisa a los demás participantes: quienes ya comentaron esta página.
+      // Anti-duplicados como en las menciones: una sin leer del mismo actor basta.
+      const previos = await ctx.db.comment.findMany({
+        where: { pageId: input.pageId, authorId: { not: ctx.user.id } },
+        select: { authorId: true },
+        distinct: ["authorId"],
+      });
+      if (previos.length) {
+        const page = await ctx.db.page.findUnique({ where: { id: input.pageId }, select: { title: true } });
+        const resumen = input.body.length > 80 ? input.body.slice(0, 77) + "…" : input.body;
+        for (const { authorId } of previos) {
+          const dup = await ctx.db.notification.findFirst({
+            where: { userId: authorId, pageId: input.pageId, actorId: ctx.user.id, type: "comment", read: false },
+            select: { id: true },
+          });
+          if (dup) continue;
+          await ctx.db.notification.create({
+            data: {
+              userId: authorId,
+              workspaceId: ctx.workspace.id,
+              type: "comment",
+              title: resumen,
+              pageId: input.pageId,
+              actorId: ctx.user.id,
+            },
+          });
+          sendPush(authorId, {
+            title: `${ctx.user.name || ctx.user.email} ha comentado en ${page?.title || "Sin título"}`,
+            body: resumen,
+            url: `/p/${input.pageId}`,
+          });
+        }
+      }
+      return comment;
     }),
 
   toggleResolve: workspaceProcedure

@@ -9,6 +9,7 @@ import { dispatchWebhooks } from "../webhooks";
 import { dayOf } from "@/lib/cellText";
 import { applyViewConfig, cellValue, type DbField, type DbRecord } from "@/lib/viewData";
 import { cellToText, peopleOf } from "../services/cells";
+import { sendPush } from "../push";
 import * as dbService from "../services/db";
 import { DbError, FIELD_TYPES, VIEW_TYPES } from "../services/db";
 
@@ -322,6 +323,45 @@ export const dbRouter = router({
         fieldId: input.fieldId,
         cells: updated.cells,
       });
+      // Asignar en un campo Persona avisa a quien entra nuevo (nunca a uno mismo).
+      if (Array.isArray(input.value) && input.value.length) {
+        const field = await ctx.db.field.findUnique({
+          where: { id: input.fieldId },
+          select: { type: true, collection: { select: { pageId: true, fields: { orderBy: { order: "asc" as const } } } } },
+        });
+        if (field?.type === "person") {
+          const antes = (rec.cells as Record<string, unknown>)[input.fieldId];
+          const previos = new Set(Array.isArray(antes) ? (antes as string[]) : []);
+          const nuevos = (input.value as unknown[]).filter(
+            (u): u is string => typeof u === "string" && !previos.has(u) && u !== ctx.user.id,
+          );
+          if (nuevos.length) {
+            const titleField = field.collection.fields.find((f) => f.type === "text");
+            const titulo = titleField ? cellToText(titleField, cells[titleField.id], rec) : "";
+            const miembros = await ctx.db.member.findMany({
+              where: { workspaceId: ctx.workspace.id, userId: { in: nuevos } },
+              select: { userId: true },
+            });
+            for (const { userId } of miembros) {
+              await ctx.db.notification.create({
+                data: {
+                  userId,
+                  workspaceId: ctx.workspace.id,
+                  type: "assign",
+                  title: titulo || null,
+                  pageId: field.collection.pageId,
+                  actorId: ctx.user.id,
+                },
+              });
+              sendPush(userId, {
+                title: `${ctx.user.name || ctx.user.email} te ha asignado una tarea`,
+                body: titulo || "Sin título",
+                url: `/p/${field.collection.pageId}`,
+              });
+            }
+          }
+        }
+      }
       return updated;
     }),
 

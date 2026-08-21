@@ -388,6 +388,18 @@ function NotificationsBell() {
                             Te toca: <span className="font-medium">{n.title || "una tarea"}</span> en «
                             {n.page ? `${n.page.icon ? `${n.page.icon} ` : ""}${n.page.title || "Sin título"}` : "una base borrada"}»
                           </>
+                        ) : n.type === "comment" ? (
+                          <>
+                            <span className="font-medium">{n.actor?.name || n.actor?.email || "Alguien"}</span> comentó en «
+                            {n.page ? `${n.page.icon ? `${n.page.icon} ` : ""}${n.page.title || "Sin título"}` : "una página borrada"}»
+                            {n.title ? <>: «{n.title}»</> : null}
+                          </>
+                        ) : n.type === "assign" ? (
+                          <>
+                            <span className="font-medium">{n.actor?.name || n.actor?.email || "Alguien"}</span> te asignó{" "}
+                            <span className="font-medium">{n.title || "una tarea"}</span> en «
+                            {n.page ? `${n.page.icon ? `${n.page.icon} ` : ""}${n.page.title || "Sin título"}` : "una base borrada"}»
+                          </>
                         ) : (
                           <>
                             <span className="font-medium">{n.actor?.name || n.actor?.email || "Alguien"}</span> te mencionó en «
