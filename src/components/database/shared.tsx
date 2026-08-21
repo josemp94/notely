@@ -175,14 +175,23 @@ export function AddFieldButton({
                 <ChevronLeft size={12} /> Vincular con…
               </button>
               {(databases ?? []).map((d) => (
-                <button
-                  key={d.collectionId}
-                  onClick={() => addRelation.mutate({ collectionId, name: `→ ${d.title || "BD"}`, targetCollectionId: d.collectionId })}
-                  className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
-                >
-                  {d.icon ? <span>{d.icon}</span> : <Database size={14} className="shrink-0 text-[var(--muted)]" />}
-                  <span className="truncate">{d.title || "Sin título"}</span>
-                </button>
+                <div key={d.collectionId} className="flex items-center gap-1">
+                  <button
+                    onClick={() => addRelation.mutate({ collectionId, name: `→ ${d.title || "BD"}`, targetCollectionId: d.collectionId })}
+                    className="flex min-w-0 flex-1 items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"
+                    title="Relación solo en esta base de datos"
+                  >
+                    {d.icon ? <span>{d.icon}</span> : <Database size={14} className="shrink-0 text-[var(--muted)]" />}
+                    <span className="truncate">{d.title || "Sin título"}</span>
+                  </button>
+                  <button
+                    onClick={() => addRelation.mutate({ collectionId, name: `→ ${d.title || "BD"}`, targetCollectionId: d.collectionId, mirror: true })}
+                    className="toque-estrecho shrink-0 rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
+                    title={`Bidireccional: crea también el campo espejo en «${d.title || "BD"}»`}
+                  >
+                    ↔
+                  </button>
+                </div>
               ))}
               {(databases ?? []).length === 0 && (
                 <div className="px-2 py-1 text-xs text-[var(--muted)]">No hay otras bases de datos.</div>

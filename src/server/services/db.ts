@@ -257,8 +257,19 @@ export async function updateField(
 }
 
 export async function deleteField(scope: Scope, input: { id: string }) {
-  await assertField(scope, input.id);
+  const field = await assertField(scope, input.id);
   await scope.db.field.delete({ where: { id: input.id } });
+  // Si era la mitad de una relación bidireccional, el espejo queda como relación
+  // normal (se le quita el emparejamiento para que nadie sincronice contra un
+  // campo que ya no existe).
+  const mirrorFieldId = (field.config as { mirrorFieldId?: string } | null)?.mirrorFieldId;
+  if (mirrorFieldId) {
+    const espejo = await scope.db.field.findUnique({ where: { id: mirrorFieldId }, select: { config: true } });
+    if (espejo) {
+      const { mirrorFieldId: _fuera, ...resto } = (espejo.config ?? {}) as Record<string, unknown>;
+      await scope.db.field.update({ where: { id: mirrorFieldId }, data: { config: resto as object } });
+    }
+  }
   return { ok: true as const };
 }
 

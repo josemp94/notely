@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { authApiRequest, jsonError } from "@/server/apiAuth";
+import { limpiaReferencias } from "@/server/services/relations";
 
 export const dynamic = "force-dynamic";
 
@@ -52,5 +53,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const rec = await findRecord(id, auth.workspaceId);
   if (!rec) return jsonError(404, "Registro no encontrado.");
   await db.record.delete({ where: { id: rec.id } });
+  await limpiaReferencias(db, rec.collectionId, [rec.id]);
   return NextResponse.json({ ok: true });
 }

@@ -13,6 +13,7 @@ import { sendPush } from "../push";
 import { alcanza, exigeNivel, mapaDeNiveles, type Nivel } from "../services/perms";
 import { infiereColumnas } from "@/lib/csvTipos";
 import { agregaRollup, ROLLUP_AGGS } from "@/lib/rollup";
+import { limpiaReferencias, sincronizaEspejo } from "../services/relations";
 import * as dbService from "../services/db";
 import { DbError, FIELD_TYPES, VIEW_TYPES } from "../services/db";
 
@@ -390,13 +391,20 @@ export const dbRouter = router({
         fieldId: input.fieldId,
         cells: updated.cells,
       });
-      // Asignar en un campo Persona avisa a quien entra nuevo (nunca a uno mismo).
-      if (Array.isArray(input.value) && input.value.length) {
+      // Los campos de lista (persona, relación) llevan trabajo extra tras escribir.
+      const antesCelda = (rec.cells as Record<string, unknown>)[input.fieldId];
+      if (Array.isArray(input.value) || Array.isArray(antesCelda)) {
         const field = await ctx.db.field.findUnique({
           where: { id: input.fieldId },
-          select: { type: true, collection: { select: { pageId: true, fields: { orderBy: { order: "asc" as const } } } } },
+          select: { type: true, config: true, collection: { select: { pageId: true, fields: { orderBy: { order: "asc" as const } } } } },
         });
-        if (field?.type === "person") {
+        // Relación con espejo: mantener el otro lado en sincronía.
+        const mirrorFieldId = (field?.config as { mirrorFieldId?: string })?.mirrorFieldId;
+        if (field?.type === "relation" && mirrorFieldId) {
+          await sincronizaEspejo(ctx.db, input.recordId, mirrorFieldId, antesCelda, input.value);
+        }
+        // Asignar en un campo Persona avisa a quien entra nuevo (nunca a uno mismo).
+        if (field?.type === "person" && Array.isArray(input.value) && input.value.length) {
           const antes = (rec.cells as Record<string, unknown>)[input.fieldId];
           const previos = new Set(Array.isArray(antes) ? (antes as string[]) : []);
           const nuevos = (input.value as unknown[]).filter(
@@ -463,11 +471,12 @@ export const dbRouter = router({
     .mutation(async ({ ctx, input }) => {
       const rec = await ctx.db.record.findFirst({
         where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } }, archivedAt: { not: null } },
-        select: { id: true },
+        select: { id: true, collectionId: true },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
       await exigeRegistro(ctx, input.id);
       await ctx.db.record.delete({ where: { id: input.id } }); // las subtareas caen por la FK en cascada
+      await limpiaReferencias(ctx.db, rec.collectionId, [input.id]);
       return { ok: true };
     }),
 
@@ -481,9 +490,14 @@ export const dbRouter = router({
       // Mantenimiento perezoso: solo borra lo ya caducado, puede dispararlo cualquiera que vea la BD.
       await assertCollection(ctx, input.collectionId, "view");
       const cutoff = new Date(Date.now() - RECORD_TRASH_TTL_DAYS * 864e5);
+      const caducados = await ctx.db.record.findMany({
+        where: { collectionId: input.collectionId, archivedAt: { lt: cutoff } },
+        select: { id: true },
+      });
       const r = await ctx.db.record.deleteMany({
         where: { collectionId: input.collectionId, archivedAt: { lt: cutoff } },
       });
+      await limpiaReferencias(ctx.db, input.collectionId, caducados.map((c) => c.id));
       return { purged: r.count };
     }),
 
@@ -797,28 +811,60 @@ export const dbRouter = router({
 
   /** Crea un campo de relación que apunta a otra base de datos. */
   addRelation: workspaceProcedure
-    .input(z.object({ collectionId: z.string(), name: z.string().default("Relación"), targetCollectionId: z.string() }))
+    .input(
+      z.object({
+        collectionId: z.string(),
+        name: z.string().default("Relación"),
+        targetCollectionId: z.string(),
+        // Bidireccional: crea también el campo espejo en la BD destino, emparejados
+        // por config.mirrorFieldId; updateCell mantiene los dos lados en sincronía.
+        mirror: z.boolean().default(false),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await assertCollection(ctx, input.collectionId);
-      const target = await assertCollection(ctx, input.targetCollectionId, "view");
-      const tPage = await ctx.db.collection.findUnique({
-        where: { id: input.targetCollectionId },
-        select: { pageId: true },
+      const target = await assertCollection(ctx, input.targetCollectionId, input.mirror ? "edit" : "view");
+      const paginas = await ctx.db.collection.findMany({
+        where: { id: { in: [input.collectionId, input.targetCollectionId] } },
+        select: { id: true, pageId: true, page: { select: { title: true } } },
       });
+      const origen = paginas.find((p) => p.id === input.collectionId);
+      const destino = paginas.find((p) => p.id === input.targetCollectionId);
       const last = await ctx.db.field.findFirst({
         where: { collectionId: input.collectionId },
         orderBy: { order: "desc" },
         select: { order: true },
       });
-      return ctx.db.field.create({
+      const campo = await ctx.db.field.create({
         data: {
           collectionId: input.collectionId,
           name: input.name,
           type: "relation",
           order: rankAtEnd(last?.order ?? null),
-          config: { targetCollectionId: target.id, targetPageId: tPage?.pageId ?? null },
+          config: { targetCollectionId: target.id, targetPageId: destino?.pageId ?? null },
         },
       });
+      if (input.mirror) {
+        const lastT = await ctx.db.field.findFirst({
+          where: { collectionId: input.targetCollectionId },
+          orderBy: { order: "desc" },
+          select: { order: true },
+        });
+        const espejo = await ctx.db.field.create({
+          data: {
+            collectionId: input.targetCollectionId,
+            name: `↔ ${origen?.page.title || "BD"}`,
+            type: "relation",
+            order: rankAtEnd(lastT?.order ?? null),
+            config: { targetCollectionId: input.collectionId, targetPageId: origen?.pageId ?? null, mirrorFieldId: campo.id },
+          },
+        });
+        await ctx.db.field.update({
+          where: { id: campo.id },
+          data: { config: { ...(campo.config as object), mirrorFieldId: espejo.id } },
+        });
+      }
+      return campo;
     }),
 
   /** Crea un campo rollup que agrega valores de los registros relacionados. */
