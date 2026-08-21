@@ -7,7 +7,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { editorSchema, MentionMenu, type NotionoPartialBlock } from "@/components/editor/mention";
+import { editorSchema, MentionMenu, subirArchivo, type NotionoPartialBlock } from "@/components/editor/mention";
 import { trpc } from "@/trpc/react";
 import { useTheme } from "@/lib/theme";
 import { Cell } from "./Cell";
@@ -68,7 +68,7 @@ export function RecordPanel({
     return Array.isArray(c) && c.length > 0 ? c : undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record.id]);
-  const editor = useCreateBlockNote({ dictionary: es, schema: editorSchema, initialContent: initial });
+  const editor = useCreateBlockNote({ dictionary: es, schema: editorSchema, initialContent: initial, uploadFile: subirArchivo });
 
   const onBodyChange = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);

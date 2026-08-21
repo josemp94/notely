@@ -21,7 +21,7 @@ import { CollabStatus } from "./CollabStatus";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { editorSchema, MentionMenu, type NotionoPartialBlock } from "./mention";
+import { editorSchema, MentionMenu, subirArchivo, type NotionoPartialBlock } from "./mention";
 import { emptyColumn } from "./columnBlock";
 import { trpc } from "@/trpc/react";
 import { downloadText } from "@/lib/download";
@@ -83,6 +83,7 @@ export function Editor({
       ? withCollaboration({
           dictionary: es,
           schema: editorSchema,
+          uploadFile: subirArchivo,
           // Comentarios en línea: los hilos viven en el mismo documento compartido,
           // así que se sincronizan y se guardan con él, sin modelo aparte.
           extensions: [
@@ -98,7 +99,7 @@ export function Editor({
             showCursorLabels: "activity",
           },
         })
-      : { dictionary: es, schema: editorSchema, initialContent: initial },
+      : { dictionary: es, schema: editorSchema, initialContent: initial, uploadFile: subirArchivo },
     [collab],
   );
 

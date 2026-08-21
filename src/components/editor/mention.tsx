@@ -70,6 +70,20 @@ export const editorSchema = BlockNoteSchema.create({
 export type NotionoEditor = typeof editorSchema.BlockNoteEditor;
 export type NotionoPartialBlock = typeof editorSchema.PartialBlock;
 
+/**
+ * Subida de archivos del editor (bloques imagen/vídeo/audio/archivo): reutiliza
+ * `/api/upload` (el mismo de portadas y adjuntos). Devuelve props para que el
+ * bloque se quede con la URL y el nombre real del archivo.
+ */
+export async function subirArchivo(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  const data = (await res.json().catch(() => null)) as { url?: string; name?: string | null; error?: string } | null;
+  if (!res.ok || !data?.url) throw new Error(data?.error ?? "No se pudo subir el archivo.");
+  return { props: { url: data.url, name: data.name ?? "" } };
+}
+
 /** Menú "@": personas del espacio (workspace.members) y páginas (pages.search). */
 export function MentionMenu({ editor, pageId }: { editor: NotionoEditor; pageId: string }) {
   const utils = trpc.useUtils();
