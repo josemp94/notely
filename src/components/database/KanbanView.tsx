@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/trpc/react";
-import { OPTION_COLORS, optionsOf, type FieldLite } from "@/lib/cellText";
+import { OPTION_COLORS, optionsOf, type FieldLite, type Option } from "@/lib/cellText";
 import { usePeople } from "./Cell";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
@@ -34,7 +34,10 @@ export function KanbanView({
   const invalidate = () => utils.db.get.invalidate({ pageId });
   const updateCell = trpc.db.updateCell.useMutation({ onSuccess: invalidate });
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
+  const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const [dragId, setDragId] = useState<string | null>(null);
+  // «+ Añadir grupo»: crea una opción nueva del campo select/estado desde el tablero.
+  const [groupName, setGroupName] = useState<string | null>(null);
   const people = usePeople();
 
   // Además de Selección y Estado, el tablero puede repartirse por responsable
@@ -100,6 +103,25 @@ export function KanbanView({
     setDragId(null);
   }
 
+  // Mismo alta de opción que la celda (Cell.tsx): id aleatorio, color rotando y
+  // grupo «todo» si el campo es de Estado.
+  function addGroup() {
+    const label = groupName?.trim();
+    setGroupName(null);
+    if (!label) return;
+    const opts = optionsOf(groupField!);
+    if (opts.some((o) => o.label.toLowerCase() === label.toLowerCase())) return;
+    const names = Object.keys(OPTION_COLORS);
+    const option: Option = {
+      id: "opt_" + Math.random().toString(36).slice(2, 9),
+      label,
+      color: names[opts.length % names.length],
+      ...(groupField!.type === "status" ? { group: "todo" } : {}),
+    };
+    const cfg = (groupField!.config as { options?: Option[] }) ?? {};
+    updateField.mutate({ id: groupField!.id, config: { ...cfg, options: [...opts, option] } });
+  }
+
   return (
     <div className="flex gap-3 overflow-x-auto pb-4">
       {columns.map((col) => {
@@ -151,6 +173,31 @@ export function KanbanView({
           </div>
         );
       })}
+      {(groupField.type === "select" || groupField.type === "status") && (
+        <div className={`${size.col} shrink-0`}>
+          {groupName === null ? (
+            <button
+              onClick={() => setGroupName("")}
+              className="toque-estrecho w-full rounded-lg px-2 py-1.5 text-left text-sm text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--foreground)]"
+            >
+              + Añadir grupo
+            </button>
+          ) : (
+            <input
+              autoFocus
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              onBlur={addGroup}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addGroup();
+                if (e.key === "Escape") setGroupName(null);
+              }}
+              placeholder="Nombre del grupo…"
+              className="w-full rounded-lg border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-brand"
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
