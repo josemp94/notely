@@ -73,6 +73,19 @@ export const commentsRouter = router({
       return comment;
     }),
 
+  /** Editar un comentario: solo su autor. */
+  edit: workspaceProcedure
+    .input(z.object({ id: z.string(), body: z.string().trim().min(1).max(4000) }))
+    .mutation(async ({ ctx, input }) => {
+      const c = await ctx.db.comment.findFirst({
+        where: { id: input.id, page: { workspaceId: ctx.workspace.id } },
+        select: { id: true, authorId: true },
+      });
+      if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+      if (c.authorId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Solo el autor puede editarlo." });
+      return ctx.db.comment.update({ where: { id: c.id }, data: { body: input.body } });
+    }),
+
   toggleResolve: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

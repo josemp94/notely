@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, MessageSquare, X } from "lucide-react";
+import { Check, MessageSquare, Pencil, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 
 function when(d: Date) {
@@ -27,6 +27,14 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
   });
   const toggle = trpc.comments.toggleResolve.useMutation({ onSuccess: refresh });
   const remove = trpc.comments.remove.useMutation({ onSuccess: refresh });
+  // Editar el propio comentario, inline.
+  const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
+  const edit = trpc.comments.edit.useMutation({
+    onSuccess: () => {
+      setEditing(null);
+      refresh();
+    },
+  });
 
   const send = () => {
     const text = body.trim();
@@ -65,6 +73,15 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
                   >
                     <Check size={14} />
                   </button>
+                  {c.author.id === me?.id && (
+                    <button
+                      onClick={() => setEditing({ id: c.id, body: c.body })}
+                      className="rounded px-1 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
+                      title="Editar comentario"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  )}
                   {canDelete(c.author.id) && (
                     <button
                       onClick={() => remove.mutate({ id: c.id })}
@@ -77,7 +94,38 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
                 </span>
               )}
             </div>
-            <p className={`mt-1 whitespace-pre-wrap pl-7 ${c.resolved ? "line-through" : ""}`}>{c.body}</p>
+            {editing?.id === c.id ? (
+              <div className="mt-1 pl-7">
+                <textarea
+                  autoFocus
+                  value={editing.body}
+                  onChange={(e) => setEditing({ id: c.id, body: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (editing.body.trim()) edit.mutate({ id: c.id, body: editing.body.trim() });
+                    }
+                    if (e.key === "Escape") setEditing(null);
+                  }}
+                  rows={2}
+                  className="w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none focus:border-brand"
+                />
+                <div className="mt-1 flex gap-2 text-xs">
+                  <button
+                    onClick={() => editing.body.trim() && edit.mutate({ id: c.id, body: editing.body.trim() })}
+                    disabled={edit.isPending}
+                    className="text-brand hover:underline disabled:opacity-50"
+                  >
+                    Guardar
+                  </button>
+                  <button onClick={() => setEditing(null)} className="text-[var(--muted)] hover:underline">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className={`mt-1 whitespace-pre-wrap pl-7 ${c.resolved ? "line-through" : ""}`}>{c.body}</p>
+            )}
           </div>
         ))}
       </div>
