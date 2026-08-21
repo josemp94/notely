@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BlockNoteEditor } from "@blocknote/core";
-import { Bell, ChevronDown, ChevronRight, CircleCheck, Copy, Database, FilePlus, FileText, Folder, FolderInput, Keyboard, Loader2, Moon, MoreHorizontal, PanelLeftClose, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, Upload, Users, X } from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, CircleCheck, Copy, Database, FilePlus, FileText, Folder, FolderInput, Keyboard, Link2, Loader2, Moon, MoreHorizontal, PanelLeftClose, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, Upload, Users, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { openShortcuts } from "@/components/Shortcuts";
 import { NEW_PAGE_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
@@ -76,6 +76,26 @@ export function Sidebar() {
 
   const [importando, setImportando] = useState<string | null>(null);
 
+  // Ancho del panel, arrastrando el borde derecho (solo ratón); persiste en local.
+  const [ancho, setAncho] = useState(256);
+  useEffect(() => {
+    const v = Number(localStorage.getItem("notiono.sidebar-width"));
+    if (v >= 200 && v <= 480) setAncho(v);
+  }, []);
+  const empezarArrastre = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const x0 = e.clientX;
+    const w0 = ancho;
+    const clamp = (n: number) => Math.min(480, Math.max(200, n));
+    const move = (ev: MouseEvent) => setAncho(clamp(w0 + ev.clientX - x0));
+    const up = (ev: MouseEvent) => {
+      window.removeEventListener("mousemove", move);
+      localStorage.setItem("notiono.sidebar-width", String(clamp(w0 + ev.clientX - x0)));
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up, { once: true });
+  };
+
   async function onImportFile(file: File) {
     // El ZIP de export de Notion va aparte: jerarquía entera, BDs y adjuntos.
     if (/\.zip$/i.test(file.name)) {
@@ -141,7 +161,13 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-dvh w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)]">
+    <aside className="relative flex h-dvh flex-col border-r border-[var(--border)] bg-[var(--surface)]" style={{ width: ancho }}>
+      {/* Tirador para redimensionar (de ratón, como el ancho de columna). */}
+      <div
+        onMouseDown={empezarArrastre}
+        className="absolute inset-y-0 -right-0.5 z-10 w-1.5 cursor-ew-resize hover:bg-brand/40"
+        title="Arrastra para cambiar el ancho"
+      />
       <div className="zona-segura-arriba flex items-center justify-between px-3">
         <Link href="/" className="font-display text-lg font-bold">
           No<span className="text-brand">tio</span>no
@@ -780,6 +806,9 @@ function TreeItem({
       router.push(`/p/${res.id}`);
     },
   });
+  const favorite = trpc.pages.toggleFavorite.useMutation({
+    onSuccess: () => utils.favorites.list.invalidate(),
+  });
 
   return (
     <li>
@@ -879,6 +908,16 @@ function TreeItem({
               icon: <Plus size={16} />,
               label: "Añadir subpágina",
               onClick: () => addSub.mutate({ parentId: node.id }),
+            },
+            {
+              icon: <Star size={16} />,
+              label: "Favorito (añadir o quitar)",
+              onClick: () => favorite.mutate({ pageId: node.id }),
+            },
+            {
+              icon: <Link2 size={16} />,
+              label: "Copiar enlace",
+              onClick: () => navigator.clipboard.writeText(`${window.location.origin}/p/${node.id}`),
             },
             {
               icon: <Copy size={16} />,
