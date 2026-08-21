@@ -136,6 +136,23 @@ async function main() {
   const ids2 = (p2.records as { id: string }[]).map((r) => r.id);
   assert.ok(!ids1.some((id) => ids2.includes(id)), "las páginas no deben solaparse");
 
+  // --- Consulta con filtros y orden (el mismo motor que las vistas) ---
+  const filtrada = await api("POST", `/databases/${collectionId}/query`, {
+    filters: [{ fieldId: campos[0].id, op: "contains", value: "era" }],
+    sorts: [{ fieldId: campos[0].id, dir: "asc" }],
+  });
+  assert.equal(filtrada.status, 200, `query: ${JSON.stringify(filtrada.body)}`);
+  const q = comoObjeto(filtrada);
+  assert.equal((q.records as unknown[]).length, 1, "el filtro contains debe dejar solo «Tercera»");
+  assert.equal(q.total, 1, "y total debe decir lo mismo");
+  const ordenada = await api("POST", `/databases/${collectionId}/query`, {
+    sorts: [{ fieldId: campos[0].id, dir: "desc" }],
+  });
+  const titulos = (comoObjeto(ordenada).records as { cells: Record<string, string> }[]).map(
+    (r) => r.cells[campos[0].id],
+  );
+  assert.deepEqual(titulos, ["Tercera", "Segunda", "Escrito por la API"], "orden desc por título");
+
   // --- Lo que no es del token, no existe ---
   const ajena = await api("PATCH", "/fields/cmt0000000000000000000000", { name: "x" });
   assert.equal(ajena.status, 404, "una columna de otro espacio debería dar 404");

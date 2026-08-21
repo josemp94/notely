@@ -164,6 +164,33 @@ curl -H "Authorization: Bearer $TOKEN" \
 página repitiendo la llamada con `cursor=<next_cursor>`. `GET /databases/<id>` sigue
 devolviendo todos los registros de golpe; para bases de datos grandes usa esto.
 
+### Consultar registros (filtros y orden)
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "filters": [
+      { "fieldId": "<fieldId>", "op": "contains", "value": "compra" },
+      { "type": "group", "op": "or", "filters": [
+        { "fieldId": "<estadoId>", "op": "is", "value": "<optionId>" },
+        { "fieldId": "<fechaId>", "op": "this_week", "value": "" }
+      ]}
+    ],
+    "filterOp": "and",
+    "sorts": [{ "fieldId": "<fieldId>", "dir": "asc" }],
+    "limit": 100
+  }' \
+  "http://localhost:3000/api/v1/databases/<id>/query"
+# → { "records": […], "next_cursor", "has_more", "total" }
+```
+
+Usa el **mismo motor que las vistas de la web**: idéntico árbol de filtros (condiciones
+`{fieldId, op, value}` y grupos `{type:"group", op, filters}` anidados) e idénticos
+operadores — texto: `contains`/`not_contains`/`eq`/`neq`; número: `eq`/`neq`/`gt`/`lt`/
+`gte`/`lte`; selección/estado: `is`/`is_not`; fecha: `on`/`before`/`after`/`on_or_before`/
+`on_or_after`/`today`/`this_week`/`this_month`… (y `{"rel":"today"}` como valor relativo);
+todos: `is_empty`/`not_empty`. `cursor`/`limit` paginan igual que el listado.
+
 ### Actualizar celdas (merge)
 
 ```bash
