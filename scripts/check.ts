@@ -203,9 +203,9 @@ assert.equal(
 
 // --- Color de fila por la opción elegida ---
 const estado = fields[3];
-assert.equal(rowColor(estado, { estado: "done" }), "#e5e0d8"); // opción sin color asignado: gris
+assert.equal(rowColor(estado, { estado: "done" }), "var(--tag-gray)"); // opción sin color asignado: gris
 const conColor = f("prio", "status", { options: [{ id: "alta", label: "Alta", color: "red" }] });
-assert.equal(rowColor(conColor, { prio: "alta" }), "#ffd2cd");
+assert.equal(rowColor(conColor, { prio: "alta" }), "var(--tag-red)");
 assert.equal(rowColor(estado, {}), undefined); // sin valor, sin color
 assert.equal(rowColor(undefined, { estado: "done" }), undefined); // sin campo de color configurado
 assert.equal(rowColor(fields[1], { tags: ["t1"] }), undefined); // opción inexistente: sin color
@@ -226,8 +226,8 @@ const reglas = [
   { id: "1", color: "green", filters: [{ fieldId: "estado", op: "is", value: "done" }] },
   { id: "2", color: "red", filters: [{ fieldId: "cuando", op: "before", value: "2020-01-01" }] },
 ];
-assert.equal(colorByRules(hecha, reglaFields, reglas), "#c9efd8"); // gana la primera que cumple
-assert.equal(colorByRules(vencida, reglaFields, reglas), "#ffd2cd");
+assert.equal(colorByRules(hecha, reglaFields, reglas), "var(--tag-green)"); // gana la primera que cumple
+assert.equal(colorByRules(vencida, reglaFields, reglas), "var(--tag-red)");
 assert.equal(colorByRules(r("x", {}), reglaFields, reglas), undefined); // no cumple ninguna
 assert.equal(colorByRules(vencida, reglaFields, []), undefined); // sin reglas, sin color
 

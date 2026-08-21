@@ -858,6 +858,9 @@ const RULE_COLORS: [string, string][] = [
   ["yellow", "Amarillo"],
   ["green", "Verde"],
   ["blue", "Azul"],
+  ["purple", "Morado"],
+  ["pink", "Rosa"],
+  ["brown", "Marrón"],
   ["gray", "Gris"],
 ];
 

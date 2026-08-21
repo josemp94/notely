@@ -81,14 +81,19 @@ export function formatNumber(value: unknown, field: FieldLite): string {
   return es(n);
 }
 
-/** Colores de las etiquetas de Selección/Estado (fondo suave). */
+/** Colores de las etiquetas de Selección/Estado: los 10 de Notion, con variante
+ *  clara y oscura vía variables CSS (globals.css). */
 export const OPTION_COLORS: Record<string, string> = {
-  gray: "#e5e0d8",
-  orange: "#ffd9c9",
-  green: "#c9efd8",
-  red: "#ffd2cd",
-  blue: "#cfe0ff",
-  yellow: "#fbeec2",
+  default: "var(--tag-default)",
+  gray: "var(--tag-gray)",
+  brown: "var(--tag-brown)",
+  orange: "var(--tag-orange)",
+  yellow: "var(--tag-yellow)",
+  green: "var(--tag-green)",
+  blue: "var(--tag-blue)",
+  purple: "var(--tag-purple)",
+  pink: "var(--tag-pink)",
+  red: "var(--tag-red)",
 };
 
 /**

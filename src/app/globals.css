@@ -39,6 +39,36 @@
   --brand-50: #3a2015;
 }
 
+/* Colores de las etiquetas de Selección/Estado: los 10 de Notion. El texto de la
+   pill va en --tag-fg para que sea legible sobre cualquier fondo en ambos temas. */
+:root {
+  --tag-fg: #26241f;
+  --tag-default: #eceae4;
+  --tag-gray: #e5e0d8;
+  --tag-brown: #e8d8c9;
+  --tag-orange: #ffd9c9;
+  --tag-yellow: #fbeec2;
+  --tag-green: #c9efd8;
+  --tag-blue: #cfe0ff;
+  --tag-purple: #e6d9f7;
+  --tag-pink: #ffd7e6;
+  --tag-red: #ffd2cd;
+}
+
+:root[data-theme="dark"] {
+  --tag-fg: #ededec;
+  --tag-default: #37352f;
+  --tag-gray: #4a463f;
+  --tag-brown: #5d4535;
+  --tag-orange: #74432a;
+  --tag-yellow: #6b5a2b;
+  --tag-green: #2e5741;
+  --tag-blue: #2d456b;
+  --tag-purple: #4a3466;
+  --tag-pink: #63314b;
+  --tag-red: #6e3630;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

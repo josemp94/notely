@@ -288,7 +288,7 @@ export async function setFieldType(scope: Scope, input: { id: string; type: Fiel
 
   // Al pasar a etiquetas, cada texto distinto se convierte en una opción.
   const options: { id: string; label: string; color: string }[] = [];
-  const COLORS = ["gray", "orange", "green", "blue", "red", "yellow"];
+  const COLORS = ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red", "default"];
   const optionFor = (label: string) => {
     const found = options.find((o) => o.label.toLowerCase() === label.toLowerCase());
     if (found) return found.id;

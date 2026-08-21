@@ -2,19 +2,10 @@
 
 import { useState } from "react";
 import { trpc } from "@/trpc/react";
-import { optionsOf, type FieldLite } from "@/lib/cellText";
+import { OPTION_COLORS, optionsOf, type FieldLite } from "@/lib/cellText";
 import { usePeople } from "./Cell";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
-
-const COLORS: Record<string, string> = {
-  gray: "#f1ede7",
-  orange: "#fff1ec",
-  green: "#eafaf0",
-  red: "#fff0ee",
-  blue: "#eef4ff",
-  yellow: "#fdf6e3",
-};
 
 const SIZES: Record<string, { col: string; card: string }> = {
   small: { col: "w-52", card: "px-2 py-1.5 text-xs" },
@@ -119,7 +110,8 @@ export function KanbanView({
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => drop(col.id)}
             className={`${size.col} shrink-0 rounded-lg p-2`}
-            style={{ background: COLORS[col.color] ?? "#f1ede7" }}
+            // Tinte suave: el color de la etiqueta rebajado con el fondo del tema.
+            style={{ background: `color-mix(in srgb, ${OPTION_COLORS[col.color] ?? "var(--tag-default)"} 45%, var(--background))` }}
           >
             <div className="mb-2 flex items-center justify-between px-1 text-sm font-medium">
               <span>{col.label}</span>
