@@ -1,7 +1,8 @@
 "use client";
 
 import { FileText } from "lucide-react";
-import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs } from "@blocknote/core";
+import { BlockNoteSchema, createCodeBlockSpec, defaultBlockSpecs, defaultInlineContentSpecs } from "@blocknote/core";
+import { codeBlockOptions } from "@blocknote/code-block";
 import { createReactInlineContentSpec, SuggestionMenuController } from "@blocknote/react";
 import { trpc } from "@/trpc/react";
 import { BookmarkBlock } from "./bookmarkBlock";
@@ -57,6 +58,8 @@ const PersonMention = createReactInlineContentSpec(
 export const editorSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
+    // Resaltado de sintaxis (shiki precompilado) con selector de lenguaje.
+    codeBlock: createCodeBlockSpec(codeBlockOptions),
     database: DatabaseBlock(),
     callout: CalloutBlock(),
     toc: TocBlock(),
