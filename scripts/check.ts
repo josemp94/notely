@@ -382,6 +382,40 @@ assert.equal(agregaRollup("unchecked", 4, [true, false, true]), 2); // el sin va
 assert.equal(agregaRollup("percent_checked", 4, [true, false, true]), "50%");
 assert.equal(agregaRollup("values", 2, ["x", "y"], (v) => String(v).toUpperCase()), "X, Y");
 
+// --- Fórmulas 2.0: fechas, listas, current/index, texto ---
+import { evalFormula } from "../src/server/formula";
+
+{
+  const ctx = {
+    Horas: 2.5,
+    Etiquetas: ["casa", "urgente", "casa"],
+    Entrega: new Date(2026, 7, 25), // 25-ago-2026
+    Relación: ["Tarea A", "Tarea B"],
+    Nombre: "Compra",
+  };
+  assert.equal(evalFormula('join(map(prop("Etiquetas"), upper(current)), " · ")', ctx), "CASA · URGENTE · CASA");
+  assert.equal(evalFormula('length(unique(prop("Etiquetas")))', ctx), 2);
+  assert.equal(evalFormula('join(filter(prop("Etiquetas"), current != "casa"), ",")', ctx), "urgente");
+  assert.equal(evalFormula('sum(map(prop("Etiquetas"), index))', ctx), 3); // 0+1+2
+  assert.equal(evalFormula('formatDate(dateAdd(prop("Entrega"), 7, "days"), "DD/MM/YYYY")', ctx), "01/09/2026");
+  assert.equal(evalFormula('dateBetween(parseDate("2026-09-01"), prop("Entrega"), "days")', ctx), 7);
+  assert.equal(evalFormula('year(prop("Entrega")) + month(prop("Entrega"))', ctx), 2034); // 2026 + 8
+  assert.equal(evalFormula('if(dateBetween(prop("Entrega"), parseDate("2026-08-20"), "days") > 3, "tarde", "ok")', ctx), "tarde");
+  assert.equal(evalFormula('first(prop("Relación"))', ctx), "Tarea A");
+  assert.equal(evalFormula('contains(prop("Relación"), "Tarea B")', ctx), "Sí");
+  assert.equal(evalFormula('replaceAll("a-b-c", "-", "+")', ctx), "a+b+c");
+  assert.equal(evalFormula('test(prop("Nombre"), "^Com")', ctx), "Sí");
+  assert.equal(evalFormula('substring(prop("Nombre"), 0, 3)', ctx), "Com");
+  assert.equal(evalFormula('toNumber("3,5") * 2', ctx), 7);
+  assert.equal(evalFormula('join(sort(split("c,a,b")), "")', ctx), "abc");
+  assert.equal(evalFormula('empty(prop("NoExiste"))', ctx), "Sí");
+  // La fecha resultante se muestra legible (sin hora si es medianoche).
+  assert.equal(evalFormula('dateAdd(prop("Entrega"), 1, "months")', ctx), "2026-09-25");
+  // Lo de antes sigue funcionando igual.
+  assert.equal(evalFormula('round(prop("Horas") * 2)', ctx), 5);
+  assert.equal(evalFormula('if(prop("Horas") > 2, "mucho", "poco")', ctx), "mucho");
+}
+
 compruebaColaboracion()
   .then(() => {
     console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces, reglas, cálculos, colaboración e import de Notion");

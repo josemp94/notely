@@ -4,9 +4,9 @@ import { Prisma } from "@prisma/client";
 import { router, workspaceProcedure } from "../trpc";
 import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { toCsv } from "@/lib/csv";
-import { evalFormula } from "../formula";
+import { aFecha, evalFormula, type Val } from "../formula";
 import { dispatchWebhooks } from "../webhooks";
-import { dayOf } from "@/lib/cellText";
+import { dateValue, dayOf } from "@/lib/cellText";
 import { applyViewConfig, cellValue, type DbField, type DbRecord } from "@/lib/viewData";
 import { cellToText, peopleOf } from "../services/cells";
 import { sendPush } from "../push";
@@ -890,17 +890,38 @@ export const dbRouter = router({
       const rollupFields = col.fields.filter((f) => f.type === "rollup");
       const formulaFields = col.fields.filter((f) => f.type === "formula");
 
-      // Valor escalar de un campo para el contexto de fórmulas.
-      const scalarOf = (field: (typeof col.fields)[number], cellVal: unknown): number | string | boolean | null => {
+      // Nombres para los campos de persona (vacío si la BD no los usa).
+      const people = await peopleOf(ctx.db, ctx.workspace.id, col.fields);
+
+      // Valor de un campo para el contexto de fórmulas 2.0: fechas como Date,
+      // multiselect/persona como LISTAS (para map/filter/join…), lo demás escalar.
+      // Las relaciones se resuelven aparte (lista de títulos, ya calculada).
+      const valorDe = (
+        field: (typeof col.fields)[number],
+        cellVal: unknown,
+        rec: (typeof col.records)[number],
+      ): Val => {
+        if (field.type === "created_time") return rec.createdAt;
+        if (field.type === "last_edited_time") return rec.updatedAt;
+        if (field.type === "created_by") return people.get(rec.createdById ?? "") ?? null;
+        if (field.type === "last_edited_by") return people.get(rec.updatedById ?? "") ?? null;
+        if (field.type === "id") return rec.seq ?? null;
         if (cellVal === undefined || cellVal === null || cellVal === "") return null;
-        if (field.type === "select") {
-          const opts = ((field.config as { options?: { id: string; label: string }[] }).options) ?? [];
-          return opts.find((o) => o.id === cellVal)?.label ?? String(cellVal);
-        }
+        const opts = ((field.config as { options?: { id: string; label: string }[] }).options) ?? [];
+        const etiqueta = (v: unknown) => opts.find((o) => o.id === v)?.label ?? String(v);
+        if (field.type === "select" || field.type === "status") return etiqueta(cellVal);
+        if (field.type === "multiselect") return Array.isArray(cellVal) ? cellVal.map(etiqueta) : [];
+        if (field.type === "person")
+          return Array.isArray(cellVal) ? cellVal.map((id) => people.get(String(id)) ?? "—") : [];
         if (field.type === "checkbox") return Boolean(cellVal);
         if (field.type === "number") return Number(cellVal);
-        if (field.type === "relation") return Array.isArray(cellVal) ? cellVal.length : 0;
+        if (field.type === "date") return aFecha(dayHourOf(cellVal));
         return typeof cellVal === "string" ? cellVal : String(cellVal);
+      };
+      // El valor de fecha guarda {start,end} o el string antiguo: se coge el inicio.
+      const dayHourOf = (v: unknown): string => {
+        const d = dateValue(v);
+        return d?.start ?? "";
       };
 
       // Cargar las colecciones destino referenciadas por las relaciones.
@@ -976,10 +997,13 @@ export const dbRouter = router({
         // fórmulas (pueden referenciar otros campos y rollups por nombre)
         if (formulaFields.length) {
           const cellsRec = (rec.cells ?? {}) as Record<string, unknown>;
-          const ctxByName: Record<string, number | string | boolean | null> = {};
+          const ctxByName: Record<string, Val> = {};
           for (const f of col.fields) {
             if (f.type === "rollup") ctxByName[f.name] = rollups[rec.id]?.[f.id] ?? null;
-            else if (f.type !== "formula") ctxByName[f.name] = scalarOf(f, cellsRec[f.id]);
+            else if (f.type === "relation")
+              // prop("Relación") = lista de títulos de las filas enlazadas.
+              ctxByName[f.name] = (relationLabels[rec.id]?.[f.id] ?? []).map((x) => x.title);
+            else if (f.type !== "formula") ctxByName[f.name] = valorDe(f, cellsRec[f.id], rec);
           }
           for (const ff of formulaFields) {
             const expr = (ff.config as { expression?: string })?.expression ?? "";

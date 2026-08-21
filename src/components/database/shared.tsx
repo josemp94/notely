@@ -154,7 +154,11 @@ export function AddFieldButton({
                     </button>
                   ))}
               </div>
-              <div className="mt-1 text-[10px] text-[var(--muted)]">Funciones: if, round, min, max, abs, concat, contains, upper, lower, and, or, not</div>
+              <div className="mt-1 text-[10px] text-[var(--muted)]">
+                Funciones: if, round, sum, min, max, abs · texto: concat, contains, upper, lower, trim, replace, split, test ·
+                fecha: now, today, dateAdd, dateBetween, formatDate, year, month · listas: map, filter, join, unique, sort,
+                first, length (con «current» e «index») · prop(&quot;Relación&quot;) da la lista de títulos enlazados
+              </div>
               <button
                 onClick={() => addFormula.mutate({ collectionId, name: fname || "Fórmula", expression: expr })}
                 disabled={!expr.trim()}
