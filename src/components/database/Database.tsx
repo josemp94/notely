@@ -17,6 +17,7 @@ import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
 import { usePeople } from "./Cell";
 import { displayValue } from "@/lib/cellText";
 import { AddViewButton, DbToolbar, FilterChips, ViewIcon } from "./DbToolbar";
+import { useDbLive } from "./useDbLive";
 import { TableView } from "./TableView";
 import { KanbanView } from "./KanbanView";
 import { ChartView } from "./ChartView";
@@ -49,6 +50,8 @@ export function Database({
 }) {
   const utils = trpc.useUtils();
   const { data: col, isLoading } = trpc.db.get.useQuery({ pageId });
+  // Los cambios de otros aparecen al momento (señal por la sala Yjs de la página).
+  useDbLive(pageId);
   const [activeViewId, setActiveViewId] = useState<string | null>(viewId ?? null);
   const [title, setTitle] = useState(initialTitle);
   const [icon, setIcon] = useState<string | null>(initialIcon ?? "🗃️");
