@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Database, FunctionSquare, Link2, Plus, Sigma
 import { trpc } from "@/trpc/react";
 import { Popover } from "./Popover";
 import type { FieldLite } from "@/lib/cellText";
+import { ROLLUP_AGG_LABELS, type RollupAgg } from "@/lib/rollup";
 
 export const FIELD_LABELS: Record<string, string> = {
   text: "Texto",
@@ -31,14 +32,7 @@ export const FIELD_LABELS: Record<string, string> = {
 
 const TYPES = ["text", "number", "select", "multiselect", "status", "person", "files", "checkbox", "date", "url", "email", "phone", "created_time", "last_edited_time", "created_by", "last_edited_by", "id"] as const;
 
-const AGGS: [string, string][] = [
-  ["count", "Contar"],
-  ["sum", "Suma"],
-  ["avg", "Media"],
-  ["min", "Mínimo"],
-  ["max", "Máximo"],
-  ["values", "Valores"],
-];
+const AGGS: [string, string][] = [...ROLLUP_AGG_LABELS];
 
 export function AddFieldButton({
   collectionId,
@@ -248,7 +242,7 @@ export function AddFieldButton({
                         name: `${relField.name} · ${tf.name}`,
                         relationFieldId: relField.id,
                         targetFieldId: tf.id,
-                        agg: agg as "sum" | "avg" | "min" | "max" | "values",
+                        agg: agg as RollupAgg,
                       })
                     }
                     className="block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-[var(--hover)]"

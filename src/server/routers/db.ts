@@ -12,6 +12,7 @@ import { cellToText, peopleOf } from "../services/cells";
 import { sendPush } from "../push";
 import { alcanza, exigeNivel, mapaDeNiveles, type Nivel } from "../services/perms";
 import { infiereColumnas } from "@/lib/csvTipos";
+import { agregaRollup, ROLLUP_AGGS } from "@/lib/rollup";
 import * as dbService from "../services/db";
 import { DbError, FIELD_TYPES, VIEW_TYPES } from "../services/db";
 
@@ -828,7 +829,7 @@ export const dbRouter = router({
         name: z.string().default("Rollup"),
         relationFieldId: z.string(),
         targetFieldId: z.string().nullish(),
-        agg: z.enum(["count", "sum", "avg", "min", "max", "values"]).default("count"),
+        agg: z.enum(ROLLUP_AGGS).default("count"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -964,23 +965,11 @@ export const dbRouter = router({
           } else if (cfg.targetFieldId && idx) {
             const tf = targetCols.find((t) => t.id === tcid)?.fields.find((f) => f.id === cfg.targetFieldId);
             const raw = ids.map((id) => idx.recs.get(id)?.[cfg.targetFieldId!]).filter((v) => v !== undefined && v !== null && v !== "");
-            if (agg === "values") {
-              const toLabel = (v: unknown) => {
-                if (tf?.type === "select") {
-                  const opts = ((tf.config as { options?: { id: string; label: string }[] }).options) ?? [];
-                  return opts.find((o) => o.id === v)?.label ?? String(v);
-                }
-                return String(v);
-              };
-              out = raw.map(toLabel).join(", ");
-            } else {
-              const nums = raw.map((v) => Number(v)).filter((n) => Number.isFinite(n));
-              if (nums.length === 0) out = 0;
-              else if (agg === "sum") out = Math.round(nums.reduce((a, b) => a + b, 0) * 100) / 100;
-              else if (agg === "avg") out = Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 100) / 100;
-              else if (agg === "min") out = Math.min(...nums);
-              else if (agg === "max") out = Math.max(...nums);
-            }
+            // Las opciones (select/multiselect/estado) se muestran por su etiqueta.
+            const opts = ((tf?.config as { options?: { id: string; label: string }[] })?.options) ?? [];
+            const unaEtiqueta = (v: unknown) => opts.find((o) => o.id === v)?.label ?? String(v);
+            const toLabel = (v: unknown) => (Array.isArray(v) ? v.map(unaEtiqueta).join(", ") : unaEtiqueta(v));
+            out = agregaRollup(agg, ids.length, raw, toLabel);
           }
           (rollups[rec.id] ??= {})[rup.id] = out;
         }

@@ -365,6 +365,23 @@ import { infiereColumnas } from "../src/lib/csvTipos";
   assert.equal(multi.length, 2, "multiselect divide por comas");
 }
 
+// --- Agregaciones de rollup ---
+import { agregaRollup } from "../src/lib/rollup";
+
+assert.equal(agregaRollup("count", 4, [1, 2, 3]), 4);
+assert.equal(agregaRollup("count_empty", 4, [1, 2, 3]), 1);
+assert.equal(agregaRollup("percent_not_empty", 4, [1, 2, 3]), "75%");
+assert.equal(agregaRollup("count_unique", 3, ["a", "a", "b"]), 2);
+assert.equal(agregaRollup("median", 4, [1, 3, 9, 5]), 4); // par: media de 3 y 5
+assert.equal(agregaRollup("range", 3, [2, 9, 5]), 7);
+assert.equal(agregaRollup("earliest", 2, ["2026-03-01", "2026-01-15"]), "2026-01-15");
+assert.equal(agregaRollup("latest", 2, [{ start: "2026-03-01" }, "2026-01-15"]), "2026-03-01");
+assert.equal(agregaRollup("date_range", 2, ["2026-01-15", "2026-01-20"]), 5);
+assert.equal(agregaRollup("checked", 3, [true, false, true]), 2);
+assert.equal(agregaRollup("unchecked", 4, [true, false, true]), 2); // el sin valor cuenta como sin marcar
+assert.equal(agregaRollup("percent_checked", 4, [true, false, true]), "50%");
+assert.equal(agregaRollup("values", 2, ["x", "y"], (v) => String(v).toUpperCase()), "X, Y");
+
 compruebaColaboracion()
   .then(() => {
     console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces, reglas, cálculos, colaboración e import de Notion");
