@@ -11,6 +11,7 @@ import { applyViewConfig, cellValue, type DbField, type DbRecord } from "@/lib/v
 import { cellToText, peopleOf } from "../services/cells";
 import { sendPush } from "../push";
 import { alcanza, exigeNivel, mapaDeNiveles, type Nivel } from "../services/perms";
+import { infiereColumnas } from "@/lib/csvTipos";
 import * as dbService from "../services/db";
 import { DbError, FIELD_TYPES, VIEW_TYPES } from "../services/db";
 
@@ -181,11 +182,20 @@ export const dbRouter = router({
           });
           const collection = await tx.collection.create({ data: { pageId: page.id, name: input.name } });
           let fOrd: string | null = null;
+          // El tipo de cada columna se infiere de sus valores (casilla, número,
+          // fecha, correo, URL, teléfono, selección…); lo que no encaja, texto.
+          const cols = infiereColumnas(input.headers, input.rows);
           const fieldIds: string[] = [];
           for (const [i, h] of input.headers.entries()) {
             fOrd = rankAtEnd(fOrd);
             const f = await tx.field.create({
-              data: { collectionId: collection.id, name: h.trim() || `Columna ${i + 1}`, type: "text", order: fOrd, config: {} },
+              data: {
+                collectionId: collection.id,
+                name: h.trim() || `Columna ${i + 1}`,
+                type: cols[i].type,
+                order: fOrd,
+                config: cols[i].config as Prisma.InputJsonValue,
+              },
             });
             fieldIds.push(f.id);
           }
@@ -193,11 +203,13 @@ export const dbRouter = router({
           let rOrd: string | null = null;
           const records = input.rows.map((row, i) => {
             rOrd = rankAtEnd(rOrd);
-            const cells: Record<string, string> = {};
+            const cells: Record<string, unknown> = {};
             fieldIds.forEach((fid, j) => {
-              if (row[j]) cells[fid] = row[j];
+              if (!row[j]) return;
+              const v = cols[j].convertir(row[j]);
+              if (v !== null && v !== "" && !(Array.isArray(v) && v.length === 0)) cells[fid] = v;
             });
-            return { collectionId: collection.id, order: rOrd, seq: i + 1, cells, createdById: ctx.user.id, updatedById: ctx.user.id };
+            return { collectionId: collection.id, order: rOrd, seq: i + 1, cells: cells as Prisma.InputJsonValue, createdById: ctx.user.id, updatedById: ctx.user.id };
           });
           if (records.length) await tx.record.createMany({ data: records });
           return page;

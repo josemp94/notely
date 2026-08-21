@@ -336,6 +336,35 @@ assert.deepEqual(
   );
 }
 
+// --- Detección de tipos al importar CSV ---
+import { infiereColumnas } from "../src/lib/csvTipos";
+
+{
+  const headers = ["Nombre", "Hecho", "Horas", "Entrega", "Correo", "Estado", "Etiquetas", "Notas"];
+  const rows = [
+    ["Tarea A", "Yes", "2.5", "August 21, 2026", "a@b.com", "Hecho", "casa, urgente", "cualquier texto largo 1"],
+    ["Tarea B", "No", "3", "2026-08-22", "c@d.es", "Pendiente", "casa", "otro texto distinto 2"],
+    ["Tarea C", "Sí", "0", "September 1, 2026 2:30 PM (GMT+2)", "e@f.org", "Hecho", "compra, casa", "y otro más 3"],
+    ["Tarea D", "no", "-1", "2026-09-05", "g@h.io", "Pendiente", "urgente", "último texto 4"],
+  ];
+  const cols = infiereColumnas(headers, rows);
+  assert.deepEqual(
+    cols.map((c) => c.type),
+    ["text", "checkbox", "number", "date", "email", "select", "multiselect", "text"],
+    `tipos inferidos: ${cols.map((c) => c.type).join(", ")}`,
+  );
+  assert.equal(cols[1].convertir("Sí"), true);
+  assert.equal(cols[1].convertir("no"), false);
+  assert.equal(cols[2].convertir("2.5"), 2.5);
+  assert.equal(cols[3].convertir("2026-08-22"), "2026-08-22");
+  assert.ok(String(cols[3].convertir("September 1, 2026 2:30 PM")).startsWith("2026-09-01T"), "la hora se conserva");
+  const opciones = (cols[5].config as { options: { id: string; label: string }[] }).options;
+  assert.deepEqual(opciones.map((o) => o.label).sort(), ["Hecho", "Pendiente"]);
+  assert.equal(cols[5].convertir("Hecho"), opciones.find((o) => o.label === "Hecho")!.id);
+  const multi = cols[6].convertir("casa, urgente") as string[];
+  assert.equal(multi.length, 2, "multiselect divide por comas");
+}
+
 compruebaColaboracion()
   .then(() => {
     console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces, reglas, cálculos, colaboración e import de Notion");
