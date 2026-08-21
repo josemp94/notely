@@ -127,7 +127,7 @@ export function DbToolbar({
           {!!nFilters && <span className="text-[11px] font-medium">{nFilters}</span>}
         </button>
         {open === "filter" && (
-          <Popover onClose={() => setOpen(null)}>
+          <Popover onClose={() => setOpen(null)} className="right-0 w-96 p-3">
             <div className="mb-2 text-xs font-medium text-[var(--muted)]">Filtros</div>
             {filters.length >= 2 && (
               <div className="mb-2 flex items-center gap-1 text-xs text-[var(--muted)]">
@@ -593,14 +593,17 @@ function ConditionRow({
   const field = fields.find((f) => f.id === filter.fieldId);
   const ops = opsFor(field?.type ?? "text");
   return (
-    <div className="flex items-center gap-1">
+    // flex-wrap: el operador y el input de fecha no pueden encoger por debajo de su
+    // contenido, y dentro de un grupo anidado la fila se salía del recuadro; mejor
+    // que salte de línea a que se corte.
+    <div className="flex flex-wrap items-center gap-1">
       <select
         value={filter.fieldId}
         onChange={(e) => {
           const nt = fields.find((f) => f.id === e.target.value)?.type ?? "text";
           onChange({ fieldId: e.target.value, op: opsFor(nt)[0].value, value: "" });
         }}
-        className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+        className="min-w-[90px] flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
       >
         {fields.map((fl) => (
           <option key={fl.id} value={fl.id}>{fl.name}</option>
@@ -640,7 +643,7 @@ function FilterValue({ field, op, value, onChange }: { field?: DbField; op: stri
   if (field.type === "select" || field.type === "multiselect" || field.type === "status") {
     const opts: any[] = field.config?.options ?? [];
     return (
-      <select value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs">
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="min-w-[90px] flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs">
         <option value="">—</option>
         {opts.map((o) => (
           <option key={o.id} value={o.id}>{o.label}</option>
@@ -660,7 +663,7 @@ function FilterValue({ field, op, value, onChange }: { field?: DbField; op: stri
     // Fecha exacta o ancla relativa (Hoy, Mañana…), que se guarda como {rel:"today"}.
     const rel = value && typeof value === "object" ? ((value as { rel?: string }).rel ?? "") : "";
     return (
-      <span className="flex min-w-0 flex-1 items-center gap-1">
+      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
         <select
           value={rel}
           onChange={(e) => onChange(e.target.value ? { rel: e.target.value } : "")}
@@ -676,7 +679,7 @@ function FilterValue({ field, op, value, onChange }: { field?: DbField; op: stri
             type="date"
             value={typeof value === "string" ? value : ""}
             onChange={(e) => onChange(e.target.value)}
-            className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+            className="min-w-[110px] flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
           />
         )}
       </span>
@@ -688,7 +691,7 @@ function FilterValue({ field, op, value, onChange }: { field?: DbField; op: stri
       type={inputType}
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
-      className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
+      className="min-w-[90px] flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs"
     />
   );
 }
@@ -813,7 +816,7 @@ export function FilterChips({ pageId, view, fields }: { pageId: string; view: Vi
             </button>
           </span>
           {openIdx === i && (
-            <Popover onClose={() => setOpenIdx(null)} className="w-80 p-3">
+            <Popover onClose={() => setOpenIdx(null)} className="w-96 p-3">
               {isFilterGroup(node) ? (
                 <>
                   <div className="mb-2 flex items-center gap-1 text-xs text-[var(--muted)]">
