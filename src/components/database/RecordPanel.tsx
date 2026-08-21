@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
 import { es } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -34,12 +34,15 @@ export function RecordPanel({
   record,
   fields,
   onClose,
+  nav,
 }: {
   pageId: string;
   collectionId?: string;
   record: Rec;
   fields: FieldLite[];
   onClose: () => void;
+  /** Navegación anterior/siguiente entre las filas de la vista; undefined = sin flecha. */
+  nav?: { prev?: () => void; next?: () => void };
 }) {
   const utils = trpc.useUtils();
   const theme = useTheme();
@@ -98,7 +101,29 @@ export function RecordPanel({
           >
             Guardar como plantilla
           </button>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar"><X size={16} /></button>
+          <div className="flex items-center gap-1">
+            {nav && (
+              <>
+                <button
+                  onClick={nav.prev}
+                  disabled={!nav.prev}
+                  className="toque-estrecho rounded p-1 text-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-30"
+                  title="Fila anterior"
+                >
+                  <ChevronUp size={16} />
+                </button>
+                <button
+                  onClick={nav.next}
+                  disabled={!nav.next}
+                  className="toque-estrecho rounded p-1 text-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-30"
+                  title="Fila siguiente"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              </>
+            )}
+            <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar"><X size={16} /></button>
+          </div>
         </div>
 
         <div className="px-4 pb-10 pt-2 md:px-8">

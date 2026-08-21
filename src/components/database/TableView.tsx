@@ -640,7 +640,23 @@ export function TableView({
       {openRec &&
         (() => {
           const fresh = records.find((r) => r.id === openRec.id) ?? openRec;
-          return <RecordPanel pageId={pageId} collectionId={collectionId} record={fresh} fields={fields} onClose={() => setOpenRec(null)} />;
+          // El índice se busca en `rows` (el orden visible, con subtareas); la key
+          // remonta el panel al navegar, que el título y el cuerpo llevan estado propio.
+          const i = rows.findIndex((x) => x.rec.id === openRec.id);
+          return (
+            <RecordPanel
+              key={fresh.id}
+              pageId={pageId}
+              collectionId={collectionId}
+              record={fresh}
+              fields={fields}
+              onClose={() => setOpenRec(null)}
+              nav={{
+                prev: i > 0 ? () => setOpenRec(rows[i - 1].rec) : undefined,
+                next: i >= 0 && i < rows.length - 1 ? () => setOpenRec(rows[i + 1].rec) : undefined,
+              }}
+            />
+          );
         })()}
     </div>
   );
