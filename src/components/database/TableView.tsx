@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
-import { frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, NUMBER_FORMATS, rowColor, type FieldLite } from "@/lib/cellText";
+import { frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, NUMBER_FORMATS, OPTION_COLORS, optionsOf, rowColor, type FieldLite } from "@/lib/cellText";
 import { CALC_OPTS, computeCalc } from "@/lib/calc";
 import { colorByRules, type DbField, type DbRecord } from "@/lib/viewData";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
@@ -75,6 +75,8 @@ export function TableView({
   const [dragRow, setDragRow] = useState<string | null>(null);
   const [dropRow, setDropRow] = useState<{ id: string; pos: "before" | "after" } | null>(null);
   const [openRec, setOpenRec] = useState<Rec | null>(null);
+  // Selección múltiple de filas: checkbox por fila + barra de acciones en lote.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // El filtrado y el orden se aplican en Database (barra de herramientas superior).
   // Sub-elementos: los hijos se agrupan indentados bajo su padre si el padre pasa el
@@ -190,6 +192,23 @@ export function TableView({
   const hasCalcs = fields.some((f) => calcs[f.id]);
   const wrap: boolean = Boolean(cfg.wrapText);
 
+  // Se ignoran ids que ya no están (filtrados o borrados) sin tener que podar el estado.
+  const selectedIds = [...selected].filter((id) => idSet.has(id));
+  const toggleSelect = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  // ponytail: en lote = Promise.all sobre los endpoints de a uno; con miles de filas haría falta un endpoint bulk.
+  const bulkDelete = async () => {
+    await Promise.all(selectedIds.map((id) => deleteRecord.mutateAsync({ id })));
+    setSelected(new Set());
+  };
+  const bulkSet = (fieldId: string, value: unknown) =>
+    selectedIds.forEach((id) => updateCell.mutate({ recordId: id, fieldId, value }));
+
   /** Una fila de la tabla; `depth`/`hasChildren` solo se usan sin agrupar (árbol de subtareas). */
   const renderRow = ({ rec: r, depth, hasChildren }: { rec: Rec; depth: number; hasChildren: boolean }) => (
     <tr
@@ -221,11 +240,19 @@ export function TableView({
       }}
     >
       <td
-        className="sticky left-0 z-10 px-1 py-1 text-center"
+        className="sticky left-0 z-10 py-1 text-center"
         style={{ ...margen, background: colorOf(r) ?? "var(--background)" }}
       >
-        <div className="flex items-center">
-          {canReorder && (
+        {/* Con selección activa el margen es solo checkboxes, como en Notion. */}
+        <div className="flex items-center justify-center">
+          <input
+            type="checkbox"
+            checked={selected.has(r.id)}
+            onChange={() => toggleSelect(r.id)}
+            className={`${selected.size ? "" : "al-pasar"} size-3.5 shrink-0 cursor-pointer accent-[var(--color-brand,#ff5c28)]`}
+            title="Seleccionar fila"
+          />
+          {canReorder && !selected.size && (
             <span
               draggable
               onDragStart={(e) => {
@@ -242,13 +269,15 @@ export function TableView({
               <GripVertical size={13} />
             </span>
           )}
-          <button
-            onClick={() => setOpenRec(r)}
-            className="text-[var(--muted)] al-pasar hover:text-[var(--foreground)]"
-            title="Abrir ficha"
-          >
-            <Maximize2 size={14} />
-          </button>
+          {!selected.size && (
+            <button
+              onClick={() => setOpenRec(r)}
+              className="text-[var(--muted)] al-pasar hover:text-[var(--foreground)]"
+              title="Abrir ficha"
+            >
+              <Maximize2 size={13} />
+            </button>
+          )}
         </div>
       </td>
       {fields.map((f, i) => {
@@ -345,7 +374,17 @@ export function TableView({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-y border-[var(--border)] text-left text-[var(--muted)]">
-            <th className="sticky left-0 z-20 bg-[var(--background)]" style={margen} />
+            <th className="group sticky left-0 z-20 bg-[var(--background)] text-center" style={margen}>
+              <input
+                type="checkbox"
+                checked={records.length > 0 && selectedIds.length === records.length}
+                onChange={() =>
+                  setSelected(selectedIds.length === records.length ? new Set() : new Set(records.map((r) => r.id)))
+                }
+                className={`${selected.size ? "" : "al-pasar"} size-3.5 cursor-pointer accent-[var(--color-brand,#ff5c28)]`}
+                title="Seleccionar todo"
+              />
+            </th>
             {fields.map((f, i) => (
               <th
                 key={f.id}
@@ -563,6 +602,25 @@ export function TableView({
       </div>
       {trashOpen && <RecordTrash collectionId={collectionId} onClose={() => setTrashOpen(false)} onChange={invalidate} />}
 
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-sm shadow-xl md:bottom-4">
+          <span className="font-medium">
+            {selectedIds.length} fila{selectedIds.length > 1 ? "s" : ""}
+          </span>
+          <BulkEditButton fields={fields} onApply={bulkSet} />
+          <button onClick={bulkDelete} className="flex items-center gap-1 text-red-500 hover:underline">
+            <Trash2 size={14} /> Borrar
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="text-[var(--muted)] hover:text-[var(--foreground)]"
+            title="Quitar la selección"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {deleted && (
         <div className="fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-sm shadow-xl md:bottom-4">
           <span>Fila borrada</span>
@@ -623,6 +681,67 @@ function CalcCell({
   );
 }
 
+
+/**
+ * «Editar propiedad» de la barra de selección: elige un campo de etiquetas o
+ * casilla y el valor que se pondrá en TODAS las filas seleccionadas.
+ */
+function BulkEditButton({ fields, onApply }: { fields: FieldLite[]; onApply: (fieldId: string, value: unknown) => void }) {
+  const [open, setOpen] = useState(false);
+  const [fieldId, setFieldId] = useState<string | null>(null);
+  const editable = fields.filter((f) => ["select", "multiselect", "status", "checkbox"].includes(f.type));
+  const field = editable.find((f) => f.id === fieldId);
+  if (!editable.length) return null;
+  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]";
+  const close = () => {
+    setOpen(false);
+    setFieldId(null);
+  };
+  const apply = (value: unknown) => {
+    if (field) onApply(field.id, value);
+    close();
+  };
+  return (
+    <span className="relative">
+      <button onClick={() => (open ? close() : setOpen(true))} className="text-brand hover:underline">
+        Editar propiedad
+      </button>
+      {open && (
+        <Popover onClose={close} className="left-0 w-56 p-1">
+          {!field ? (
+            editable.map((f) => (
+              <button key={f.id} onClick={() => setFieldId(f.id)} className={item}>
+                <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                <span className="text-[10px] uppercase text-[var(--muted)]">{FIELD_LABELS[f.type] ?? f.type}</span>
+              </button>
+            ))
+          ) : field.type === "checkbox" ? (
+            <>
+              <button onClick={() => apply(true)} className={item}>Marcada</button>
+              <button onClick={() => apply(false)} className={item}>Sin marcar</button>
+            </>
+          ) : (
+            <>
+              {optionsOf(field).map((o) => (
+                <button key={o.id} onClick={() => apply(field.type === "multiselect" ? [o.id] : o.id)} className={item}>
+                  <span
+                    className="rounded px-1.5 py-0.5 text-xs"
+                    style={{ background: OPTION_COLORS[o.color ?? "gray"], color: "var(--tag-fg)" }}
+                  >
+                    {o.label}
+                  </span>
+                </button>
+              ))}
+              <button onClick={() => apply(field.type === "multiselect" ? [] : null)} className={`${item} text-[var(--muted)]`}>
+                Vaciar
+              </button>
+            </>
+          )}
+        </Popover>
+      )}
+    </span>
+  );
+}
 
 /** Tipos a los que se puede convertir una columna (los que guardan su valor en la celda). */
 const CONVERTIBLE_TYPES = [
