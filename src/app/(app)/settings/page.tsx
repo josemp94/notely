@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, Smartphone } from "lucide-react";
+import { confirmar } from "@/components/Confirmar";
 import { trpc } from "@/trpc/react";
 import apk from "@/lib/apk.json";
 import { WEBHOOK_EVENTS } from "@/lib/webhookEvents";
@@ -135,8 +136,8 @@ function ApiTokensSection() {
               creado {fmt(t.createdAt)} · usado {fmt(t.lastUsed)}
             </span>
             <button
-              onClick={() => {
-                if (window.confirm(`¿Revocar el token «${t.name}»?`)) revoke.mutate({ id: t.id });
+              onClick={async () => {
+                if (await confirmar(`¿Revocar el token «${t.name}»?`, "Revocar")) revoke.mutate({ id: t.id });
               }}
               className="shrink-0 text-xs text-red-500 hover:underline"
             >

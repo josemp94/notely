@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CornerDownRight, FileText } from "lucide-react";
+import { confirmar } from "@/components/Confirmar";
 import { trpc } from "@/trpc/react";
 
 type Item = { id: string; title: string; icon: string | null; parentId: string | null; archivedAt: Date };
@@ -101,8 +102,8 @@ export default function TrashPage() {
             className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-brand"
           />
           <button
-            onClick={() => {
-              if (confirm(`¿Vaciar la papelera? Se borrarán definitivamente ${list.length} páginas.`))
+            onClick={async () => {
+              if (await confirmar(`¿Vaciar la papelera? Se borrarán definitivamente ${list.length} páginas.`, "Vaciar"))
                 emptyTrash.mutate();
             }}
             disabled={emptyTrash.isPending}
@@ -142,8 +143,8 @@ export default function TrashPage() {
                       Restaurar
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(n > 0 ? `¿Borrar definitivamente esta página y sus ${n} subpáginas?` : "¿Borrar definitivamente?"))
+                      onClick={async () => {
+                        if (await confirmar(n > 0 ? `¿Borrar definitivamente esta página y sus ${n} subpáginas?` : "¿Borrar definitivamente?"))
                           remove.mutate({ id: p.id });
                       }}
                       className="text-[var(--muted)] hover:text-red-500"

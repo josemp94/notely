@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
+import { confirmar } from "@/components/Confirmar";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
 import { frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, NUMBER_FORMATS, OPTION_COLORS, optionsOf, rowColor, type FieldLite } from "@/lib/cellText";
@@ -444,14 +445,14 @@ export function TableView({
                     frozen={i < frozen}
                     onFreeze={() => { setFrozen(i < frozen ? i : i + 1); setMenuField(null); }}
                     onConfig={(config) => updateField.mutate({ id: f.id, config: { ...(f.config as object), ...config } })}
-                    onType={(type) => {
-                      if (confirm(`Cambiar «${f.name}» a ${FIELD_LABELS[type] ?? type}. Los valores se convertirán y lo que no se pueda convertir se perderá. ¿Seguir?`)) {
+                    onType={async (type) => {
+                      if (await confirmar(`Cambiar «${f.name}» a ${FIELD_LABELS[type] ?? type}. Los valores se convertirán y lo que no se pueda convertir se perderá. ¿Seguir?`, "Cambiar")) {
                         setFieldType.mutate({ id: f.id, type });
                         setMenuField(null);
                       }
                     }}
-                    onDelete={() => {
-                      if (confirm(`¿Borrar la columna "${f.name}"?`)) deleteField.mutate({ id: f.id });
+                    onDelete={async () => {
+                      if (await confirmar(`¿Borrar la columna "${f.name}"?`)) deleteField.mutate({ id: f.id });
                       setMenuField(null);
                     }}
                   />
@@ -927,8 +928,8 @@ function RecordTrash({
                 Restaurar
               </button>
               <button
-                onClick={() => {
-                  if (confirm(`¿Borrar «${it.title}» para siempre?`)) purge.mutate({ id: it.id });
+                onClick={async () => {
+                  if (await confirmar(`¿Borrar «${it.title}» para siempre?`)) purge.mutate({ id: it.id });
                 }}
                 className="shrink-0 text-[var(--muted)] hover:text-red-500"
                 title="Borrar para siempre"

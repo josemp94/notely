@@ -5,6 +5,7 @@ import { PanelLeft } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { BarraInferior } from "@/components/BarraInferior";
+import { ConfirmHost } from "@/components/Confirmar";
 import { SearchPalette } from "@/components/SearchPalette";
 import { Shortcuts } from "@/components/Shortcuts";
 import { isTyping, NEW_PAGE_EVENT, SHORTCUTS_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
@@ -69,6 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="relative flex h-dvh">
       <SearchPalette />
       <Shortcuts />
+      <ConfirmHost />
       {/* Fondo oscuro al abrir el panel en móvil */}
       {open && (
         <div

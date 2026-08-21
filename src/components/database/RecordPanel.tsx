@@ -8,6 +8,7 @@ import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { editorSchema, MentionMenu, subirArchivo, type NotionoPartialBlock } from "@/components/editor/mention";
+import { confirmar } from "@/components/Confirmar";
 import { trpc } from "@/trpc/react";
 import { useTheme } from "@/lib/theme";
 import { Cell } from "./Cell";
@@ -152,8 +153,8 @@ export function RecordPanel({
           </div>
 
           <button
-            onClick={() => {
-              if (confirm("¿Borrar este registro?")) deleteRecord.mutate({ id: record.id });
+            onClick={async () => {
+              if (await confirmar("¿Borrar este registro?")) deleteRecord.mutate({ id: record.id });
             }}
             className="mt-8 flex items-center gap-1.5 text-sm text-[var(--muted)] hover:text-red-500"
           >

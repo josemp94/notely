@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpDown, BarChart3, Calendar, ClipboardList, Columns3, Copy, Download, Eye, EyeOff, Filter as FilterIcon, GanttChart, LayoutGrid, List, Pencil, Plus, Table, Trash2, X } from "lucide-react";
+import { confirmar } from "@/components/Confirmar";
 import { trpc } from "@/trpc/react";
 import { Popover } from "./Popover";
 import { usePeople } from "./Cell";
@@ -407,8 +408,8 @@ export function DbToolbar({
               <Copy size={14} /> Duplicar vista
             </button>
             <button
-              onClick={() => {
-                if (window.confirm(`¿Borrar la vista "${view.name}"?`)) deleteView.mutate({ id: view.id });
+              onClick={async () => {
+                if (await confirmar(`¿Borrar la vista "${view.name}"?`)) deleteView.mutate({ id: view.id });
               }}
               className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-red-500 hover:bg-[var(--hover)]"
             >
