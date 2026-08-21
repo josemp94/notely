@@ -240,7 +240,7 @@ export function TableView({
       }}
     >
       <td
-        className="sticky left-0 z-10 py-1 text-center"
+        className="sticky left-0 z-10 py-1.5 text-center"
         style={{ ...margen, background: colorOf(r) ?? "var(--background)" }}
       >
         {/* Con selección activa el margen es solo checkboxes, como en Notion. */}
@@ -314,7 +314,7 @@ export function TableView({
           return (
             <td
               key={f.id}
-              className={`px-2 py-1 ${wrap ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
+              className={`px-2 py-1.5 ${wrap ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
               style={style}
             >
               {cell}
@@ -324,7 +324,7 @@ export function TableView({
         return (
           <td
             key={f.id}
-            className={`px-2 py-1 ${wrap ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
+            className={`px-2 py-1.5 ${wrap ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
             style={style}
           >
             <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
@@ -344,7 +344,7 @@ export function TableView({
           </td>
         );
       })}
-      <td className="whitespace-nowrap px-2 py-1">
+      <td className="whitespace-nowrap px-2 py-1.5">
         <div className="flex items-center gap-1">
           <button
             onClick={() => addSub(r.id)}
