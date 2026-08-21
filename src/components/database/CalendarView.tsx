@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { RecordPanel } from "./RecordPanel";
-import { dayOf, endDayOf } from "@/lib/cellText";
+import { dateValue, dayOf, endDayOf, shiftDateValue } from "@/lib/cellText";
 import type { FieldLite } from "@/lib/cellText";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
@@ -38,6 +38,9 @@ export function CalendarView({
   const invalidate = () => utils.db.get.invalidate({ pageId });
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
+  const updateCell = trpc.db.updateCell.useMutation({ onSuccess: invalidate });
+  // Arrastrar un evento a otro día lo mueve (conservando hora y duración del rango).
+  const [dragId, setDragId] = useState<string | null>(null);
 
   const dateFields = fields.filter((f) => f.type === "date");
   const cfg = (view.config ?? {}) as { dateFieldId?: string };
@@ -88,6 +91,21 @@ export function CalendarView({
   const recTitle = (r: Rec) => {
     const t = titleField ? r.cells?.[titleField.id] : "";
     return (typeof t === "string" && t) || "Sin título";
+  };
+  // «9:00» delante del título si el evento tiene hora, como Notion.
+  const recHora = (r: Rec) => {
+    const start = dateValue(r.cells?.[dateFieldId!])?.start ?? "";
+    return /T(\d{2}:\d{2})/.exec(start)?.[1] ?? null;
+  };
+  const soltarEn = (key: string) => {
+    if (!dragId) return;
+    const rec = records.find((r) => r.id === dragId);
+    setDragId(null);
+    if (!rec) return;
+    const desde = dayOf(rec.cells?.[dateFieldId!]);
+    if (!desde || desde === key) return;
+    const dias = Math.round((new Date(`${key}T00:00:00`).getTime() - new Date(`${desde}T00:00:00`).getTime()) / 864e5);
+    updateCell.mutate({ recordId: rec.id, fieldId: dateFieldId!, value: shiftDateValue(rec.cells?.[dateFieldId!], dias) });
   };
 
   const prev = () => setCursor((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 }));
@@ -146,6 +164,8 @@ export function CalendarView({
           return (
             <div
               key={i}
+              onDragOver={(e) => d && e.preventDefault()}
+              onDrop={() => d && soltarEn(key!)}
               className={`group min-h-[92px] bg-[var(--background)] p-1 ${d ? "" : "opacity-40"}`}
             >
               {d && (
@@ -169,16 +189,25 @@ export function CalendarView({
                     </button>
                   </div>
                   <div className="space-y-1">
-                    {recs.map((r) => (
-                      <button
-                        key={r.id}
-                        onClick={() => setOpenRec(r)}
-                        className="block w-full truncate rounded bg-[var(--border)]/30 px-1.5 py-0.5 text-left text-xs hover:bg-brand/10"
-                        title={recTitle(r)}
-                      >
-                        {recTitle(r)}
-                      </button>
-                    ))}
+                    {recs.map((r) => {
+                      const hora = recHora(r);
+                      return (
+                        <button
+                          key={r.id}
+                          draggable
+                          onDragStart={() => setDragId(r.id)}
+                          onDragEnd={() => setDragId(null)}
+                          onClick={() => setOpenRec(r)}
+                          className={`block w-full cursor-grab truncate rounded bg-[var(--border)]/30 px-1.5 py-0.5 text-left text-xs hover:bg-brand/10 active:cursor-grabbing ${
+                            dragId === r.id ? "opacity-50" : ""
+                          }`}
+                          title={recTitle(r)}
+                        >
+                          {hora && <span className="mr-1 text-[var(--muted)]">{hora}</span>}
+                          {recTitle(r)}
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               )}

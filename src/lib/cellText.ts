@@ -39,6 +39,40 @@ export function dayOf(v: unknown): string | null {
   return d ? d.start.slice(0, 10) : null;
 }
 
+const diaISO = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/** Suma días a un "YYYY-MM-DD…" conservando lo que venga detrás del día (la hora). */
+function sumaDias(iso: string, dias: number): string {
+  const base = new Date(`${iso.slice(0, 10)}T00:00:00`);
+  base.setDate(base.getDate() + dias);
+  return diaISO(base) + iso.slice(10);
+}
+
+/**
+ * Desplaza una celda de fecha N días conservando la hora y la duración del rango
+ * (para arrastrar en Calendario y Cronograma). Devuelve el valor tal cual si no
+ * hay fecha que mover.
+ */
+export function shiftDateValue(v: unknown, dias: number): unknown {
+  const d = dateValue(v);
+  if (!d || !dias) return v;
+  return d.end ? { start: sumaDias(d.start, dias), end: sumaDias(d.end, dias) } : { start: sumaDias(d.start, dias) };
+}
+
+/**
+ * Cambia el FINAL del rango N días (redimensionar en el Cronograma), sin dejarlo
+ * nunca antes del inicio. Sin rango previo, lo crea a partir del inicio.
+ */
+export function stretchDateValue(v: unknown, dias: number): unknown {
+  const d = dateValue(v);
+  if (!d || !dias) return v;
+  const inicio = d.start.slice(0, 10);
+  const fin = sumaDias(d.end ?? d.start, dias);
+  if (fin.slice(0, 10) < inicio) return { start: d.start }; // encogido hasta desaparecer: queda en un día
+  return fin.slice(0, 10) === inicio ? { start: d.start } : { start: d.start, end: fin };
+}
+
 /** Día "YYYY-MM-DD" del final (el inicio si no hay rango). */
 export function endDayOf(v: unknown): string | null {
   const d = dateValue(v);

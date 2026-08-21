@@ -365,6 +365,21 @@ import { infiereColumnas } from "../src/lib/csvTipos";
   assert.equal(multi.length, 2, "multiselect divide por comas");
 }
 
+// --- Mover y estirar fechas (arrastrar en Calendario/Cronograma) ---
+import { shiftDateValue, stretchDateValue } from "../src/lib/cellText";
+
+assert.deepEqual(shiftDateValue("2026-08-21", 3), { start: "2026-08-24" });
+assert.deepEqual(shiftDateValue({ start: "2026-08-21T09:30" }, 1), { start: "2026-08-22T09:30" }, "la hora se conserva");
+assert.deepEqual(
+  shiftDateValue({ start: "2026-08-28", end: "2026-08-30" }, 5),
+  { start: "2026-09-02", end: "2026-09-04" },
+  "el rango se mueve entero, cruzando de mes",
+);
+assert.equal(shiftDateValue("2026-08-21", 0), "2026-08-21", "sin desplazamiento no se toca");
+assert.deepEqual(stretchDateValue({ start: "2026-08-21", end: "2026-08-23" }, 2), { start: "2026-08-21", end: "2026-08-25" });
+assert.deepEqual(stretchDateValue("2026-08-21", 2), { start: "2026-08-21", end: "2026-08-23" }, "estirar un día suelto crea el rango");
+assert.deepEqual(stretchDateValue({ start: "2026-08-21", end: "2026-08-23" }, -9), { start: "2026-08-21" }, "encoger de más lo deja en un día");
+
 // --- Agregaciones de rollup ---
 import { agregaRollup } from "../src/lib/rollup";
 
