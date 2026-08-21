@@ -1,10 +1,49 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { authApiRequest, jsonFromDbError, readJson } from "@/server/apiAuth";
+import { authApiRequest, jsonError, jsonFromDbError, readJson } from "@/server/apiAuth";
 import { createRecord } from "@/server/services/db";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/v1/databases/:id/records — registros paginados por cursor.
+ *
+ * `?limit=` (100 por defecto, máx. 500) y `?cursor=` (el `next_cursor` de la página
+ * anterior). Respuesta: { records, next_cursor, has_more }, en el orden de la BD.
+ * `GET /databases/:id` sigue devolviéndolo todo, por compatibilidad; para BD
+ * grandes, usar esto.
+ */
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await authApiRequest(req);
+  if (auth instanceof Response) return auth;
+  const { id } = await params;
+  const q = new URL(req.url).searchParams;
+  const limit = Math.min(500, Math.max(1, Number(q.get("limit")) || 100));
+  const cursor = q.get("cursor");
+
+  const col = await db.collection.findFirst({
+    where: { id, page: { workspaceId: auth.workspaceId } },
+    select: { id: true },
+  });
+  if (!col) return jsonError(404, "Base de datos no encontrada.");
+
+  // Se pide uno de más para saber si hay otra página sin contar toda la tabla.
+  const filas = await db.record.findMany({
+    where: { collectionId: id, archivedAt: null },
+    select: { id: true, cells: true, parentId: true, createdAt: true, updatedAt: true },
+    orderBy: [{ order: "asc" }, { id: "asc" }],
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+  });
+  const hasMore = filas.length > limit;
+  const records = hasMore ? filas.slice(0, limit) : filas;
+  return NextResponse.json({
+    records,
+    next_cursor: hasMore ? records[records.length - 1].id : null,
+    has_more: hasMore,
+  });
+}
 
 const nuevoRegistro = z.object({
   cells: z.record(z.string(), z.any()).default({}),

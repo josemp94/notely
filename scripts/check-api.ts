@@ -119,6 +119,23 @@ async function main() {
   assert.ok(contenido.includes(recordId), "el registro recién creado debe salir al leer la BD");
   assert.ok(contenido.includes("Escrito por la API"), "y con su valor dentro");
 
+  // --- Listado paginado por cursor ---
+  await api("POST", `/databases/${collectionId}/records`, { cells: { [campos[0].id]: "Segunda" } });
+  await api("POST", `/databases/${collectionId}/records`, { cells: { [campos[0].id]: "Tercera" } });
+  const pagina1 = await api("GET", `/databases/${collectionId}/records?limit=2`);
+  assert.equal(pagina1.status, 200, `listar registros: ${JSON.stringify(pagina1.body)}`);
+  const p1 = comoObjeto(pagina1);
+  assert.equal((p1.records as unknown[]).length, 2, "limit=2 debe traer 2 registros");
+  assert.equal(p1.has_more, true, "con 3 registros y limit=2 debe quedar página siguiente");
+  assert.ok(p1.next_cursor, "y traer el cursor de la siguiente");
+  const pagina2 = await api("GET", `/databases/${collectionId}/records?limit=2&cursor=${p1.next_cursor}`);
+  const p2 = comoObjeto(pagina2);
+  assert.equal((p2.records as unknown[]).length, 1, "la segunda página debe traer el registro restante");
+  assert.equal(p2.has_more, false, "y ser la última");
+  const ids1 = (p1.records as { id: string }[]).map((r) => r.id);
+  const ids2 = (p2.records as { id: string }[]).map((r) => r.id);
+  assert.ok(!ids1.some((id) => ids2.includes(id)), "las páginas no deben solaparse");
+
   // --- Lo que no es del token, no existe ---
   const ajena = await api("PATCH", "/fields/cmt0000000000000000000000", { name: "x" });
   assert.equal(ajena.status, 404, "una columna de otro espacio debería dar 404");

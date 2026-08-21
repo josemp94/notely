@@ -148,6 +148,18 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 
 `parentId` (opcional) crea un sub-elemento de otro registro de la misma base de datos.
 
+### Listar registros (paginado)
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:3000/api/v1/databases/<id>/records?limit=100"
+# → { "records": [{ "id", "cells", "parentId", "createdAt", "updatedAt" }], "next_cursor", "has_more" }
+```
+
+`limit` va de 1 a 500 (100 por defecto). Si `has_more` es `true`, pide la siguiente
+página repitiendo la llamada con `cursor=<next_cursor>`. `GET /databases/<id>` sigue
+devolviendo todos los registros de golpe; para bases de datos grandes usa esto.
+
 ### Actualizar celdas (merge)
 
 ```bash
