@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Database, FileText } from "lucide-react";
+import { Clock, Database, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/react";
+import { getRecents } from "@/lib/recents";
 
 /** Evento global para abrir la paleta desde cualquier botón (p. ej. el sidebar). */
 export const OPEN_SEARCH_EVENT = "notiono:open-search";
@@ -59,7 +60,18 @@ export function SearchPalette() {
     { query: debounced, inContent: true },
     { enabled: open && debounced.trim().length > 0 },
   );
-  const items = debounced.trim() ? results ?? [] : [];
+  // Sin nada escrito, las últimas páginas visitadas — como Notion. Se cruzan con
+  // el árbol para que solo salgan las vivas (y con su título/icono frescos).
+  const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: open });
+  const { data: tree } = trpc.pages.tree.useQuery(undefined, { enabled: open });
+  const byId = new Map((tree ?? []).map((p) => [p.id, p]));
+  const recientes = (me?.workspace?.id && open ? getRecents(me.workspace.id) : [])
+    .flatMap((r) => byId.get(r.pageId) ?? [])
+    .slice(0, 8)
+    .map((p) => ({ id: p.id, title: p.title, icon: p.icon, type: "doc", inTitle: false, reciente: true }));
+  const items: (typeof recientes[number] | NonNullable<typeof results>[number])[] = debounced.trim()
+    ? results ?? []
+    : recientes;
   const selIdx = Math.min(sel, Math.max(items.length - 1, 0));
 
   if (!open) return null;
@@ -110,14 +122,22 @@ export function SearchPalette() {
                 {p.icon ?? (p.type === "database" ? <Database size={16} /> : <FileText size={16} />)}
               </span>
               <span className="min-w-0 flex-1 truncate">{p.title || "Sin título"}</span>
-              <span className="shrink-0 text-[11px] text-[var(--muted)]">
-                {p.inTitle ? (p.type === "database" ? "Base de datos" : "Página") : "En el contenido"}
+              <span className="flex shrink-0 items-center gap-1 text-[11px] text-[var(--muted)]">
+                {"reciente" in p && p.reciente ? (
+                  <>
+                    <Clock size={11} /> Reciente
+                  </>
+                ) : p.inTitle ? (
+                  p.type === "database" ? "Base de datos" : "Página"
+                ) : (
+                  "En el contenido"
+                )}
               </span>
             </button>
           ))}
           {items.length === 0 && (
             <div className="px-3 py-6 text-center text-sm text-[var(--muted)]">
-              {debounced.trim() ? "Sin resultados" : "Escribe para buscar en el espacio…"}
+              {debounced.trim() ? "Sin resultados" : "Busca en títulos y contenido de todo el espacio…"}
             </div>
           )}
         </div>

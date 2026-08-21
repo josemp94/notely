@@ -5,14 +5,13 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BlockNoteEditor } from "@blocknote/core";
-import { Bell, ChevronDown, ChevronRight, CircleCheck, Clock, Copy, Database, FilePlus, FileText, Folder, FolderInput, Keyboard, Loader2, Moon, MoreHorizontal, PanelLeftClose, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, Upload, Users, X } from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, CircleCheck, Copy, Database, FilePlus, FileText, Folder, FolderInput, Keyboard, Loader2, Moon, MoreHorizontal, PanelLeftClose, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, Upload, Users, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { openShortcuts } from "@/components/Shortcuts";
 import { NEW_PAGE_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
 import { parseCsv } from "@/lib/csv";
 import { importNotionZip } from "@/lib/importNotion";
 import { TEMPLATES } from "@/lib/templates";
-import { getRecents, RECENTS_EVENT, type Recent } from "@/lib/recents";
 import { setTheme, useTheme } from "@/lib/theme";
 import { openSearchPalette } from "@/components/SearchPalette";
 import { MovePageModal } from "@/components/MovePage";
@@ -222,7 +221,6 @@ export function Sidebar() {
 
       <nav className="flex-1 overflow-y-auto px-2 pb-6">
         <Favorites />
-        <Recents workspaceId={me?.workspace?.id} pages={pages} />
         <Tree nodes={byParent.get(null) ?? []} byParent={byParent} parentById={parentById} depth={0} canEdit={canEdit} />
       </nav>
       <Link
@@ -285,30 +283,6 @@ function Favorites() {
   return (
     <Section icon={<Star size={12} />} title="Favoritos">
       {favs.map((p) => (
-        <SectionLink key={p.id} page={p} />
-      ))}
-    </Section>
-  );
-}
-
-/** Últimas páginas visitadas (localStorage, por workspace). */
-function Recents({ workspaceId, pages }: { workspaceId: string | undefined; pages: Node[] | undefined }) {
-  const [recents, setRecents] = useState<Recent[]>([]);
-  useEffect(() => {
-    if (!workspaceId) return;
-    const load = () => setRecents(getRecents(workspaceId));
-    load();
-    window.addEventListener(RECENTS_EVENT, load);
-    return () => window.removeEventListener(RECENTS_EVENT, load);
-  }, [workspaceId]);
-
-  // Solo páginas vivas, con título/icono frescos del árbol (lo guardado puede estar obsoleto).
-  const byId = new Map((pages ?? []).map((p) => [p.id, p]));
-  const items = recents.flatMap((r) => byId.get(r.pageId) ?? []);
-  if (!items.length) return null;
-  return (
-    <Section icon={<Clock size={12} />} title="Recientes">
-      {items.map((p) => (
         <SectionLink key={p.id} page={p} />
       ))}
     </Section>

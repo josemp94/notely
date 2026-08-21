@@ -1,4 +1,5 @@
-// Últimas páginas visitadas, por workspace, en localStorage (sección 🕘 del sidebar).
+// Últimas páginas visitadas, por workspace, en localStorage. Se enseñan en el
+// buscador (Ctrl+K) al abrirlo vacío, como hace Notion — no en el sidebar.
 export type Recent = { pageId: string; title: string; icon: string | null; ts: number };
 
 export const RECENTS_EVENT = "notiono:recents";
