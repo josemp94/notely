@@ -43,12 +43,20 @@ export function CalendarView({
   const [dragId, setDragId] = useState<string | null>(null);
 
   const dateFields = fields.filter((f) => f.type === "date");
-  const cfg = (view.config ?? {}) as { dateFieldId?: string };
+  const cfg = (view.config ?? {}) as { dateFieldId?: string; calMode?: string };
   const dateFieldId = cfg.dateFieldId ?? dateFields[0]?.id ?? null;
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
+  const modo: "mes" | "semana" = cfg.calMode === "semana" ? "semana" : "mes";
 
   const today = new Date();
+  const lunesDe = (d: Date) => {
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    return x;
+  };
   const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
+  // Ancla de la vista semana: el lunes de la semana visible.
+  const [weekStart, setWeekStart] = useState(() => lunesDe(today));
   const [openRec, setOpenRec] = useState<Rec | null>(null);
 
   // Registros indexados por día (YYYY-MM-DD).
@@ -77,14 +85,22 @@ export function CalendarView({
     );
   }
 
-  // Rejilla del mes (empezando en lunes).
-  const first = new Date(cursor.y, cursor.m, 1);
-  const startOffset = (first.getDay() + 6) % 7; // 0 = lunes
-  const daysInMonth = new Date(cursor.y, cursor.m + 1, 0).getDate();
+  // Rejilla: el mes entero (empezando en lunes) o una sola semana.
   const cells: (Date | null)[] = [];
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(cursor.y, cursor.m, d));
-  while (cells.length % 7 !== 0) cells.push(null);
+  if (modo === "mes") {
+    const first = new Date(cursor.y, cursor.m, 1);
+    const startOffset = (first.getDay() + 6) % 7; // 0 = lunes
+    const daysInMonth = new Date(cursor.y, cursor.m + 1, 0).getDate();
+    for (let i = 0; i < startOffset; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(cursor.y, cursor.m, d));
+    while (cells.length % 7 !== 0) cells.push(null);
+  } else {
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      cells.push(d);
+    }
+  }
 
   const todayKey = ymd(today);
 
@@ -108,9 +124,32 @@ export function CalendarView({
     updateCell.mutate({ recordId: rec.id, fieldId: dateFieldId!, value: shiftDateValue(rec.cells?.[dateFieldId!], dias) });
   };
 
-  const prev = () => setCursor((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 }));
-  const next = () => setCursor((c) => (c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 }));
-  const goToday = () => setCursor({ y: today.getFullYear(), m: today.getMonth() });
+  const prev = () =>
+    modo === "mes"
+      ? setCursor((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 }))
+      : setWeekStart((w) => {
+          const d = new Date(w);
+          d.setDate(d.getDate() - 7);
+          return d;
+        });
+  const next = () =>
+    modo === "mes"
+      ? setCursor((c) => (c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 }))
+      : setWeekStart((w) => {
+          const d = new Date(w);
+          d.setDate(d.getDate() + 7);
+          return d;
+        });
+  const goToday = () => {
+    setCursor({ y: today.getFullYear(), m: today.getMonth() });
+    setWeekStart(lunesDe(today));
+  };
+  const finSemana = new Date(weekStart);
+  finSemana.setDate(finSemana.getDate() + 6);
+  const tituloCabecera =
+    modo === "mes"
+      ? `${MONTHS[cursor.m]} ${cursor.y}`
+      : `${weekStart.getDate()} ${MONTHS[weekStart.getMonth()].slice(0, 3).toLowerCase()} – ${finSemana.getDate()} ${MONTHS[finSemana.getMonth()].slice(0, 3).toLowerCase()} ${finSemana.getFullYear()}`;
 
   const addOn = (key: string) => {
     if (!titleField) return;
@@ -126,15 +165,25 @@ export function CalendarView({
         <button onClick={prev} className="rounded px-2 py-1 hover:bg-[var(--border)]/30" aria-label="Mes anterior">
           <ChevronLeft size={16} />
         </button>
-        <span className="font-display min-w-[9rem] text-center text-lg font-bold">
-          {MONTHS[cursor.m]} {cursor.y}
-        </span>
+        <span className="font-display min-w-[9rem] text-center text-lg font-bold">{tituloCabecera}</span>
         <button onClick={next} className="rounded px-2 py-1 hover:bg-[var(--border)]/30" aria-label="Mes siguiente">
           <ChevronRight size={16} />
         </button>
         <button onClick={goToday} className="rounded border border-[var(--border)] px-2 py-1 text-xs hover:bg-[var(--border)]/30">
           Hoy
         </button>
+        {/* Mes / Semana, como Notion; se guarda en la vista. */}
+        <div className="flex overflow-hidden rounded border border-[var(--border)] text-xs">
+          {(["mes", "semana"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => updateView.mutate({ id: view.id, config: { ...cfg, calMode: m } })}
+              className={`px-2 py-1 ${modo === m ? "bg-[var(--hover)] font-medium" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+            >
+              {m === "mes" ? "Mes" : "Semana"}
+            </button>
+          ))}
+        </div>
 
         {dateFields.length > 1 && (
           <select
@@ -166,7 +215,7 @@ export function CalendarView({
               key={i}
               onDragOver={(e) => d && e.preventDefault()}
               onDrop={() => d && soltarEn(key!)}
-              className={`group min-h-[92px] bg-[var(--background)] p-1 ${d ? "" : "opacity-40"}`}
+              className={`group bg-[var(--background)] p-1 ${modo === "semana" ? "min-h-[300px]" : "min-h-[92px]"} ${d ? "" : "opacity-40"}`}
             >
               {d && (
                 <>
