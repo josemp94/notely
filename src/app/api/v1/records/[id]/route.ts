@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { authApiRequest, jsonError } from "@/server/apiAuth";
-import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -28,13 +27,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return jsonError(400, parsed.error.issues[0]?.message ?? "Cuerpo inválido.");
 
-  const cells = { ...(rec.cells as Record<string, unknown>), ...parsed.data.cells };
+  // Merge atómico en Postgres (mismo motivo que db.updateCell): tocar solo las
+  // claves que llegan, sin leer-todo + escribir-todo, para no pisar ediciones
+  // concurrentes de otros campos.
+  const nuevos: Record<string, unknown> = {};
+  const borrar: string[] = [];
   for (const [k, v] of Object.entries(parsed.data.cells)) {
-    if (v === null || v === "") delete cells[k];
+    if (v === null || v === "") borrar.push(k);
+    else nuevos[k] = v;
   }
-  const updated = await db.record.update({
+  await db.$executeRaw`UPDATE "Record" SET cells = (cells || ${JSON.stringify(nuevos)}::jsonb) - ${borrar}::text[], "updatedAt" = now() WHERE id = ${rec.id}`;
+  const updated = await db.record.findUniqueOrThrow({
     where: { id: rec.id },
-    data: { cells: cells as Prisma.InputJsonValue },
     select: { id: true, cells: true, parentId: true, updatedAt: true },
   });
   return NextResponse.json(updated);

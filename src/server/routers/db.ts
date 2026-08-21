@@ -369,11 +369,18 @@ export const dbRouter = router({
         where: { id: input.recordId, collection: { page: { workspaceId: ctx.workspace.id } } },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
-      const cells = { ...(rec.cells as Record<string, unknown>), [input.fieldId]: input.value };
-      if (input.value === null || input.value === "") delete cells[input.fieldId];
-      const updated = await ctx.db.record.update({
+      // Merge atómico EN Postgres: antes se leía todo `cells` y se escribía entero,
+      // así que dos personas tocando campos DISTINTOS de la misma fila a la vez se
+      // pisaban en silencio (ganaba la última). Con `||`/`-` sobre jsonb cada update
+      // toca solo su clave. Mismo campo a la vez sigue siendo «gana el último», como
+      // en Notion. El @updatedAt de Prisma no aplica en SQL crudo: se pone a mano.
+      if (input.value === null || input.value === "") {
+        await ctx.db.$executeRaw`UPDATE "Record" SET cells = cells - ${input.fieldId}::text, "updatedById" = ${ctx.user.id}, "updatedAt" = now() WHERE id = ${input.recordId}`;
+      } else {
+        await ctx.db.$executeRaw`UPDATE "Record" SET cells = cells || ${JSON.stringify({ [input.fieldId]: input.value })}::jsonb, "updatedById" = ${ctx.user.id}, "updatedAt" = now() WHERE id = ${input.recordId}`;
+      }
+      const updated = await ctx.db.record.findUniqueOrThrow({
         where: { id: input.recordId },
-        data: { cells: cells as Prisma.InputJsonValue, updatedById: ctx.user.id },
         select: { id: true, cells: true },
       });
       dispatchWebhooks(ctx.workspace.id, "record.updated", {
@@ -396,7 +403,9 @@ export const dbRouter = router({
           );
           if (nuevos.length) {
             const titleField = field.collection.fields.find((f) => f.type === "text");
-            const titulo = titleField ? cellToText(titleField, cells[titleField.id], rec) : "";
+            const titulo = titleField
+              ? cellToText(titleField, (updated.cells as Record<string, unknown>)[titleField.id], rec)
+              : "";
             const miembros = await ctx.db.member.findMany({
               where: { workspaceId: ctx.workspace.id, userId: { in: nuevos } },
               select: { userId: true },
