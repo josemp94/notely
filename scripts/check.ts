@@ -304,9 +304,41 @@ async function compruebaColaboracion() {
   server.close();
 }
 
+// --- Import de Notion: nombres, rutas, dedup de CSVs y reescritura de enlaces ---
+import { dedupCsvs, limpiaNombre, reescribeEnlaces, resolver } from "../src/lib/notionMd";
+
+assert.equal(limpiaNombre("Tareas 0123456789abcdef0123456789abcdef"), "Tareas");
+assert.equal(limpiaNombre("Tareas 0123456789abcdef0123456789abcdef_all"), "Tareas");
+assert.equal(limpiaNombre("Sin id"), "Sin id");
+assert.equal(limpiaNombre(""), "Sin título");
+
+assert.equal(resolver("A b3f/C d4e", "../foto.png"), "A b3f/foto.png");
+assert.equal(resolver("", "C d4e/foto.png"), "C d4e/foto.png");
+assert.equal(resolver("A", "./x.md"), "A/x.md");
+
+assert.deepEqual(
+  dedupCsvs(["BD abc.csv", "BD abc_all.csv", "Sola def.csv"]),
+  ["BD abc_all.csv", "Sola def.csv"],
+  "con vista y _all debe quedarse la _all",
+);
+
+{
+  const destinos = new Map([
+    ["A b3f/foto 1.png", "/api/asset/x"],
+    ["A b3f/Hija c4d.md", "/p/nueva"],
+  ]);
+  const md = "![img](A%20b3f/foto%201.png) y [hija](A%20b3f/Hija%20c4d.md) y [fuera](https://x.com/a) y [rota](no%20existe.md)";
+  const out = reescribeEnlaces(md, "", (r) => destinos.get(r) ?? null);
+  assert.equal(
+    out,
+    "![img](/api/asset/x) y [hija](/p/nueva) y [fuera](https://x.com/a) y [rota](no%20existe.md)",
+    "adjuntos y páginas se reescriben; lo externo y lo roto se quedan",
+  );
+}
+
 compruebaColaboracion()
   .then(() => {
-    console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces, reglas, cálculos y colaboración");
+    console.log("OK — filtros, orden, celdas, agrupación, formatos, fechas, colores, enlaces, reglas, cálculos, colaboración e import de Notion");
     process.exit(0);
   })
   .catch((e) => {

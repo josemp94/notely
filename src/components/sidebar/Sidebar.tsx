@@ -5,11 +5,12 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BlockNoteEditor } from "@blocknote/core";
-import { Bell, ChevronDown, ChevronRight, CircleCheck, Clock, Copy, Database, FilePlus, FileText, Folder, FolderInput, Keyboard, Moon, MoreHorizontal, PanelLeftClose, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, Upload, Users, X } from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, CircleCheck, Clock, Copy, Database, FilePlus, FileText, Folder, FolderInput, Keyboard, Loader2, Moon, MoreHorizontal, PanelLeftClose, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, Upload, Users, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { openShortcuts } from "@/components/Shortcuts";
 import { NEW_PAGE_EVENT, TOGGLE_SIDEBAR_EVENT } from "@/lib/shortcuts";
 import { parseCsv } from "@/lib/csv";
+import { importNotionZip } from "@/lib/importNotion";
 import { TEMPLATES } from "@/lib/templates";
 import { getRecents, RECENTS_EVENT, type Recent } from "@/lib/recents";
 import { setTheme, useTheme } from "@/lib/theme";
@@ -74,7 +75,34 @@ export function Sidebar() {
   const updateContent = trpc.pages.updateContent.useMutation();
   const importCsv = trpc.db.importCsv.useMutation();
 
+  const [importando, setImportando] = useState<string | null>(null);
+
   async function onImportFile(file: File) {
+    // El ZIP de export de Notion va aparte: jerarquía entera, BDs y adjuntos.
+    if (/\.zip$/i.test(file.name)) {
+      setImportando("Importando…");
+      try {
+        const r = await importNotionZip(file, {
+          createPage: (i) => createPage.mutateAsync(i),
+          updateContent: (i) => updateContent.mutateAsync(i),
+          importCsv: (i) => importCsv.mutateAsync(i),
+          onProgress: setImportando,
+        });
+        await utils.pages.tree.invalidate();
+        window.alert(
+          `Importado de Notion: ${r.paginas} páginas y ${r.bases} bases de datos` +
+            (r.adjuntos ? `, ${r.adjuntos} adjuntos` : "") +
+            (r.omitidos ? ` (${r.omitidos} elementos omitidos)` : "") +
+            ".",
+        );
+        if (r.rootId) router.push(`/p/${r.rootId}`);
+      } catch (e) {
+        window.alert(`No se pudo importar el ZIP: ${e instanceof Error ? e.message : e}`);
+      } finally {
+        setImportando(null);
+      }
+      return;
+    }
     const text = await file.text();
     const title = file.name.replace(/\.[^.]+$/, "");
     try {
@@ -169,16 +197,17 @@ export function Sidebar() {
             </button>
             <button
               onClick={() => importInput.current?.click()}
-              className={accionPanel}
-              title="Importar Markdown (página) o CSV (base de datos)"
+              disabled={!!importando}
+              className={`${accionPanel} disabled:opacity-50`}
+              title={importando ?? "Importar Markdown (página), CSV (base de datos) o ZIP de Notion"}
               aria-label="Importar"
             >
-              <Upload size={16} />
+              {importando ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
             </button>
             <input
               ref={importInput}
               type="file"
-              accept=".md,.markdown,.csv"
+              accept=".md,.markdown,.csv,.zip"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
