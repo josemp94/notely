@@ -76,7 +76,9 @@ export function Editor({
   // Edición simultánea: si la instalación tiene servidor de colaboración, el
   // documento se sincroniza en vivo; si no, el editor funciona como siempre.
   const { data: me } = trpc.auth.me.useQuery();
-  const { collab, fallo: collabFallo } = useCollaboration(pageId, me);
+  // Sin permiso de edición no se entra en la sala Yjs (el servidor tampoco daría
+  // el token): se enseña la instantánea de content en solo lectura.
+  const { collab, fallo: collabFallo } = useCollaboration(pageId, canEdit ? me : null);
 
   const editor = useCreateBlockNote(
     collab

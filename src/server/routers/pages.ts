@@ -9,6 +9,7 @@ import { fetchLinkPreview } from "../linkPreview";
 import { createCollabToken } from "../collabToken";
 import { dispatchWebhooks } from "../webhooks";
 import { createPage } from "../services/pages";
+import { alcanza, exigeNivel, mapaDeNiveles, nivelDePagina, type Nivel } from "../services/perms";
 
 /** Días que aguanta una página en la papelera antes de la auto-purga (también en /trash). */
 const TRASH_TTL_DAYS = 30;
@@ -26,11 +27,14 @@ type TreeNode = {
 export const pagesRouter = router({
   /** Árbol completo de páginas vivas del workspace (para el sidebar). */
   tree: workspaceProcedure.query(async ({ ctx }): Promise<TreeNode[]> => {
-    const pages = await ctx.db.page.findMany({
+    const todas = await ctx.db.page.findMany({
       where: { workspaceId: ctx.workspace.id, archivedAt: null, embedded: false },
       select: { id: true, title: true, icon: true, parentId: true, order: true },
       orderBy: { order: "asc" },
     });
+    // Una página restringida no existe para quien no está invitado: ni en el árbol.
+    const nivel = await mapaDeNiveles(ctx.db, ctx.workspace.id, ctx.user.id, ctx.role ?? "member");
+    const pages = todas.filter((p) => alcanza(nivel(p.id), "view"));
     const childCount = new Map<string, number>();
     for (const p of pages) {
       if (p.parentId) childCount.set(p.parentId, (childCount.get(p.parentId) ?? 0) + 1);
@@ -49,6 +53,7 @@ export const pagesRouter = router({
       const q = input.query.trim();
       if (!q) return [];
       const like = `%${q}%`;
+      const nivel = await mapaDeNiveles(ctx.db, ctx.workspace.id, ctx.user.id, ctx.role ?? "member");
       if (!input.inContent) {
         const rows = await ctx.db.page.findMany({
           where: {
@@ -61,12 +66,12 @@ export const pagesRouter = router({
           orderBy: { updatedAt: "desc" },
           take: 20,
         });
-        return rows.map((r) => ({ ...r, inTitle: true }));
+        return rows.filter((r) => alcanza(nivel(r.id), "view")).map((r) => ({ ...r, inTitle: true }));
       }
       // jsonb_path_query_array saca solo los textos de los bloques: buscar sobre content::text
       // en crudo daría falsos positivos con las claves del JSON ("text", "table", "styles"…).
       // ponytail: escaneo secuencial por espacio; si algún día se nota, índice GIN sobre tsvector.
-      return ctx.db.$queryRaw<
+      const rows = await ctx.db.$queryRaw<
         { id: string; title: string; icon: string | null; type: string; inTitle: boolean }[]
       >(Prisma.sql`
         SELECT id, title, icon, type, (title ILIKE ${like}) AS "inTitle"
@@ -81,6 +86,7 @@ export const pagesRouter = router({
         ORDER BY (title ILIKE ${like}) DESC, "updatedAt" DESC
         LIMIT 20
       `);
+      return rows.filter((r) => alcanza(nivel(r.id), "view"));
     }),
 
   /**
@@ -91,7 +97,7 @@ export const pagesRouter = router({
   backlinks: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.$queryRaw<{ id: string; title: string; icon: string | null; type: string }[]>(Prisma.sql`
+      const rows = await ctx.db.$queryRaw<{ id: string; title: string; icon: string | null; type: string }[]>(Prisma.sql`
         SELECT id, title, icon, type
         FROM "Page"
         WHERE "workspaceId" = ${ctx.workspace.id}
@@ -102,6 +108,8 @@ export const pagesRouter = router({
         ORDER BY "updatedAt" DESC
         LIMIT 50
       `);
+      const nivel = await mapaDeNiveles(ctx.db, ctx.workspace.id, ctx.user.id, ctx.role ?? "member");
+      return rows.filter((r) => alcanza(nivel(r.id), "view"));
     }),
 
   /** Permiso de corta vida para entrar en la sala de edición simultánea de la página. */
@@ -113,6 +121,9 @@ export const pagesRouter = router({
         select: { id: true },
       });
       if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      // La sala Yjs es de lectura y escritura: por debajo de «editar» no se entra
+      // (el cliente enseña la página en solo lectura sin conectarse).
+      await exigeNivel(ctx.db, page.id, ctx.user.id, ctx.role ?? "member", "edit");
       return { token: createCollabToken(page.id, ctx.user.id, ctx.role ?? "editor") };
     }),
 
@@ -135,6 +146,7 @@ export const pagesRouter = router({
         select: { id: true, ydoc: true, content: true },
       });
       if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeNivel(ctx.db, page.id, ctx.user.id, ctx.role ?? "member", "edit");
       if (page.ydoc) return { seed: null };
 
       const Y = await import("yjs");
@@ -161,13 +173,16 @@ export const pagesRouter = router({
         where: { id: input.id, workspaceId: ctx.workspace.id },
       });
       if (!page) throw new TRPCError({ code: "NOT_FOUND" });
-      return page;
+      // El nivel viaja con la página: el cliente decide con él si edita o solo lee.
+      const nivel = await exigeNivel(ctx.db, page.id, ctx.user.id, ctx.role ?? "member", "view");
+      return { ...page, nivel };
     }),
 
   /** Crear página (opcionalmente hija de otra). */
   create: workspaceProcedure
     .input(z.object({ parentId: z.string().nullish(), title: z.string().default("") }))
     .mutation(async ({ ctx, input }) => {
+      if (input.parentId) await assertOwned(ctx, input.parentId);
       return createPage(
         { db: ctx.db, workspaceId: ctx.workspace.id, userId: ctx.user.id },
         { title: input.title, parentId: input.parentId ?? null },
@@ -180,6 +195,7 @@ export const pagesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const tplDef = TEMPLATES[input.key];
       if (!tplDef) throw new TRPCError({ code: "BAD_REQUEST", message: "Plantilla desconocida." });
+      if (input.parentId) await assertOwned(ctx, input.parentId);
       const tpl = tplDef.make();
       const last = await ctx.db.page.findFirst({
         where: { workspaceId: ctx.workspace.id, parentId: input.parentId ?? null },
@@ -287,6 +303,7 @@ export const pagesRouter = router({
         select: { id: true, content: true },
       });
       if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeNivel(ctx.db, page.id, ctx.user.id, ctx.role ?? "member", "edit");
       // ponytail: throttle simple — solo se crea versión si la última tiene más de 2 min;
       // dentro de la ventana se omite (la versión reciente ya cubre ese estado).
       const last = await ctx.db.version.findFirst({
@@ -312,7 +329,7 @@ export const pagesRouter = router({
     list: workspaceProcedure
       .input(z.object({ pageId: z.string() }))
       .query(async ({ ctx, input }) => {
-        await assertOwned(ctx, input.pageId);
+        await assertOwned(ctx, input.pageId, "view");
         const versions = await ctx.db.version.findMany({
           where: { pageId: input.pageId },
           orderBy: { createdAt: "desc" },
@@ -341,6 +358,7 @@ export const pagesRouter = router({
           include: { page: { select: { id: true, content: true } } },
         });
         if (!version) throw new TRPCError({ code: "NOT_FOUND" });
+        await exigeNivel(ctx.db, version.pageId, ctx.user.id, ctx.role ?? "member", "edit");
         await ctx.db.$transaction([
           ctx.db.version.create({
             data: {
@@ -367,6 +385,8 @@ export const pagesRouter = router({
         select: { id: true, publicToken: true },
       });
       if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      // Publicar al mundo exige acceso total, como en Notion.
+      await exigeNivel(ctx.db, page.id, ctx.user.id, ctx.role ?? "member", "full");
       if (page.publicToken) return { id: page.id, publicToken: page.publicToken };
       const publicada = await ctx.db.page.update({
         where: { id: page.id },
@@ -385,7 +405,7 @@ export const pagesRouter = router({
   unpublish: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await assertOwned(ctx, input.id);
+      await assertOwned(ctx, input.id, "full");
       return ctx.db.page.update({
         where: { id: input.id },
         data: { publicToken: null },
@@ -454,6 +474,8 @@ export const pagesRouter = router({
         select: { id: true, parentId: true, order: true },
       });
       if (!orig) throw new TRPCError({ code: "NOT_FOUND" });
+      // La copia nace al lado de la original: hace falta poder editar ahí.
+      await exigeNivel(ctx.db, orig.id, ctx.user.id, ctx.role ?? "member", "edit");
       // La copia va justo detrás de la original entre sus hermanas.
       const next = await ctx.db.page.findFirst({
         where: {
@@ -537,7 +559,7 @@ export const pagesRouter = router({
   toggleFavorite: workspaceProcedure
     .input(z.object({ pageId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await assertOwned(ctx, input.pageId);
+      await assertOwned(ctx, input.pageId, "view");
       const key = { userId_pageId: { userId: ctx.user.id, pageId: input.pageId } };
       const existing = await ctx.db.favorite.findUnique({ where: key });
       if (existing) {
@@ -547,6 +569,93 @@ export const pagesRouter = router({
       await ctx.db.favorite.create({ data: { userId: ctx.user.id, pageId: input.pageId } });
       return { favorite: true };
     }),
+
+  /**
+   * Permisos por página. Restringir corta la herencia: solo entran los usuarios con
+   * fila en PagePermission (owner/admin del espacio entran siempre). Al restringir se
+   * siembra con los miembros actuales y su nivel de rol, para que restringir no cambie
+   * nada hasta que quites o bajes a alguien. Gestionar permisos exige acceso total.
+   */
+  perms: router({
+    get: workspaceProcedure
+      .input(z.object({ pageId: z.string() }))
+      .query(async ({ ctx, input }) => {
+        await assertOwned(ctx, input.pageId, "view");
+        const page = await ctx.db.page.findUniqueOrThrow({
+          where: { id: input.pageId },
+          select: { restricted: true },
+        });
+        const nivel = await nivelDePagina(ctx.db, input.pageId, ctx.user.id, ctx.role ?? "member");
+        const permisos = await ctx.db.pagePermission.findMany({
+          where: { pageId: input.pageId },
+          select: { userId: true, level: true, user: { select: { name: true, email: true } } },
+        });
+        return {
+          restricted: page.restricted,
+          nivel,
+          permisos: permisos.map((p) => ({
+            userId: p.userId,
+            level: p.level,
+            name: p.user.name || p.user.email,
+          })),
+        };
+      }),
+
+    setRestricted: workspaceProcedure
+      .input(z.object({ pageId: z.string(), restricted: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOwned(ctx, input.pageId, "full");
+        if (input.restricted) {
+          const yaHay = await ctx.db.pagePermission.count({ where: { pageId: input.pageId } });
+          if (!yaHay) {
+            const miembros = await ctx.db.member.findMany({
+              where: { workspaceId: ctx.workspace.id },
+              select: { userId: true, role: true },
+            });
+            await ctx.db.pagePermission.createMany({
+              data: miembros
+                .filter((m) => m.role !== "admin" && m.role !== "owner")
+                .map((m) => ({
+                  pageId: input.pageId,
+                  userId: m.userId,
+                  level: m.role === "viewer" ? "view" : "edit",
+                })),
+              skipDuplicates: true,
+            });
+          }
+        }
+        // Al quitar la restricción las filas se conservan: si se reactiva, vuelve la misma lista.
+        return ctx.db.page.update({
+          where: { id: input.pageId },
+          data: { restricted: input.restricted },
+          select: { id: true, restricted: true },
+        });
+      }),
+
+    set: workspaceProcedure
+      .input(z.object({ pageId: z.string(), userId: z.string(), level: z.enum(["view", "comment", "edit", "full"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOwned(ctx, input.pageId, "full");
+        const miembro = await ctx.db.member.findUnique({
+          where: { workspaceId_userId: { workspaceId: ctx.workspace.id, userId: input.userId } },
+          select: { id: true },
+        });
+        if (!miembro) throw new TRPCError({ code: "BAD_REQUEST", message: "No es miembro del espacio." });
+        return ctx.db.pagePermission.upsert({
+          where: { pageId_userId: { pageId: input.pageId, userId: input.userId } },
+          create: { pageId: input.pageId, userId: input.userId, level: input.level },
+          update: { level: input.level },
+        });
+      }),
+
+    remove: workspaceProcedure
+      .input(z.object({ pageId: z.string(), userId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOwned(ctx, input.pageId, "full");
+        await ctx.db.pagePermission.deleteMany({ where: { pageId: input.pageId, userId: input.userId } });
+        return { ok: true };
+      }),
+  }),
 
   /** Borrar definitivamente (con subárbol). */
   remove: workspaceProcedure
@@ -568,7 +677,9 @@ export const favoritesRouter = router({
       orderBy: { createdAt: "asc" },
       select: { page: { select: { id: true, title: true, icon: true } } },
     });
-    return favs.map((f) => f.page);
+    // Si te restringieron una página que tenías en favoritos, tampoco sale aquí.
+    const nivel = await mapaDeNiveles(ctx.db, ctx.workspace.id, ctx.user.id, ctx.role ?? "member");
+    return favs.map((f) => f.page).filter((p) => alcanza(nivel(p.id), "view"));
   }),
 });
 
@@ -683,14 +794,16 @@ async function copyPage(
 }
 
 async function assertOwned(
-  ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } },
+  ctx: { db: typeof import("@/lib/db").db; workspace: { id: string }; user: { id: string }; role?: string },
   id: string,
+  min: Nivel = "edit",
 ) {
   const p = await ctx.db.page.findFirst({
     where: { id, workspaceId: ctx.workspace.id },
     select: { id: true },
   });
   if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+  await exigeNivel(ctx.db, id, ctx.user.id, ctx.role ?? "member", min);
 }
 
 /** Devuelve el id de la página y de todos sus descendientes. */

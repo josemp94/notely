@@ -23,7 +23,9 @@ export default function PageView() {
   const [history, setHistory] = useState(false);
   // Remonta el editor tras restaurar una versión (initialContent solo se lee al montar).
   const [editorEpoch, setEditorEpoch] = useState(0);
-  const canEdit = me?.wsRole !== "viewer";
+  // El nivel por página viene del servidor con pages.get; el rol viewer sigue mandando.
+  const nivel = page?.nivel ?? "edit";
+  const canEdit = me?.wsRole !== "viewer" && (nivel === "edit" || nivel === "full");
 
   // Registra la visita en 🕘 Recientes (localStorage, por workspace).
   const workspaceId = me?.workspace?.id;
@@ -46,7 +48,7 @@ export default function PageView() {
           {!comments && (
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {canEdit && <FavoriteButton pageId={page.id} />}
-              {canEdit && <ShareButton pageId={page.id} publicToken={page.publicToken} />}
+              {nivel === "full" && <ShareButton pageId={page.id} publicToken={page.publicToken} />}
               {page.type !== "database" && <HistoryButton onClick={() => setHistory(true)} />}
               <CommentsButton pageId={page.id} onClick={() => setComments(true)} />
               {canEdit && <PageMenu page={page} />}

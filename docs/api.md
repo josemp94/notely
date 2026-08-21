@@ -7,6 +7,10 @@ API para automatizar bases de datos (p. ej. que un asistente mantenga finanzas o
 Crea un token en **Ajustes → API** (se muestra en claro una sola vez). Cada token está
 scopeado a un workspace: la API solo ve/modifica datos de ese espacio.
 
+Ojo: el token es de **espacio completo** — los permisos por página (páginas
+restringidas) no se aplican a la API v1. No des un token a quien no deba ver todo el
+espacio.
+
 Todas las llamadas llevan la cabecera:
 
 ```

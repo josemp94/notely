@@ -1,8 +1,115 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Globe } from "lucide-react";
+import { Check, Globe, Lock, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
+
+const NIVELES: [string, string][] = [
+  ["view", "Ver"],
+  ["comment", "Comentar"],
+  ["edit", "Editar"],
+  ["full", "Acceso total"],
+];
+
+/**
+ * Acceso por página: restringir corta la herencia y deja pasar solo a los de la
+ * lista (owner/admin del espacio entran siempre). Solo la ve quien tiene acceso
+ * total (el botón Compartir ya exige eso). La lista se siembra en el servidor con
+ * los miembros actuales, así que activar el candado no cambia nada por sí solo.
+ */
+function AccesoSection({ pageId }: { pageId: string }) {
+  const utils = trpc.useUtils();
+  const { data } = trpc.pages.perms.get.useQuery({ pageId });
+  const { data: ws } = trpc.workspace.members.useQuery();
+  const invalidate = () => {
+    utils.pages.perms.get.invalidate({ pageId });
+    utils.pages.tree.invalidate();
+  };
+  const setRestricted = trpc.pages.perms.setRestricted.useMutation({ onSuccess: invalidate });
+  const setPerm = trpc.pages.perms.set.useMutation({ onSuccess: invalidate });
+  const removePerm = trpc.pages.perms.remove.useMutation({ onSuccess: invalidate });
+  if (!data) return null;
+
+  const sinPermiso = (ws?.members ?? []).filter(
+    (m) => m.role !== "admin" && m.role !== "owner" && !data.permisos.some((p) => p.userId === m.userId),
+  );
+
+  return (
+    <div className="mb-3 border-b border-[var(--border)] pb-3">
+      <div className="mb-1 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            <Lock size={13} /> Acceso
+          </div>
+          <div className="text-xs text-[var(--muted)]">
+            {data.restricted ? "Restringida: solo la gente de la lista." : "Todo el espacio, según su rol."}
+          </div>
+        </div>
+        <button
+          onClick={() => setRestricted.mutate({ pageId, restricted: !data.restricted })}
+          disabled={setRestricted.isPending}
+          role="switch"
+          aria-checked={data.restricted}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+            data.restricted ? "bg-brand" : "bg-[var(--border)]"
+          }`}
+          title={data.restricted ? "Volver a heredar del espacio" : "Restringir esta página"}
+        >
+          <span
+            className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${
+              data.restricted ? "left-4.5" : "left-0.5"
+            }`}
+          />
+        </button>
+      </div>
+      {data.restricted && (
+        <div className="mt-2 space-y-1">
+          {data.permisos.map((p) => (
+            <div key={p.userId} className="flex items-center gap-2 text-sm">
+              <span className="min-w-0 flex-1 truncate">{p.name}</span>
+              <select
+                value={p.level}
+                onChange={(e) => setPerm.mutate({ pageId, userId: p.userId, level: e.target.value as "view" | "comment" | "edit" | "full" })}
+                className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+              >
+                {NIVELES.map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => removePerm.mutate({ pageId, userId: p.userId })}
+                className="toque-estrecho shrink-0 text-[var(--muted)] hover:text-red-500"
+                title="Quitar acceso"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+          {data.permisos.length === 0 && (
+            <p className="text-xs text-[var(--muted)]">Solo tú (y los administradores).</p>
+          )}
+          {sinPermiso.length > 0 && (
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) setPerm.mutate({ pageId, userId: e.target.value, level: "view" });
+              }}
+              className="mt-1 w-full rounded border border-[var(--border)] bg-transparent px-1 py-1 text-xs text-[var(--muted)]"
+            >
+              <option value="">+ Dar acceso a alguien…</option>
+              {sinPermiso.map((m) => (
+                <option key={m.userId} value={m.userId}>{m.name || m.email}</option>
+              ))}
+            </select>
+          )}
+          <p className="pt-1 text-[11px] text-[var(--muted)]">
+            Vale también para todas sus subpáginas (herencia).
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Botón de cabecera con popover Publicar/Despublicar y URL pública copiable. */
 export function ShareButton({ pageId, publicToken }: { pageId: string; publicToken: string | null }) {
@@ -40,6 +147,7 @@ export function ShareButton({ pageId, publicToken }: { pageId: string; publicTok
       </button>
       {open && (
         <div className="absolute right-0 top-full z-30 mt-1 w-80 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 shadow-xl">
+          <AccesoSection pageId={pageId} />
           <div className="mb-2 flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Publicar en la web</div>

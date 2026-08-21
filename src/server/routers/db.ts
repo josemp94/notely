@@ -10,6 +10,7 @@ import { dayOf } from "@/lib/cellText";
 import { applyViewConfig, cellValue, type DbField, type DbRecord } from "@/lib/viewData";
 import { cellToText, peopleOf } from "../services/cells";
 import { sendPush } from "../push";
+import { alcanza, exigeNivel, mapaDeNiveles, type Nivel } from "../services/perms";
 import * as dbService from "../services/db";
 import { DbError, FIELD_TYPES, VIEW_TYPES } from "../services/db";
 
@@ -20,24 +21,57 @@ export const RECORD_TRASH_TTL_DAYS = 30;
 // crea; aquí solo se validan las entradas contra ella.
 export { FIELD_TYPES } from "../services/db";
 
-async function assertPage(ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } }, pageId: string) {
+// Los permisos por página se imponen aquí, en la capa de sesión: la API REST va con
+// token de espacio completo y no pasa por estos helpers (documentado en docs/api.md).
+type CtxPerms = { db: typeof import("@/lib/db").db; workspace: { id: string }; user: { id: string }; role?: string };
+
+async function assertPage(ctx: CtxPerms, pageId: string, min: Nivel = "view") {
   const p = await ctx.db.page.findFirst({
     where: { id: pageId, workspaceId: ctx.workspace.id },
     select: { id: true },
   });
   if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+  await exigeNivel(ctx.db, pageId, ctx.user.id, ctx.role ?? "member", min);
 }
 
-async function assertCollection(
-  ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } },
-  collectionId: string,
-) {
+async function assertCollection(ctx: CtxPerms, collectionId: string, min: Nivel = "edit") {
   const c = await ctx.db.collection.findFirst({
     where: { id: collectionId, page: { workspaceId: ctx.workspace.id } },
-    select: { id: true },
+    select: { id: true, pageId: true },
   });
   if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+  await exigeNivel(ctx.db, c.pageId, ctx.user.id, ctx.role ?? "member", min);
   return c;
+}
+
+/** Nivel mínimo sobre la página dueña de un registro (para las mutaciones por recordId). */
+async function exigeRegistro(ctx: CtxPerms, recordId: string, min: Nivel = "edit") {
+  const r = await ctx.db.record.findFirst({
+    where: { id: recordId, collection: { page: { workspaceId: ctx.workspace.id } } },
+    select: { collection: { select: { pageId: true } } },
+  });
+  if (!r) throw new TRPCError({ code: "NOT_FOUND" });
+  await exigeNivel(ctx.db, r.collection.pageId, ctx.user.id, ctx.role ?? "member", min);
+}
+
+/** Ídem por viewId. */
+async function exigeVista(ctx: CtxPerms, viewId: string, min: Nivel = "edit") {
+  const v = await ctx.db.view.findFirst({
+    where: { id: viewId, collection: { page: { workspaceId: ctx.workspace.id } } },
+    select: { collection: { select: { pageId: true } } },
+  });
+  if (!v) throw new TRPCError({ code: "NOT_FOUND" });
+  await exigeNivel(ctx.db, v.collection.pageId, ctx.user.id, ctx.role ?? "member", min);
+}
+
+/** Ídem por fieldId. */
+async function exigeCampo(ctx: CtxPerms, fieldId: string, min: Nivel = "edit") {
+  const f = await ctx.db.field.findFirst({
+    where: { id: fieldId, collection: { page: { workspaceId: ctx.workspace.id } } },
+    select: { collection: { select: { pageId: true } } },
+  });
+  if (!f) throw new TRPCError({ code: "NOT_FOUND" });
+  await exigeNivel(ctx.db, f.collection.pageId, ctx.user.id, ctx.role ?? "member", min);
 }
 
 /** El ámbito con el que el servicio trabaja, sacado del contexto de tRPC. */
@@ -67,6 +101,7 @@ export const dbRouter = router({
   create: workspaceProcedure
     .input(z.object({ parentId: z.string().nullish(), title: z.string().default("Base de datos") }))
     .mutation(async ({ ctx, input }) => {
+      if (input.parentId) await assertPage(ctx, input.parentId, "edit");
       // Nace con 3 filas vacías, como en Notion, para que la tabla no parezca rota.
       const { page } = await conTRPC(
         dbService.createDatabase(scopeOf(ctx), {
@@ -93,7 +128,7 @@ export const dbRouter = router({
   exportCsv: workspaceProcedure
     .input(z.object({ collectionId: z.string() }))
     .query(async ({ ctx, input }) => {
-      await assertCollection(ctx, input.collectionId);
+      await assertCollection(ctx, input.collectionId, "view");
       const col = await ctx.db.collection.findUnique({
         where: { id: input.collectionId },
         include: {
@@ -125,6 +160,7 @@ export const dbRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.parentId) await assertPage(ctx, input.parentId, "edit");
       const last = await ctx.db.page.findFirst({
         where: { workspaceId: ctx.workspace.id, parentId: input.parentId ?? null },
         orderBy: { order: "desc" },
@@ -201,7 +237,9 @@ export const dbRouter = router({
       take: 200,
     });
 
-    return records.map((r) => {
+    // Las tareas de páginas restringidas sin mí tampoco salen aquí.
+    const nivel = await mapaDeNiveles(ctx.db, ctx.workspace.id, ctx.user.id, ctx.role ?? "member");
+    return records.filter((r) => alcanza(nivel(r.collection.page.id), "view")).map((r) => {
       const fields = r.collection.fields;
       const cells = (r.cells ?? {}) as Record<string, unknown>;
       const first = (type: string) => fields.find((f) => f.type === type);
@@ -243,12 +281,14 @@ export const dbRouter = router({
   addField: workspaceProcedure
     .input(z.object({ collectionId: z.string(), name: z.string().default("Campo"), type: z.enum(FIELD_TYPES) }))
     .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
       return conTRPC(dbService.addField(scopeOf(ctx), input));
     }),
 
   updateField: workspaceProcedure
     .input(z.object({ id: z.string(), name: z.string().optional(), config: z.any().optional() }))
     .mutation(async ({ ctx, input }) => {
+      await exigeCampo(ctx, input.id);
       return conTRPC(dbService.updateField(scopeOf(ctx), input));
     }),
 
@@ -258,17 +298,22 @@ export const dbRouter = router({
    */
   setFieldType: workspaceProcedure
     .input(z.object({ id: z.string(), type: z.enum(FIELD_TYPES) }))
-    .mutation(({ ctx, input }) => conTRPC(dbService.setFieldType(scopeOf(ctx), input))),
+    .mutation(async ({ ctx, input }) => {
+      await exigeCampo(ctx, input.id);
+      return conTRPC(dbService.setFieldType(scopeOf(ctx), input));
+    }),
 
   deleteField: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await exigeCampo(ctx, input.id);
       return conTRPC(dbService.deleteField(scopeOf(ctx), input));
     }),
 
   addRecord: workspaceProcedure
     .input(z.object({ collectionId: z.string(), cells: z.record(z.string(), z.any()).optional() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
       return conTRPC(dbService.createRecord(scopeOf(ctx), input));
     }),
 
@@ -276,6 +321,7 @@ export const dbRouter = router({
   addSubRecord: workspaceProcedure
     .input(z.object({ parentRecordId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await exigeRegistro(ctx, input.parentRecordId);
       const parent = await ctx.db.record.findFirst({
         where: { id: input.parentRecordId, collection: { page: { workspaceId: ctx.workspace.id } } },
         select: { id: true, collectionId: true },
@@ -306,6 +352,7 @@ export const dbRouter = router({
   updateCell: workspaceProcedure
     .input(z.object({ recordId: z.string(), fieldId: z.string(), value: z.any() }))
     .mutation(async ({ ctx, input }) => {
+      await exigeRegistro(ctx, input.recordId);
       const rec = await ctx.db.record.findFirst({
         where: { id: input.recordId, collection: { page: { workspaceId: ctx.workspace.id } } },
       });
@@ -369,7 +416,7 @@ export const dbRouter = router({
   archivedRecords: workspaceProcedure
     .input(z.object({ collectionId: z.string() }))
     .query(async ({ ctx, input }) => {
-      await assertCollection(ctx, input.collectionId);
+      await assertCollection(ctx, input.collectionId, "view");
       const col = await ctx.db.collection.findUnique({
         where: { id: input.collectionId },
         select: { fields: { orderBy: { order: "asc" } } },
@@ -397,6 +444,7 @@ export const dbRouter = router({
         select: { id: true },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeRegistro(ctx, input.id);
       await ctx.db.record.delete({ where: { id: input.id } }); // las subtareas caen por la FK en cascada
       return { ok: true };
     }),
@@ -408,7 +456,8 @@ export const dbRouter = router({
   purgeExpiredRecords: workspaceProcedure
     .input(z.object({ collectionId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCollection(ctx, input.collectionId);
+      // Mantenimiento perezoso: solo borra lo ya caducado, puede dispararlo cualquiera que vea la BD.
+      await assertCollection(ctx, input.collectionId, "view");
       const cutoff = new Date(Date.now() - RECORD_TRASH_TTL_DAYS * 864e5);
       const r = await ctx.db.record.deleteMany({
         where: { collectionId: input.collectionId, archivedAt: { lt: cutoff } },
@@ -425,6 +474,7 @@ export const dbRouter = router({
         select: { id: true, collectionId: true, parentId: true },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeRegistro(ctx, input.id);
 
       // Solo se reordena entre hermanas: soltar sobre una fila de otro nivel no cambia el padre.
       const siblings = await ctx.db.record.findMany({
@@ -461,6 +511,7 @@ export const dbRouter = router({
         include: { collection: { select: { id: true, templates: true } } },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeRegistro(ctx, input.recordId);
       const templates = Array.isArray(rec.collection.templates) ? rec.collection.templates : [];
       const template = {
         id: "tpl_" + Math.random().toString(36).slice(2, 9),
@@ -494,6 +545,7 @@ export const dbRouter = router({
   duplicateRecord: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await exigeRegistro(ctx, input.id);
       const src = await ctx.db.record.findFirst({
         where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
       });
@@ -553,6 +605,7 @@ export const dbRouter = router({
         select: { id: true },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeRegistro(ctx, input.id);
       const now = new Date();
       // Las subtareas se van con su padre, como al borrar una página con hijas.
       await ctx.db.record.updateMany({ where: { parentId: input.id }, data: { archivedAt: now } });
@@ -570,6 +623,7 @@ export const dbRouter = router({
         select: { id: true, archivedAt: true },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeRegistro(ctx, input.id);
       if (rec.archivedAt) {
         await ctx.db.record.updateMany({
           where: { parentId: input.id, archivedAt: rec.archivedAt },
@@ -589,6 +643,7 @@ export const dbRouter = router({
         select: { id: true },
       });
       if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeRegistro(ctx, input.id);
       return ctx.db.record.update({
         where: { id: input.id },
         data: { content: input.content as Prisma.InputJsonValue, updatedById: ctx.user.id },
@@ -604,6 +659,7 @@ export const dbRouter = router({
         select: { id: true },
       });
       if (!v) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeVista(ctx, input.id);
       return ctx.db.view.update({ where: { id: input.id }, data: { config: input.config } });
     }),
 
@@ -611,6 +667,7 @@ export const dbRouter = router({
   addView: workspaceProcedure
     .input(z.object({ collectionId: z.string(), type: z.enum(VIEW_TYPES), name: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      await assertCollection(ctx, input.collectionId);
       return conTRPC(dbService.addView(scopeOf(ctx), input));
     }),
 
@@ -618,6 +675,7 @@ export const dbRouter = router({
   renameView: workspaceProcedure
     .input(z.object({ id: z.string(), name: z.string().min(1).max(60) }))
     .mutation(async ({ ctx, input }) => {
+      await exigeVista(ctx, input.id);
       return conTRPC(dbService.renameView(scopeOf(ctx), input));
     }),
 
@@ -630,6 +688,7 @@ export const dbRouter = router({
         where: { id: input.id, collection: { page: { workspaceId: ctx.workspace.id } } },
       });
       if (!v) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeVista(ctx, input.id);
       return ctx.db.view.create({
         data: {
           collectionId: v.collectionId,
@@ -644,6 +703,7 @@ export const dbRouter = router({
   deleteView: workspaceProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await exigeVista(ctx, input.id);
       return conTRPC(dbService.deleteView(scopeOf(ctx), input));
     }),
 
@@ -656,6 +716,7 @@ export const dbRouter = router({
         select: { id: true, collectionId: true, config: true },
       });
       if (!v) throw new TRPCError({ code: "NOT_FOUND" });
+      await exigeVista(ctx, input.id);
       const fields = await ctx.db.field.findMany({
         where: { collectionId: v.collectionId },
         orderBy: { order: "asc" },
@@ -682,20 +743,23 @@ export const dbRouter = router({
         fields: { orderBy: { order: "asc" }, select: { id: true, name: true, type: true } },
       },
     });
-    return cols.map((c) => ({
-      collectionId: c.id,
-      pageId: c.page.id,
-      title: c.page.title,
-      icon: c.page.icon,
-      fields: c.fields,
-    }));
+    const nivel = await mapaDeNiveles(ctx.db, ctx.workspace.id, ctx.user.id, ctx.role ?? "member");
+    return cols
+      .filter((c) => alcanza(nivel(c.page.id), "view"))
+      .map((c) => ({
+        collectionId: c.id,
+        pageId: c.page.id,
+        title: c.page.title,
+        icon: c.page.icon,
+        fields: c.fields,
+      }));
   }),
 
   /** Registros de una colección como opciones {id,title} para el selector de relación. */
   relationOptions: workspaceProcedure
     .input(z.object({ collectionId: z.string() }))
     .query(async ({ ctx, input }) => {
-      await assertCollection(ctx, input.collectionId);
+      await assertCollection(ctx, input.collectionId, "view");
       const col = await ctx.db.collection.findUnique({
         where: { id: input.collectionId },
         include: { fields: { orderBy: { order: "asc" } }, records: { where: { archivedAt: null }, orderBy: { order: "asc" } } },
@@ -714,7 +778,7 @@ export const dbRouter = router({
     .input(z.object({ collectionId: z.string(), name: z.string().default("Relación"), targetCollectionId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertCollection(ctx, input.collectionId);
-      const target = await assertCollection(ctx, input.targetCollectionId);
+      const target = await assertCollection(ctx, input.targetCollectionId, "view");
       const tPage = await ctx.db.collection.findUnique({
         where: { id: input.targetCollectionId },
         select: { pageId: true },

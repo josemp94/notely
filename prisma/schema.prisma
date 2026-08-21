@@ -24,6 +24,24 @@ model User {
   sentNotifications Notification[] @relation("actor")
   favorites    Favorite[]
   pushSubscriptions PushSubscription[]
+  pagePermissions   PagePermission[]
+}
+
+/**
+ * Permiso explícito de un usuario sobre una página RESTRINGIDA. Solo cuenta en la
+ * página restringida más cercana del camino hacia la raíz; owner/admin del espacio
+ * tienen acceso total siempre (así nadie se cierra fuera).
+ */
+model PagePermission {
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level  String // view | comment | edit | full
+
+  @@unique([pageId, userId])
+  @@index([userId])
 }
 
 model Session {
@@ -77,6 +95,7 @@ model Page {
   content     Json?     // documento de bloques (BlockNote) si type=doc
   ydoc        Bytes? // estado Yjs para la edición simultánea (el contenido legible sigue en content)
   publicToken String?   @unique // si no es null, la página está publicada en la web (/s/<token>)
+  restricted  Boolean   @default(false) // corta la herencia: solo entra quien esté en PagePermission (y owner/admin)
   archivedAt  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -87,6 +106,7 @@ model Page {
   comments    Comment[]
   notifications Notification[]
   favorites   Favorite[]
+  permissions PagePermission[]
 
   @@index([workspaceId, parentId])
 }

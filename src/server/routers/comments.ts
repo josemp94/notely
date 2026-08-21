@@ -2,16 +2,19 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, workspaceProcedure } from "../trpc";
 import { sendPush } from "../push";
+import { exigeNivel, type Nivel } from "../services/perms";
 
 async function assertPage(
-  ctx: { db: typeof import("@/lib/db").db; workspace: { id: string } },
+  ctx: { db: typeof import("@/lib/db").db; workspace: { id: string }; user: { id: string }; role?: string },
   pageId: string,
+  min: Nivel = "view",
 ) {
   const p = await ctx.db.page.findFirst({
     where: { id: pageId, workspaceId: ctx.workspace.id },
     select: { id: true },
   });
   if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+  await exigeNivel(ctx.db, pageId, ctx.user.id, ctx.role ?? "member", min);
 }
 
 export const commentsRouter = router({
@@ -30,7 +33,7 @@ export const commentsRouter = router({
   add: workspaceProcedure
     .input(z.object({ pageId: z.string(), body: z.string().trim().min(1).max(4000) }))
     .mutation(async ({ ctx, input }) => {
-      await assertPage(ctx, input.pageId);
+      await assertPage(ctx, input.pageId, "comment");
       const comment = await ctx.db.comment.create({
         data: { pageId: input.pageId, authorId: ctx.user.id, body: input.body },
       });
