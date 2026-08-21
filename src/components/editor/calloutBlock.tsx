@@ -3,13 +3,19 @@
 import { useState } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 
-/** Colores del callout: fondo suave + borde, iguales en claro y oscuro (mezclados con el fondo). */
+/** Colores del callout: los 10 de Notion, sobre las variables --tag-* (variante clara/oscura). */
+const tinta = (v: string) => ({ bg: `var(${v})`, border: `color-mix(in srgb, var(--tag-fg) 15%, var(${v}))` });
 const COLORS: Record<string, { bg: string; border: string }> = {
-  gris: { bg: "color-mix(in srgb, var(--muted) 12%, transparent)", border: "color-mix(in srgb, var(--muted) 35%, transparent)" },
-  naranja: { bg: "color-mix(in srgb, #ff5c28 12%, transparent)", border: "color-mix(in srgb, #ff5c28 40%, transparent)" },
-  azul: { bg: "color-mix(in srgb, #3b82f6 12%, transparent)", border: "color-mix(in srgb, #3b82f6 40%, transparent)" },
-  verde: { bg: "color-mix(in srgb, #22c55e 12%, transparent)", border: "color-mix(in srgb, #22c55e 40%, transparent)" },
-  rojo: { bg: "color-mix(in srgb, #ef4444 12%, transparent)", border: "color-mix(in srgb, #ef4444 40%, transparent)" },
+  fondo: tinta("--tag-default"),
+  gris: tinta("--tag-gray"),
+  marron: tinta("--tag-brown"),
+  naranja: tinta("--tag-orange"),
+  amarillo: tinta("--tag-yellow"),
+  verde: tinta("--tag-green"),
+  azul: tinta("--tag-blue"),
+  morado: tinta("--tag-purple"),
+  rosa: tinta("--tag-pink"),
+  rojo: tinta("--tag-red"),
 };
 
 const EMOJIS = ["💡", "📌", "⚠️", "✅", "❌", "🔥", "📝", "❓", "🎯", "🧡"];
@@ -96,7 +102,7 @@ function Callout({
               </button>
             ))}
           </div>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {Object.entries(COLORS).map(([name, v]) => (
               <button
                 key={name}
