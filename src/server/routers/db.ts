@@ -390,6 +390,7 @@ export const dbRouter = router({
         collectionId: rec.collectionId,
         fieldId: input.fieldId,
         cells: updated.cells,
+        updatedById: ctx.user.id,
       });
       // Los campos de lista (persona, relación) llevan trabajo extra tras escribir.
       const antesCelda = (rec.cells as Record<string, unknown>)[input.fieldId];

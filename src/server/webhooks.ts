@@ -52,6 +52,14 @@ export function dispatchWebhooks(workspaceId: string, event: WebhookEvent, data:
  */
 export async function deliver(url: string, secret: string, event: string, body: string): Promise<number> {
   let status = 0;
+  // Token para el gateway de OpenClaw: SOLO si el destino empieza por el prefijo
+  // configurado. Nunca a otras URLs, para no filtrar el token a terceros.
+  const extraAuth: Record<string, string> =
+    process.env.OPENCLAW_HOOK_TOKEN &&
+    process.env.OPENCLAW_HOOK_URL_PREFIX &&
+    url.startsWith(process.env.OPENCLAW_HOOK_URL_PREFIX)
+      ? { "x-openclaw-token": process.env.OPENCLAW_HOOK_TOKEN }
+      : {};
   for (let intento = 0; intento <= REINTENTOS_MS.length; intento++) {
     try {
       const res = await fetch(url, {
@@ -60,6 +68,7 @@ export async function deliver(url: string, secret: string, event: string, body: 
           "Content-Type": "application/json",
           "X-Notiono-Event": event,
           "X-Notiono-Signature": signPayload(secret, body),
+          ...extraAuth,
         },
         body,
         signal: AbortSignal.timeout(5000),
