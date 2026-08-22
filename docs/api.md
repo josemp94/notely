@@ -203,6 +203,20 @@ curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/js
 
 Solo cambia las celdas incluidas; `null` o `""` borra la celda.
 
+### Escribir el cuerpo de un registro
+
+Cada fila es una página (como en Notion); esto reemplaza su cuerpo entero. Acepta
+`{ "markdown": "…" }` (se convierte a bloques en el servidor: encabezados `#`/`##`/`###`,
+párrafos, listas `-`/`*` y numeradas, y negrita/cursiva/`código`/enlaces en línea) o
+`{ "blocks": [...] }` con bloques BlockNote en crudo.
+
+```bash
+curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "markdown": "## Resultado\n\nTodo **correcto**.\n\n- ver [informe](https://ejemplo.com)" }' \
+  http://localhost:3000/api/v1/records/<recordId>/content
+# → { "id", "content", "updatedAt" }
+```
+
 ### Borrar un registro
 
 ```bash

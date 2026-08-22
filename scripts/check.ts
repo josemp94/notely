@@ -7,6 +7,7 @@ import { applyViewConfig, colorByRules, matchesFilters, openInOf, opsFor, relati
 import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, rowColor } from "../src/lib/cellText";
 import { embedUrl } from "../src/lib/embed";
 import { computeCalc } from "../src/lib/calc";
+import { markdownABloques } from "../src/lib/mdBloques";
 
 const f = (id: string, type: string, config: unknown = {}): DbField => ({ id, name: id, type, config });
 const r = (id: string, cells: Record<string, unknown>): DbRecord => ({ id, cells, order: id });
@@ -445,6 +446,32 @@ import { evalFormula } from "../src/server/formula";
   // Lo de antes sigue funcionando igual.
   assert.equal(evalFormula('round(prop("Horas") * 2)', ctx), 5);
   assert.equal(evalFormula('if(prop("Horas") > 2, "mucho", "poco")', ctx), "mucho");
+}
+
+// Markdown → bloques BlockNote (API v1: PUT /records/:id/content).
+{
+  const b = markdownABloques("# Título\n\nHola **mundo** con *cursiva* y `código`.\n\n- uno\n- [dos](https://ej.com)\n1. tres\n\nlínea A\nlínea B");
+  assert.deepEqual(b.map((x) => x.type), ["heading", "paragraph", "bulletListItem", "bulletListItem", "numberedListItem", "paragraph"]);
+  assert.equal(b[0].props.level, 1);
+  assert.deepEqual(b[1].content, [
+    { type: "text", text: "Hola ", styles: {} },
+    { type: "text", text: "mundo", styles: { bold: true } },
+    { type: "text", text: " con ", styles: {} },
+    { type: "text", text: "cursiva", styles: { italic: true } },
+    { type: "text", text: " y ", styles: {} },
+    { type: "text", text: "código", styles: { code: true } },
+    { type: "text", text: ".", styles: {} },
+  ]);
+  assert.deepEqual(b[3].content, [
+    { type: "link", href: "https://ej.com", content: [{ type: "text", text: "dos", styles: {} }] },
+  ]);
+  // Líneas seguidas sin blanco = un solo párrafo; negrita anidando cursiva.
+  assert.deepEqual(b[5].content, [{ type: "text", text: "línea A línea B", styles: {} }]);
+  assert.deepEqual(markdownABloques("**a *b***")[0].content, [
+    { type: "text", text: "a ", styles: { bold: true } },
+    { type: "text", text: "b", styles: { bold: true, italic: true } },
+  ]);
+  assert.deepEqual(markdownABloques(""), []);
 }
 
 compruebaColaboracion()
