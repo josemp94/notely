@@ -1,13 +1,14 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Copy, EyeOff, Filter as FilterIcon, GripVertical, Maximize2, Plus, Trash2, X } from "lucide-react";
 import { confirmar } from "@/components/Confirmar";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
 import { frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, NUMBER_FORMATS, OPTION_COLORS, optionsOf, rowColor, type FieldLite } from "@/lib/cellText";
 import { CALC_OPTS, computeCalc } from "@/lib/calc";
-import { colorByRules, wrapOf, type DbField, type DbRecord } from "@/lib/viewData";
+import { colorByRules, opsFor, wrapOf, type DbField, type DbRecord, type Sort } from "@/lib/viewData";
+import { FILTER_MENU_EVENT, type FilterMenuDetail } from "@/lib/shortcuts";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
 import { Popover } from "./Popover";
 import { RelationCell } from "./RelationCell";
@@ -431,6 +432,30 @@ export function TableView({
                     onFreeze={() => { setFrozen(i < frozen ? i : i + 1); setMenuField(null); }}
                     wrap={wrapOf(cfg, f.id)}
                     onWrap={(v) => setWrapCol(f.id, v)}
+                    onSort={(dir) => {
+                      const sorts: Sort[] = Array.isArray(cfg.sorts) ? cfg.sorts : [];
+                      const idx = sorts.findIndex((s) => s.fieldId === f.id);
+                      const ns = idx >= 0 ? sorts.map((s, j) => (j === idx ? { ...s, dir } : s)) : [...sorts, { fieldId: f.id, dir }];
+                      updateView.mutate({ id: view.id, config: { ...cfg, sorts: ns } });
+                      setMenuField(null);
+                    }}
+                    onFilter={() => {
+                      const filters = Array.isArray(cfg.filters) ? cfg.filters : [];
+                      updateView.mutate({
+                        id: view.id,
+                        config: { ...cfg, filters: [...filters, { fieldId: f.id, op: opsFor(f.type)[0].value, value: "" }] },
+                      });
+                      setMenuField(null);
+                      window.dispatchEvent(
+                        new CustomEvent<FilterMenuDetail>(FILTER_MENU_EVENT, { detail: { collectionId } }),
+                      );
+                    }}
+                    onHide={() => {
+                      const hidden: string[] = Array.isArray(cfg.hiddenFields) ? cfg.hiddenFields : [];
+                      if (!hidden.includes(f.id))
+                        updateView.mutate({ id: view.id, config: { ...cfg, hiddenFields: [...hidden, f.id] } });
+                      setMenuField(null);
+                    }}
                     onConfig={(config) => updateField.mutate({ id: f.id, config: { ...(f.config as object), ...config } })}
                     onType={async (type) => {
                       if (await confirmar(`Cambiar «${f.name}» a ${FIELD_LABELS[type] ?? type}. Los valores se convertirán y lo que no se pueda convertir se perderá. ¿Seguir?`, "Cambiar")) {
@@ -763,6 +788,9 @@ function FieldMenu({
   onFreeze,
   wrap,
   onWrap,
+  onSort,
+  onFilter,
+  onHide,
   onConfig,
   onType,
   onDelete,
@@ -774,6 +802,9 @@ function FieldMenu({
   onFreeze: () => void;
   wrap: boolean;
   onWrap: (v: boolean) => void;
+  onSort: (dir: "asc" | "desc") => void;
+  onFilter: () => void;
+  onHide: () => void;
   onConfig: (config: Record<string, unknown>) => void;
   onType: (type: ConvertibleType) => void;
   onDelete: () => void;
@@ -793,6 +824,18 @@ function FieldMenu({
         onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
         className="mb-1 w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none focus:border-brand"
       />
+      <button onClick={() => onSort("asc")} className={item}>
+        <ArrowUp size={14} /> Ordenar ascendente
+      </button>
+      <button onClick={() => onSort("desc")} className={item}>
+        <ArrowDown size={14} /> Ordenar descendente
+      </button>
+      <button onClick={onFilter} className={item}>
+        <FilterIcon size={14} /> Filtrar por esta columna
+      </button>
+      <button onClick={onHide} className={item}>
+        <EyeOff size={14} /> Ocultar en la vista
+      </button>
       <button onClick={onFreeze} className={item} title="Las columnas congeladas no se mueven al desplazar la tabla en horizontal">
         {frozen ? "Descongelar desde aquí" : "Congelar hasta esta columna"}
       </button>

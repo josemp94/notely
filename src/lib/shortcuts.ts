@@ -21,3 +21,10 @@ export type ViewMenuDetail = { x: number; y: number };
 
 /** La ventana con todos los atajos («?» o Ctrl+/). */
 export const SHORTCUTS_EVENT = "notiono:atajos";
+
+/**
+ * Abrir el popover de filtros de la barra desde el menú de una columna. Lleva el
+ * collectionId para que no se abran los filtros de otra BD embebida en la misma página.
+ */
+export const FILTER_MENU_EVENT = "notiono:abrir-filtros";
+export type FilterMenuDetail = { collectionId: string };

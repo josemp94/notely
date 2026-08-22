@@ -8,7 +8,7 @@ import { trpc } from "@/trpc/react";
 import { Popover } from "./Popover";
 import { usePeople } from "./Cell";
 import { downloadText } from "@/lib/download";
-import { VIEW_MENU_EVENT, type ViewMenuDetail } from "@/lib/shortcuts";
+import { FILTER_MENU_EVENT, VIEW_MENU_EVENT, type FilterMenuDetail, type ViewMenuDetail } from "@/lib/shortcuts";
 import {
   countFilters,
   DATE_ANCHORS,
@@ -103,6 +103,17 @@ export function DbToolbar({
     window.addEventListener(VIEW_MENU_EVENT, abrir);
     return () => window.removeEventListener(VIEW_MENU_EVENT, abrir);
   }, []);
+
+  // «Filtrar» desde el menú de una columna: la tabla añade la condición y avisa
+  // por un evento de ventana para que la barra abra su popover de filtros.
+  useEffect(() => {
+    const abrir = (e: Event) => {
+      if ((e as CustomEvent<FilterMenuDetail>).detail?.collectionId !== collectionId) return;
+      setOpen("filter");
+    };
+    window.addEventListener(FILTER_MENU_EVENT, abrir);
+    return () => window.removeEventListener(FILTER_MENU_EVENT, abrir);
+  }, [collectionId]);
 
   const filters: FilterNode[] = Array.isArray(view.config?.filters) ? view.config.filters : [];
   const nFilters = countFilters(filters);
