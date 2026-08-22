@@ -293,10 +293,23 @@ export const dbRouter = router({
     }),
 
   addField: workspaceProcedure
-    .input(z.object({ collectionId: z.string(), name: z.string().default("Campo"), type: z.enum(FIELD_TYPES) }))
+    .input(z.object({
+      collectionId: z.string(),
+      name: z.string().default("Campo"),
+      type: z.enum(FIELD_TYPES),
+      beforeFieldId: z.string().optional(),
+      afterFieldId: z.string().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       await assertCollection(ctx, input.collectionId);
       return conTRPC(dbService.addField(scopeOf(ctx), input));
+    }),
+
+  moveField: workspaceProcedure
+    .input(z.object({ id: z.string(), beforeId: z.string().optional(), afterId: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      await exigeCampo(ctx, input.id);
+      return conTRPC(dbService.moveField(scopeOf(ctx), input));
     }),
 
   updateField: workspaceProcedure

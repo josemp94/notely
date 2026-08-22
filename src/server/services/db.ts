@@ -223,23 +223,70 @@ export async function createDatabase(
 
 export async function addField(
   scope: Scope,
-  input: { collectionId: string; name: string; type: FieldType },
+  input: { collectionId: string; name: string; type: FieldType; beforeFieldId?: string; afterFieldId?: string },
 ) {
   await assertCollection(scope, input.collectionId);
-  const last = await scope.db.field.findFirst({
-    where: { collectionId: input.collectionId },
-    orderBy: { order: "desc" },
-    select: { order: true },
-  });
   return scope.db.field.create({
     data: {
       collectionId: input.collectionId,
       name: input.name,
       type: input.type,
-      order: rankAtEnd(last?.order ?? null),
+      order: await ordenPegadoA(scope, input.collectionId, input.beforeFieldId, input.afterFieldId),
       config: defaultFieldConfig(input.type),
     },
   });
+}
+
+/** Orden fraccional para colocar una columna pegada a otra; sin ancla (o con un ancla que ya no existe), al final. */
+async function ordenPegadoA(scope: Scope, collectionId: string, beforeFieldId?: string, afterFieldId?: string): Promise<string> {
+  const anclaId = beforeFieldId ?? afterFieldId;
+  if (anclaId) {
+    const ancla = await scope.db.field.findFirst({
+      where: { id: anclaId, collectionId },
+      select: { order: true },
+    });
+    if (ancla) {
+      const vecino = await scope.db.field.findFirst({
+        where: { collectionId, order: beforeFieldId ? { lt: ancla.order } : { gt: ancla.order } },
+        orderBy: { order: beforeFieldId ? "desc" : "asc" },
+        select: { order: true },
+      });
+      return beforeFieldId
+        ? rankBetween(vecino?.order ?? null, ancla.order)
+        : rankBetween(ancla.order, vecino?.order ?? null);
+    }
+  }
+  const last = await scope.db.field.findFirst({
+    where: { collectionId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  return rankAtEnd(last?.order ?? null);
+}
+
+/** Reordena una columna entre las de su colección (mismo patrón que moveRecord). */
+export async function moveField(scope: Scope, input: { id: string; beforeId?: string; afterId?: string }) {
+  const field = await assertField(scope, input.id);
+  const siblings = await scope.db.field.findMany({
+    where: { collectionId: field.collectionId, id: { not: field.id } },
+    select: { id: true, order: true },
+    orderBy: { order: "asc" },
+  });
+  const anchorId = input.beforeId ?? input.afterId;
+  const at = anchorId ? siblings.findIndex((s) => s.id === anchorId) : -1;
+  let a: string | null = siblings.at(-1)?.order ?? null; // por defecto, al final
+  let b: string | null = null;
+  if (at !== -1) {
+    if (input.beforeId) {
+      a = siblings[at - 1]?.order ?? null;
+      b = siblings[at].order;
+    } else {
+      a = siblings[at].order;
+      b = siblings[at + 1]?.order ?? null;
+    }
+  }
+  await scope.db.field.update({ where: { id: field.id }, data: { order: rankBetween(a, b) } });
+  return { ok: true as const };
 }
 
 export async function updateField(

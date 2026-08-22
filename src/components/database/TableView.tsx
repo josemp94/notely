@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Copy, EyeOff, Filter as FilterIcon, GripVertical, Maximize2, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, ChevronDown, ChevronRight, Copy, EyeOff, Filter as FilterIcon, GripVertical, Maximize2, Plus, Trash2, X } from "lucide-react";
 import { confirmar } from "@/components/Confirmar";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
@@ -61,6 +61,7 @@ export function TableView({
   const deleteTemplate = trpc.db.deleteTemplate.useMutation({ onSuccess: invalidate });
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const duplicateField = trpc.db.duplicateField.useMutation({ onSuccess: invalidate });
+  const addField = trpc.db.addField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const setFieldType = trpc.db.setFieldType.useMutation({ onSuccess: invalidate });
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
@@ -461,6 +462,15 @@ export function TableView({
                       duplicateField.mutate({ id: f.id });
                       setMenuField(null);
                     }}
+                    onInsert={(lado) => {
+                      addField.mutate({
+                        collectionId,
+                        name: "Campo",
+                        type: "text",
+                        ...(lado === "izquierda" ? { beforeFieldId: f.id } : { afterFieldId: f.id }),
+                      });
+                      setMenuField(null);
+                    }}
                     onConfig={(config) => updateField.mutate({ id: f.id, config: { ...(f.config as object), ...config } })}
                     onType={async (type) => {
                       if (await confirmar(`Cambiar «${f.name}» a ${FIELD_LABELS[type] ?? type}. Los valores se convertirán y lo que no se pueda convertir se perderá. ¿Seguir?`, "Cambiar")) {
@@ -797,6 +807,7 @@ function FieldMenu({
   onFilter,
   onHide,
   onDuplicate,
+  onInsert,
   onConfig,
   onType,
   onDelete,
@@ -812,6 +823,7 @@ function FieldMenu({
   onFilter: () => void;
   onHide: () => void;
   onDuplicate: () => void;
+  onInsert: (lado: "izquierda" | "derecha") => void;
   onConfig: (config: Record<string, unknown>) => void;
   onType: (type: ConvertibleType) => void;
   onDelete: () => void;
@@ -939,6 +951,12 @@ function FieldMenu({
         </>
       )}
 
+      <button onClick={() => onInsert("izquierda")} className={item}>
+        <ArrowLeftToLine size={14} /> Insertar a la izquierda
+      </button>
+      <button onClick={() => onInsert("derecha")} className={item}>
+        <ArrowRightToLine size={14} /> Insertar a la derecha
+      </button>
       <button onClick={onDuplicate} className={item}>
         <Copy size={14} /> Duplicar propiedad
       </button>

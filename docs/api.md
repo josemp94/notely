@@ -87,6 +87,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 # → 201 { "id", "name", "type" }
 ```
 
+`afterFieldId` (opcional) coloca la columna nueva justo detrás de esa; sin él va al final.
+
 ### Renombrar una columna, cambiar su tipo o su configuración
 
 ```bash
