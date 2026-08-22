@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, GripVertical, Maximize2, Plus, Trash2, X } from "lucide-react";
 import { confirmar } from "@/components/Confirmar";
 import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
@@ -64,7 +64,6 @@ export function TableView({
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
   const { data: computed } = trpc.db.computed.useQuery({ pageId });
 
-  const [editingField, setEditingField] = useState<string | null>(null);
   const [menuField, setMenuField] = useState<string | null>(null);
   const [newMenu, setNewMenu] = useState(false);
   // Borrar una fila es reversible: se guarda cuál fue para poder deshacerlo.
@@ -399,31 +398,15 @@ export function TableView({
                   ...(lefts[i] === null ? {} : { left: lefts[i] }),
                 }}
               >
-                <span className="flex items-center gap-1">
-                  {editingField === f.id ? (
-                    <input
-                      autoFocus
-                      defaultValue={f.name}
-                      onBlur={(e) => {
-                        updateField.mutate({ id: f.id, name: e.target.value || f.name });
-                        setEditingField(null);
-                      }}
-                      className="w-28 rounded border border-[var(--border)] px-1"
-                    />
-                  ) : (
-                    <button onDoubleClick={() => setEditingField(f.id)} className="truncate">
-                      {f.name}
-                    </button>
-                  )}
-                  <span className="text-[10px] uppercase opacity-50">{FIELD_LABELS[f.type] ?? f.type}</span>
-                  <button
-                    onClick={() => setMenuField(menuField === f.id ? null : f.id)}
-                    className="ml-auto al-pasar"
-                    title="Opciones de la columna"
-                  >
-                    <MoreHorizontal size={14} />
-                  </button>
-                </span>
+                {/* Toda la cabecera abre el menú de la columna, como en Notion. */}
+                <button
+                  onClick={() => setMenuField(menuField === f.id ? null : f.id)}
+                  className="flex w-full min-w-0 items-center gap-1 text-left"
+                  title="Opciones de la columna"
+                >
+                  <span className="truncate">{f.name}</span>
+                  <span className="shrink-0 text-[10px] uppercase opacity-50">{FIELD_LABELS[f.type] ?? f.type}</span>
+                </button>
                 {/* Tirador para ajustar el ancho (doble clic vuelve al automático). */}
                 <span
                   onMouseDown={(e) => {
@@ -443,7 +426,7 @@ export function TableView({
                   <FieldMenu
                     field={f}
                     onClose={() => setMenuField(null)}
-                    onRename={() => { setMenuField(null); setEditingField(f.id); }}
+                    onRename={(name) => updateField.mutate({ id: f.id, name })}
                     frozen={i < frozen}
                     onFreeze={() => { setFrozen(i < frozen ? i : i + 1); setMenuField(null); }}
                     wrap={wrapOf(cfg, f.id)}
@@ -786,7 +769,7 @@ function FieldMenu({
 }: {
   field: FieldLite;
   onClose: () => void;
-  onRename: () => void;
+  onRename: (name: string) => void;
   frozen: boolean;
   onFreeze: () => void;
   wrap: boolean;
@@ -799,9 +782,17 @@ function FieldMenu({
   const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--hover)]";
   return (
     <Popover onClose={onClose} className="left-0 w-64 p-2 font-normal normal-case">
-      <button onClick={onRename} className={item}>
-        Renombrar
-      </button>
+      {/* El nombre se edita aquí mismo, como en Notion (sin autoFocus: en el
+          móvil abriría el teclado nada más tocar la cabecera). */}
+      <input
+        defaultValue={field.name}
+        onBlur={(e) => {
+          const v = e.target.value.trim();
+          if (v && v !== field.name) onRename(v);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+        className="mb-1 w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none focus:border-brand"
+      />
       <button onClick={onFreeze} className={item} title="Las columnas congeladas no se mueven al desplazar la tabla en horizontal">
         {frozen ? "Descongelar desde aquí" : "Congelar hasta esta columna"}
       </button>
