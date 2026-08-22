@@ -28,21 +28,30 @@ type Rec = {
   seq?: number;
 };
 
-export function RecordPanel({
+/** El primer campo de texto hace de título de la fila, como en la Tabla. */
+const tituloDe = (record: Rec, fields: FieldLite[]) => {
+  const titleField = fields.find((f) => f.type === "text") ?? fields[0];
+  const v = titleField ? record.cells?.[titleField.id] : undefined;
+  return typeof v === "string" ? v : "";
+};
+
+/**
+ * El interior de la ficha de una fila: título + propiedades + cuerpo de bloques +
+ * borrar. Lo comparten el panel (peek) y la fila abierta como página completa.
+ */
+export function RecordCard({
   pageId,
   collectionId,
   record,
   fields,
-  onClose,
-  nav,
+  onDeleted,
 }: {
   pageId: string;
   collectionId?: string;
   record: Rec;
   fields: FieldLite[];
-  onClose: () => void;
-  /** Navegación anterior/siguiente entre las filas de la vista; undefined = sin flecha. */
-  nav?: { prev?: () => void; next?: () => void };
+  /** Qué hacer cuando el registro se borra (cerrar el panel, volver a la BD…). */
+  onDeleted: () => void;
 }) {
   const utils = trpc.useUtils();
   const theme = useTheme();
@@ -53,19 +62,14 @@ export function RecordPanel({
   const deleteRecord = trpc.db.deleteRecord.useMutation({
     onSuccess: async () => {
       await invalidate();
-      onClose();
+      onDeleted();
     },
   });
 
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
-  const [title, setTitle] = useState(
-    titleField && typeof record.cells?.[titleField.id] === "string" ? (record.cells[titleField.id] as string) : "",
-  );
+  const [title, setTitle] = useState(tituloDe(record, fields));
   const propFields = fields.filter((f) => f.id !== titleField?.id);
 
-  const saveTemplate = trpc.db.saveTemplate.useMutation({
-    onSuccess: () => utils.db.get.invalidate({ pageId }),
-  });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initial = useMemo<NotionoPartialBlock[] | undefined>(() => {
     const c = record.content as NotionoPartialBlock[] | undefined;
@@ -85,6 +89,91 @@ export function RecordPanel({
   };
 
   return (
+    <>
+      <input
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder="Sin título"
+        className="font-display mb-5 w-full bg-transparent text-2xl font-extrabold outline-none placeholder:text-[var(--border)] md:text-3xl"
+      />
+
+      <div className="space-y-2">
+        {propFields.map((f) => (
+          <div key={f.id} className="grid grid-cols-[110px_1fr] items-center gap-3 md:grid-cols-[130px_1fr]">
+            <span className="truncate text-sm text-[var(--muted)]">{f.name}</span>
+            <div className="min-w-0 rounded px-1 hover:bg-[var(--border)]/20">
+              {f.type === "relation" ? (
+                <RelationCell
+                  field={f}
+                  value={record.cells?.[f.id]}
+                  onCommit={(value) => updateCell.mutate({ recordId: record.id, fieldId: f.id, value })}
+                />
+              ) : (
+                <Cell
+                  field={f}
+                  value={record.cells?.[f.id]}
+                  rollupValue={computed?.rollups?.[record.id]?.[f.id]}
+                  createdAt={record.createdAt}
+                  updatedAt={record.updatedAt}
+                  createdById={record.createdById}
+                  updatedById={record.updatedById}
+                  seq={record.seq}
+                  onCommit={(value) => updateCell.mutate({ recordId: record.id, fieldId: f.id, value })}
+                />
+              )}
+            </div>
+          </div>
+        ))}
+        {collectionId && (
+          <div className="grid grid-cols-[110px_1fr] items-center gap-3 md:grid-cols-[130px_1fr]">
+            <span className="text-sm text-[var(--muted)]">
+              <AddFieldButton collectionId={collectionId} fields={fields} onDone={invalidate} />
+            </span>
+            <span />
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 border-t border-[var(--border)] pt-4">
+        <BlockNoteView editor={editor} onChange={onBodyChange} theme={theme}>
+          <MentionMenu editor={editor} pageId={pageId} />
+        </BlockNoteView>
+      </div>
+
+      <button
+        onClick={async () => {
+          if (await confirmar("¿Borrar este registro?")) deleteRecord.mutate({ id: record.id });
+        }}
+        className="mt-8 flex items-center gap-1.5 text-sm text-[var(--muted)] hover:text-red-500"
+      >
+        <Trash2 size={14} /> Borrar registro
+      </button>
+    </>
+  );
+}
+
+export function RecordPanel({
+  pageId,
+  collectionId,
+  record,
+  fields,
+  onClose,
+  nav,
+}: {
+  pageId: string;
+  collectionId?: string;
+  record: Rec;
+  fields: FieldLite[];
+  onClose: () => void;
+  /** Navegación anterior/siguiente entre las filas de la vista; undefined = sin flecha. */
+  nav?: { prev?: () => void; next?: () => void };
+}) {
+  const utils = trpc.useUtils();
+  const saveTemplate = trpc.db.saveTemplate.useMutation({
+    onSuccess: () => utils.db.get.invalidate({ pageId }),
+  });
+
+  return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/20" onClick={onClose}>
       <div
         className="h-dvh w-full max-w-xl overflow-y-auto border-l border-[var(--border)] bg-[var(--background)] shadow-2xl"
@@ -93,7 +182,7 @@ export function RecordPanel({
         <div className="zona-segura-arriba flex items-center justify-between px-4 md:px-8">
           <button
             onClick={() => {
-              const name = prompt("Nombre de la plantilla", title || "Plantilla");
+              const name = prompt("Nombre de la plantilla", tituloDe(record, fields) || "Plantilla");
               if (name?.trim()) saveTemplate.mutate({ recordId: record.id, name: name.trim() });
             }}
             className="text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
@@ -127,64 +216,7 @@ export function RecordPanel({
         </div>
 
         <div className="px-4 pb-10 pt-2 md:px-8">
-          <input
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            placeholder="Sin título"
-            className="font-display mb-5 w-full bg-transparent text-2xl font-extrabold outline-none placeholder:text-[var(--border)] md:text-3xl"
-          />
-
-          <div className="space-y-2">
-            {propFields.map((f) => (
-              <div key={f.id} className="grid grid-cols-[110px_1fr] items-center gap-3 md:grid-cols-[130px_1fr]">
-                <span className="truncate text-sm text-[var(--muted)]">{f.name}</span>
-                <div className="min-w-0 rounded px-1 hover:bg-[var(--border)]/20">
-                  {f.type === "relation" ? (
-                    <RelationCell
-                      field={f}
-                      value={record.cells?.[f.id]}
-                      onCommit={(value) => updateCell.mutate({ recordId: record.id, fieldId: f.id, value })}
-                    />
-                  ) : (
-                    <Cell
-                      field={f}
-                      value={record.cells?.[f.id]}
-                      rollupValue={computed?.rollups?.[record.id]?.[f.id]}
-                      createdAt={record.createdAt}
-                      updatedAt={record.updatedAt}
-                      createdById={record.createdById}
-                      updatedById={record.updatedById}
-                      seq={record.seq}
-                      onCommit={(value) => updateCell.mutate({ recordId: record.id, fieldId: f.id, value })}
-                    />
-                  )}
-                </div>
-              </div>
-            ))}
-            {collectionId && (
-              <div className="grid grid-cols-[110px_1fr] items-center gap-3 md:grid-cols-[130px_1fr]">
-                <span className="text-sm text-[var(--muted)]">
-                  <AddFieldButton collectionId={collectionId} fields={fields} onDone={invalidate} />
-                </span>
-                <span />
-              </div>
-            )}
-          </div>
-
-          <div className="mt-6 border-t border-[var(--border)] pt-4">
-            <BlockNoteView editor={editor} onChange={onBodyChange} theme={theme}>
-              <MentionMenu editor={editor} pageId={pageId} />
-            </BlockNoteView>
-          </div>
-
-          <button
-            onClick={async () => {
-              if (await confirmar("¿Borrar este registro?")) deleteRecord.mutate({ id: record.id });
-            }}
-            className="mt-8 flex items-center gap-1.5 text-sm text-[var(--muted)] hover:text-red-500"
-          >
-            <Trash2 size={14} /> Borrar registro
-          </button>
+          <RecordCard pageId={pageId} collectionId={collectionId} record={record} fields={fields} onDeleted={onClose} />
         </div>
       </div>
     </div>
