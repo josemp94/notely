@@ -3,7 +3,7 @@
  * Ejecutar: npm run check
  */
 import assert from "node:assert/strict";
-import { applyViewConfig, colorByRules, matchesFilters, opsFor, relativeRange, type DbField, type DbRecord } from "../src/lib/viewData";
+import { applyViewConfig, colorByRules, matchesFilters, opsFor, relativeRange, wrapOf, type DbField, type DbRecord } from "../src/lib/viewData";
 import { dateValue, dayOf, displayValue, endDayOf, formatDate, formatNumber, frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, rowColor } from "../src/lib/cellText";
 import { embedUrl } from "../src/lib/embed";
 import { computeCalc } from "../src/lib/calc";
@@ -38,6 +38,13 @@ assert.equal(filter("tags", "is", "t2"), "b");
 // Adjuntos: "contiene" mira el nombre del fichero, no "[object Object]".
 assert.equal(filter("docs", "contains", "factura"), "a");
 assert.equal(filter("docs", "contains", "pdf"), "a");
+
+// Envolver texto: manda la columna (wrapCols) y, si no dice nada, la vista (wrapText).
+assert.equal(wrapOf({ wrapText: true }, "x"), true);
+assert.equal(wrapOf({ wrapText: true, wrapCols: { x: false } }, "x"), false);
+assert.equal(wrapOf({ wrapCols: { x: true } }, "x"), true);
+assert.equal(wrapOf({}, "x"), false);
+assert.equal(wrapOf(undefined, "x"), false);
 
 // Estado: ordena por el orden de sus opciones (Por hacer antes que Hecho), no alfabéticamente.
 assert.equal(

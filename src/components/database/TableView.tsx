@@ -7,7 +7,7 @@ import { trpc } from "@/trpc/react";
 import { Cell, usePeople } from "./Cell";
 import { frozenOffsets, FROZEN_WIDTH, GUTTER_WIDTH, groupBy, NUMBER_FORMATS, OPTION_COLORS, optionsOf, rowColor, type FieldLite } from "@/lib/cellText";
 import { CALC_OPTS, computeCalc } from "@/lib/calc";
-import { colorByRules, type DbField, type DbRecord } from "@/lib/viewData";
+import { colorByRules, wrapOf, type DbField, type DbRecord } from "@/lib/viewData";
 import { FIELD_LABELS, AddFieldButton } from "./shared";
 import { Popover } from "./Popover";
 import { RelationCell } from "./RelationCell";
@@ -191,7 +191,9 @@ export function TableView({
       ? fields.find((f) => f.id === cfg.subGroupByFieldId)
       : undefined;
   const hasCalcs = fields.some((f) => calcs[f.id]);
-  const wrap: boolean = Boolean(cfg.wrapText);
+  // Envolver texto: por columna (wrapCols), con el ajuste por vista como default.
+  const setWrapCol = (fieldId: string, v: boolean) =>
+    updateView.mutate({ id: view.id, config: { ...cfg, wrapCols: { ...(cfg.wrapCols ?? {}), [fieldId]: v } } });
 
   // Se ignoran ids que ya no están (filtrados o borrados) sin tener que podar el estado.
   const selectedIds = [...selected].filter((id) => idSet.has(id));
@@ -295,7 +297,7 @@ export function TableView({
             <Cell
               field={f}
               value={r.cells?.[f.id]}
-              wrap={wrap}
+              wrap={wrapOf(cfg, f.id)}
               createdAt={r.createdAt}
               updatedAt={r.updatedAt}
               createdById={r.createdById}
@@ -315,7 +317,7 @@ export function TableView({
           return (
             <td
               key={f.id}
-              className={`px-2 py-1.5 ${wrap ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
+              className={`px-2 py-1.5 ${wrapOf(cfg, f.id) ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
               style={style}
             >
               {cell}
@@ -325,7 +327,7 @@ export function TableView({
         return (
           <td
             key={f.id}
-            className={`px-2 py-1.5 ${wrap ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
+            className={`px-2 py-1.5 ${wrapOf(cfg, f.id) ? "align-top" : "overflow-hidden"} ${left === null ? "" : "sticky z-10"}`}
             style={style}
           >
             <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
@@ -444,6 +446,8 @@ export function TableView({
                     onRename={() => { setMenuField(null); setEditingField(f.id); }}
                     frozen={i < frozen}
                     onFreeze={() => { setFrozen(i < frozen ? i : i + 1); setMenuField(null); }}
+                    wrap={wrapOf(cfg, f.id)}
+                    onWrap={(v) => setWrapCol(f.id, v)}
                     onConfig={(config) => updateField.mutate({ id: f.id, config: { ...(f.config as object), ...config } })}
                     onType={async (type) => {
                       if (await confirmar(`Cambiar «${f.name}» a ${FIELD_LABELS[type] ?? type}. Los valores se convertirán y lo que no se pueda convertir se perderá. ¿Seguir?`, "Cambiar")) {
@@ -774,6 +778,8 @@ function FieldMenu({
   onRename,
   frozen,
   onFreeze,
+  wrap,
+  onWrap,
   onConfig,
   onType,
   onDelete,
@@ -783,6 +789,8 @@ function FieldMenu({
   onRename: () => void;
   frozen: boolean;
   onFreeze: () => void;
+  wrap: boolean;
+  onWrap: (v: boolean) => void;
   onConfig: (config: Record<string, unknown>) => void;
   onType: (type: ConvertibleType) => void;
   onDelete: () => void;
@@ -797,6 +805,19 @@ function FieldMenu({
       <button onClick={onFreeze} className={item} title="Las columnas congeladas no se mueven al desplazar la tabla en horizontal">
         {frozen ? "Descongelar desde aquí" : "Congelar hasta esta columna"}
       </button>
+
+      {/* Como en Notion, el wrap se decide por columna (solo tiene efecto en texto). */}
+      {field.type === "text" && (
+        <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
+          <span>Ajustar texto</span>
+          <input
+            type="checkbox"
+            checked={wrap}
+            onChange={(e) => onWrap(e.target.checked)}
+            className="size-4 accent-[var(--color-brand,#ff5c28)]"
+          />
+        </label>
+      )}
 
       {/* Los campos calculados no se pueden convertir: su valor no vive en la celda. */}
       {!["relation", "rollup", "formula"].includes(field.type) && (

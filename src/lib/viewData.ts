@@ -22,6 +22,16 @@ export type Sort = { fieldId: string; dir: "asc" | "desc" };
 export const isFilterGroup = (n: FilterNode): n is FilterGroup =>
   (n as FilterGroup).type === "group";
 
+/**
+ * ¿Se envuelve el texto de esta columna? Manda el ajuste por columna
+ * (`wrapCols`, como Notion); si la columna no dice nada, hereda el «Envolver
+ * texto» de la vista (`wrapText`, el ajuste antiguo, que queda como default).
+ */
+export function wrapOf(config: any, fieldId: string): boolean {
+  const porColumna = config?.wrapCols?.[fieldId];
+  return typeof porColumna === "boolean" ? porColumna : Boolean(config?.wrapText);
+}
+
 /** Nº de condiciones (hojas) de un árbol de filtros, para el contador de la UI. */
 export function countFilters(nodes: FilterNode[]): number {
   return nodes.reduce((acc, n) => acc + (isFilterGroup(n) ? countFilters(n.filters) : 1), 0);
