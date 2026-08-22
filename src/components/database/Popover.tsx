@@ -90,6 +90,18 @@ export function Popover({
     return () => document.removeEventListener("mousedown", h);
   }, [onClose, at, anchorRef]);
 
+  // Escape cierra el menú. El stopPropagation evita que llegue al listener de
+  // window del panel de ficha: el primer Escape cierra el menú, el segundo el panel.
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      onClose();
+    };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [onClose]);
+
   return (
     <>
       <span ref={ancla} className="hidden" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
 import { es } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -172,6 +172,17 @@ export function RecordPanel({
   const saveTemplate = trpc.db.saveTemplate.useMutation({
     onSuccess: () => utils.db.get.invalidate({ pageId }),
   });
+
+  // Escape cierra el panel (en window: un menú abierto dentro lo consume antes
+  // con stopPropagation, y el editor puede marcarlo con defaultPrevented).
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      onClose();
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/20" onClick={onClose}>
