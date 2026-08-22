@@ -242,7 +242,10 @@ h1, h2, h3, .font-display {
 /* Las celdas de la tabla son inputs, y un input recorta a hachazo: «Comprar la
    fruta de la». Con esto se recorta con puntos suspensivos, que es lo que se
    entiende como «hay más». Solo mientras no se escribe en él. */
-td input[type="text"] {
+td input[type="text"],
+td input[type="url"],
+td input[type="email"],
+td input[type="tel"] {
   text-overflow: ellipsis;
 }
 
