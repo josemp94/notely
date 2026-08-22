@@ -79,11 +79,16 @@ export function Popover({
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (panel.current && !panel.current.contains(e.target as globalThis.Node)) onClose();
+      const t = e.target as globalThis.Node;
+      if (!panel.current || panel.current.contains(t)) return;
+      // El botón del que cuelga el menú hace su propio toggle en el click: si
+      // cerráramos aquí en el mousedown, ese click lo reabriría al instante.
+      if (!at && (anchorRef?.current ?? ancla.current?.parentElement)?.contains(t)) return;
+      onClose();
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
-  }, [onClose]);
+  }, [onClose, at, anchorRef]);
 
   return (
     <>

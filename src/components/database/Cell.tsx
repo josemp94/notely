@@ -232,18 +232,14 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
       ? [String(value)]
       : [];
 
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as globalThis.Node)) {
-        setOpen(false);
-        setQ("");
-        setEditingOpt(null);
-      }
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
+  // El cierre por clic fuera lo gestiona el Popover: su panel vive en un portal
+  // (document.body), así que un `contains` contra el div de la celda diría que
+  // TODO clic dentro del menú es "fuera" y lo cerraría antes de poder elegir.
+  const cerrar = () => {
+    setOpen(false);
+    setQ("");
+    setEditingOpt(null);
+  };
 
   const commit = (ids: string[]) => onCommit(multi ? ids : (ids[0] ?? null));
 
@@ -251,7 +247,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
     if (multi) commit(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
     else {
       commit(selected.includes(id) ? [] : [id]);
-      setOpen(false);
+      cerrar();
     }
   };
 
@@ -279,7 +275,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
     updateField.mutate({ id: field.id, config: { ...cfg, options: [...opts, option] } });
     commit(multi ? [...selected, id] : [id]);
     setQ("");
-    if (!multi) setOpen(false);
+    if (!multi) cerrar();
   };
 
   const pill = (o: Option) => (
@@ -311,7 +307,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
         )}
       </button>
       {open && (
-        <Popover onClose={() => setOpen(false)} className="left-0 w-56 p-2" anchorRef={ref}>
+        <Popover onClose={cerrar} className="left-0 w-56 p-2" anchorRef={ref}>
           <input
             autoFocus
             value={q}
@@ -414,17 +410,11 @@ function PersonCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown
   const { data } = trpc.workspace.members.useQuery(undefined, { enabled: open });
   const selected: string[] = Array.isArray(value) ? (value as string[]) : value ? [String(value)] : [];
 
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as globalThis.Node)) {
-        setOpen(false);
-        setQ("");
-      }
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
+  // El clic fuera lo gestiona el Popover (su panel vive en un portal, ver TagCell).
+  const cerrar = () => {
+    setOpen(false);
+    setQ("");
+  };
 
   const members = data?.members ?? [];
   const nameOf = (userId: string) => {
@@ -455,7 +445,7 @@ function PersonCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown
         )}
       </button>
       {open && (
-        <Popover onClose={() => setOpen(false)} className="left-0 w-60 p-2" anchorRef={ref}>
+        <Popover onClose={cerrar} className="left-0 w-60 p-2" anchorRef={ref}>
           <input
             autoFocus
             value={q}
