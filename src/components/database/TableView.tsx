@@ -280,15 +280,6 @@ export function TableView({
               <GripVertical size={13} />
             </span>
           )}
-          {!selected.size && (
-            <button
-              onClick={() => abrir(r)}
-              className="text-[var(--muted)] al-pasar hover:text-[var(--foreground)]"
-              title="Abrir ficha"
-            >
-              <Maximize2 size={13} />
-            </button>
-          )}
         </div>
       </td>
       {fields.map((f, i) => {
@@ -351,6 +342,13 @@ export function TableView({
                 <span className="w-4 shrink-0" />
               )}
               <div className="min-w-0 flex-1">{cell}</div>
+              {/* ABRIR al pasar el ratón por la celda del título, como en Notion. */}
+              <button
+                onClick={() => abrir(r)}
+                className="al-pasar ml-1 flex shrink-0 items-center gap-1 rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted)] shadow-sm hover:text-[var(--foreground)]"
+              >
+                <Maximize2 size={11} /> ABRIR
+              </button>
             </div>
           </td>
         );
