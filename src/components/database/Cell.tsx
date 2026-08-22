@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Check, Paperclip, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Paperclip, SlidersHorizontal, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Popover } from "./Popover";
 import { dateValue, formatNumber, OPTION_COLORS, optionsOf, STATUS_GROUPS, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
@@ -118,13 +118,14 @@ export function Cell({
     const href =
       field.type === "email" ? `mailto:${raw}` : field.type === "phone" ? `tel:${raw}` : /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
     return (
-      <div className="flex w-full items-center gap-1">
+      <div className="group/celda flex w-full items-center gap-1">
         <input
           type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : "url"}
           defaultValue={raw}
           onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
           className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
         />
+        {raw && <CopiarBtn value={raw} />}
         {raw && (
           <a href={href} target="_blank" rel="noreferrer" className="flex shrink-0 items-center px-1 text-brand hover:underline" title="Abrir">
             <ArrowUpRight size={14} />
@@ -140,13 +141,40 @@ export function Cell({
 
   // text (no controlado; commit al salir)
   if (wrap) return <WrappedTextCell value={value} onCommit={onCommit} />;
+  const texto = value == null ? "" : String(value);
   return (
-    <input
-      type="text"
-      defaultValue={value == null ? "" : String(value)}
-      onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
-      className="w-full bg-transparent px-1 py-0.5 text-sm outline-none"
-    />
+    <div className="group/celda flex w-full items-center">
+      <input
+        type="text"
+        defaultValue={texto}
+        onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
+        className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
+      />
+      {texto && <CopiarBtn value={texto} />}
+    </div>
+  );
+}
+
+/**
+ * Botón de copiar el valor de la celda, visible solo al pasar el ratón (Notion
+ * hace lo mismo). Deliberadamente NO usa `.al-pasar`: en táctil sería un icono
+ * permanente en cada celda, y ahí el valor ya se alcanza abriendo la ficha.
+ */
+function CopiarBtn({ value }: { value: string }) {
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <button
+      onClick={() =>
+        navigator.clipboard.writeText(value).then(() => {
+          setCopiado(true);
+          setTimeout(() => setCopiado(false), 1000);
+        })
+      }
+      className="shrink-0 rounded p-0.5 text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--foreground)] group-hover/celda:opacity-100 group-focus-within/celda:opacity-100"
+      title="Copiar"
+    >
+      {copiado ? <Check size={13} className="text-brand" /> : <Copy size={13} />}
+    </button>
   );
 }
 
@@ -163,15 +191,19 @@ function WrappedTextCell({ value, onCommit }: { value: unknown; onCommit: (v: un
   };
   useEffect(() => ajustar(ref.current), [value]);
 
+  const texto = value == null ? "" : String(value);
   return (
-    <textarea
-      ref={ref}
-      rows={1}
-      defaultValue={value == null ? "" : String(value)}
-      onInput={(e) => ajustar(e.currentTarget)}
-      onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
-      className="w-full resize-none bg-transparent px-1 py-0.5 text-sm outline-none"
-    />
+    <div className="group/celda flex w-full items-start">
+      <textarea
+        ref={ref}
+        rows={1}
+        defaultValue={texto}
+        onInput={(e) => ajustar(e.currentTarget)}
+        onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
+        className="min-w-0 flex-1 resize-none bg-transparent px-1 py-0.5 text-sm outline-none"
+      />
+      {texto && <CopiarBtn value={texto} />}
+    </div>
   );
 }
 
