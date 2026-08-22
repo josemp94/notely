@@ -67,6 +67,7 @@ export function TableView({
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
   const duplicateField = trpc.db.duplicateField.useMutation({ onSuccess: invalidate });
   const addField = trpc.db.addField.useMutation({ onSuccess: invalidate });
+  const moveField = trpc.db.moveField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const setFieldType = trpc.db.setFieldType.useMutation({ onSuccess: invalidate });
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
@@ -82,6 +83,9 @@ export function TableView({
   // Arrastre de filas: solo con el orden natural (sin orden ni agrupación activos).
   const [dragRow, setDragRow] = useState<string | null>(null);
   const [dropRow, setDropRow] = useState<{ id: string; pos: "before" | "after" } | null>(null);
+  // Arrastre de columnas: la cabecera es el asa; mitad izquierda/derecha decide el lado.
+  const [dragCol, setDragCol] = useState<string | null>(null);
+  const [dropCol, setDropCol] = useState<{ id: string; pos: "before" | "after" } | null>(null);
   const [openRec, setOpenRec] = useState<Rec | null>(null);
   const abrir = (r: Rec) => (openIn === "full" ? openFull?.(r.id) : setOpenRec(r));
   // Selección múltiple de filas: checkbox por fila + barra de acciones en lote.
@@ -399,17 +403,50 @@ export function TableView({
                 key={f.id}
                 className={`group relative px-2 py-1 font-medium ${anchoDe(i) ? "" : "min-w-40"} ${
                   lefts[i] === null ? "" : "sticky z-20 bg-[var(--background)]"
+                } ${
+                  dropCol?.id === f.id
+                    ? dropCol.pos === "before"
+                      ? "border-l-2 border-l-brand"
+                      : "border-r-2 border-r-brand"
+                    : ""
                 }`}
                 style={{
                   ...(anchoDe(i) ? { width: anchoDe(i), minWidth: anchoDe(i), maxWidth: anchoDe(i) } : {}),
                   ...(lefts[i] === null ? {} : { left: lefts[i] }),
                 }}
+                onDragOver={(e) => {
+                  if (!dragCol || dragCol === f.id) return;
+                  e.preventDefault();
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setDropCol({ id: f.id, pos: e.clientX - rect.left < rect.width / 2 ? "before" : "after" });
+                }}
+                onDragLeave={() => setDropCol((d) => (d?.id === f.id ? null : d))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const target = dropCol;
+                  setDropCol(null);
+                  if (!dragCol || !target || dragCol === target.id) return;
+                  moveField.mutate(
+                    target.pos === "before" ? { id: dragCol, beforeId: target.id } : { id: dragCol, afterId: target.id },
+                  );
+                  setDragCol(null);
+                }}
               >
-                {/* Toda la cabecera abre el menú de la columna, como en Notion. */}
+                {/* Toda la cabecera abre el menú de la columna, como en Notion, y
+                    arrastrándola se reordena (el drag HTML5 no dispara el click). */}
                 <button
+                  draggable
+                  onDragStart={(e) => {
+                    setDragCol(f.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragEnd={() => {
+                    setDragCol(null);
+                    setDropCol(null);
+                  }}
                   onClick={() => setMenuField(menuField === f.id ? null : f.id)}
-                  className="flex w-full min-w-0 items-center gap-1 text-left"
-                  title="Opciones de la columna"
+                  className="flex w-full min-w-0 cursor-pointer items-center gap-1 text-left"
+                  title="Opciones de la columna · arrastra para reordenar"
                 >
                   <span className="truncate">{f.name}</span>
                   <span className="shrink-0 text-[10px] uppercase opacity-50">{FIELD_LABELS[f.type] ?? f.type}</span>
