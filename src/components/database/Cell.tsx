@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Check, Paperclip, X } from "lucide-react";
+import { ArrowUpRight, Check, Paperclip, SlidersHorizontal, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Popover } from "./Popover";
 import { dateValue, formatNumber, OPTION_COLORS, optionsOf, STATUS_GROUPS, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
@@ -220,6 +220,8 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
   const updateField = trpc.db.updateField.useMutation({ onSuccess: () => utils.db.get.invalidate() });
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  // Opción del Estado cuyo grupo se está cambiando (Por hacer / En curso / Hecho).
+  const [editingOpt, setEditingOpt] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const multi = field.type === "multiselect";
   const isStatus = field.type === "status";
@@ -236,6 +238,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
       if (ref.current && !ref.current.contains(e.target as globalThis.Node)) {
         setOpen(false);
         setQ("");
+        setEditingOpt(null);
       }
     };
     document.addEventListener("mousedown", h);
@@ -330,24 +333,42 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
                     </div>
                   )}
                   {inGroup.map((o) => (
-                    <div key={o.id} className="group/opt flex items-center gap-1 rounded hover:bg-[var(--hover)]">
-                      <button onClick={() => toggle(o.id)} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-left text-sm">
-                        <span className="truncate rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"], color: "var(--tag-fg)" }}>
-                          {o.label}
-                        </span>
-                        {selected.includes(o.id) && <span className="ml-auto text-brand"><Check size={14} /></span>}
-                      </button>
-                      {isStatus && (
-                        <select
-                          value={o.group ?? "todo"}
-                          onChange={(e) => setGroup(o.id, e.target.value)}
-                          className="shrink-0 cursor-pointer bg-transparent text-[10px] text-[var(--muted)] opacity-0 outline-none group-hover/opt:opacity-100"
-                          title="Mover a otro grupo"
-                        >
+                    <div key={o.id}>
+                      <div className="group/opt flex items-center gap-1 rounded hover:bg-[var(--hover)]">
+                        <button onClick={() => toggle(o.id)} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-left text-sm">
+                          <span className="truncate rounded px-1.5 py-0.5 text-xs" style={{ background: OPTION_COLORS[o.color ?? "gray"], color: "var(--tag-fg)" }}>
+                            {o.label}
+                          </span>
+                          {selected.includes(o.id) && <span className="ml-auto text-brand"><Check size={14} /></span>}
+                        </button>
+                        {/* Cambiar de grupo va detrás de un icono, no de un <select> nativo suelto. */}
+                        {isStatus && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingOpt(editingOpt === o.id ? null : o.id); }}
+                            className={`toque-estrecho shrink-0 rounded p-1 hover:bg-[var(--border)]/40 hover:text-[var(--foreground)] ${editingOpt === o.id ? "text-[var(--foreground)]" : "al-pasar text-[var(--muted)]"}`}
+                            title="Cambiar de grupo"
+                          >
+                            <SlidersHorizontal size={13} />
+                          </button>
+                        )}
+                      </div>
+                      {isStatus && editingOpt === o.id && (
+                        <div className="mb-1 ml-1 flex flex-wrap items-center gap-1 py-0.5 pl-1">
+                          <span className="text-[10px] uppercase tracking-wide text-[var(--muted)]">Grupo</span>
                           {STATUS_GROUPS.map(([g, l]) => (
-                            <option key={g} value={g}>{l}</option>
+                            <button
+                              key={g}
+                              onClick={() => { setGroup(o.id, g); setEditingOpt(null); }}
+                              className={`rounded px-1.5 py-0.5 text-xs ${
+                                (o.group ?? "todo") === g
+                                  ? "bg-brand text-white"
+                                  : "border border-[var(--border)] text-[var(--muted)] hover:bg-[var(--hover)]"
+                              }`}
+                            >
+                              {l}
+                            </button>
                           ))}
-                        </select>
+                        </div>
                       )}
                     </div>
                   ))}
