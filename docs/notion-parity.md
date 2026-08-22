@@ -72,11 +72,11 @@ Hecho:
 Falta:
 - ✅ **Agrupar** en Tabla, Kanban, Lista y Galería, y **subagrupar** en la Tabla.
 - ✅ **Duplicar vista** con todos sus ajustes.
-- ❌ **Panel de registro** en Kanban; modos side/center/full; navegar entre registros; comentarios de fila.
+- ✅ **Panel de registro** también en Kanban; **modos side/center/página completa** (`view.config.openIn`, selector «Abrir filas en», defaults de Notion; página completa = `/p/<pageId>?r=<recordId>`); **peek redimensionable** arrastrando el borde (localStorage) y botón de expandir; **Escape** cierra menús y panel. ❌ Comentarios de fila.
 - ✅ **Ancho de columna** ajustable arrastrando y persistente por vista (doble clic vuelve al automático).
-- ✅ **Congelar columnas** al desplazar en horizontal: se elige hasta cuál en el menú ⋯ de la columna (por defecto la primera). ✅ **Envolver texto** por vista.
+- ✅ **Congelar columnas** al desplazar en horizontal: se elige hasta cuál en el menú de la columna (por defecto la primera). ✅ **Envolver texto por columna** (`wrapCols`, con el ajuste por vista como default) y **menú de cabecera completo al hacer clic** (nombre editable, ordenar asc/desc, filtrar, ocultar, ajustar texto, congelar, tipo, duplicar propiedad con valores, insertar izquierda/derecha, borrar). ✅ **Celdas con acciones al pasar el ratón**: ABRIR en el título, copiar en texto/URL/correo/tel, «Expandir» cuando el contenido no cabe (popup editable).
 - ✅ **Reordenar filas arrastrando** (cuando la vista no tiene orden ni agrupación) y **duplicar fila** con sus subtareas.
-- ❌ Reordenar columnas arrastrando.
+- ✅ **Reordenar columnas arrastrando** la cabecera (`moveField`, orden fraccional).
 - ❌ Fila de cálculos fuera de la Tabla.
 - ✅ **Plantillas de fila** («Nueva fila ▾», guardadas desde la ficha de una fila).
 - ✅ **Color de fila y de tarjeta** por la opción de una etiqueta («Color por»).

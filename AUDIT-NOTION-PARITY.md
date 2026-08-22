@@ -1,0 +1,384 @@
+# Auditoría de paridad TOTAL con Notion — funcionalidad y aspecto
+
+> **Fecha:** 20-ago-2026 · **Base:** commit `acd33bd` (main) · **Método:** lectura del código real por 8 auditorías
+> paralelas (una por dimensión), con verificación cruzada manual de los hallazgos conflictivos.
+> **Revisión 21-ago-2026 (hasta `69b02b8`, verificado en código):** cerrados los huecos nº 1 (uploadFile en
+> `Editor.tsx:86` y `RecordPanel.tsx:71`), nº 2 (shiki vía `@blocknote/code-block`, `mention.tsx:62`), nº 3
+> (selección múltiple + lote en `TableView.tsx:78-255`) y nº 9 (10 colores con variante dark vía `--tag-*` en
+> `globals.css:45-69` + `OPTION_COLORS` en `cellText.ts:86`; Kanban tiñe con `color-mix`).
+> **Segunda tanda 21-ago-2026 (`7db1359`…`598a9ee`):** densidad de fila 32px, modal de confirmación propio (los 8
+> `confirm()` fuera), callout con 10 colores (y verificado que la toolbar y el menú de bloque de BlockNote traen los
+> colores de texto/fondo de serie), paginación por cursor en la API REST, navegación ↑↓ en el panel de fila, «+ Añadir
+> grupo» en Kanban y avisos al comentar/asignar.
+> **Tercera tanda 21-ago-2026 (`624467b`, `16350aa`):** arreglado el desbordamiento del editor de filtros
+> (las filas envuelven y el popover pasa a w-96) y hechos los **permisos por página** (ver/comentar/editar/total,
+> herencia por ancestro restringido más cercano, impuestos en servidor; `services/perms.ts` + sección «Acceso» en
+> Compartir).
+> **Cuarta tanda 21-ago-2026 (`ff8b7d5`…`5792695`): FASE 0 COMPLETA.** Importar el ZIP de export de Notion
+> (jerarquía, BDs, adjuntos y enlaces reescritos; `lib/importNotion.ts` + `lib/notionMd.ts` probado en check),
+> detección de tipos al importar CSV (`lib/csvTipos.ts`, también probado) y `POST /databases/:id/query` en la API
+> (filtros/orden con `applyViewConfig`, el mismo motor que las vistas). Del bloque de migración queda solo el
+> export (subpáginas a ZIP, PDF/HTML, backup del workspace), que es P1.
+> **Quinta tanda 21-ago-2026 (`01030f3`…`9287c3d`), ya en Fase 1:** BD en tiempo real por el camino corto —
+> merge atómico por celda en Postgres (editar campos distintos de una fila ya no se pisa; jsonb `||`/`-` en
+> `updateCell` y en el PATCH REST) + señal de invalidación en vivo por la sala Yjs de la página
+> (`useDbLive.ts`: los cambios de otros aparecen al momento) — y **rollups completos** (las ~20 agregaciones
+> de Notion en `lib/rollup.ts`, probadas en check). El CRDT por celda (camino largo) queda para si hace falta.
+> **Sexta tanda 21-ago-2026 (`4d2939b`): Fórmulas 2.0.** El motor gana fechas y listas como tipos de valor,
+> `current`/`index` con map/filter/find/some/every perezosos, ~40 funciones nuevas (fecha, lista, texto) y
+> contexto rico en `db.computed` (multiselect/persona como listas, `prop("Relación")` = títulos enlazados).
+> 20 asserts en check. Queda como P2 el editor con autocompletado y las props arbitrarias de filas enlazadas
+> (los rollups ya cubren eso).
+> **Séptima tanda 21-ago-2026 (`3ff6c77`, `512a9aa`):** los Recientes se van del sidebar al Ctrl+K (feedback de
+> Jose + es donde los pone Notion, y de paso cierra «la búsqueda abre vacía»), y **relaciones bidireccionales**:
+> campo espejo emparejado por `config.mirrorFieldId` con sincronía en `updateCell` (`services/relations.ts`),
+> des-emparejado al borrar una mitad, y limpieza de referencias colgantes al purgar filas (tRPC y API).
+> **Octava tanda 21-ago-2026 (`2ef0a92`): Calendario y Cronograma editables — EL TOP-10 QUEDA COMPLETO.**
+> Arrastrar eventos entre días (hora y duración conservadas) y hora visible en el Calendario; zoom
+> Mes/Trimestre/Año, arrastrar barras y redimensionar con tirador en el Cronograma, con línea de «hoy».
+> Quedan como P1-P2 de esa área: dependencias + tabla lateral del Timeline y la vista semana del Calendario.
+> **Novena tanda 21-ago-2026 (`0c49c01`…`055cc86`), pulido:** abrir BD embebida como página completa, editar el
+> comentario propio, vista Semana del Calendario, Favorito + Copiar enlace en el menú del árbol y sidebar
+> redimensionable (200–480px, persistente). El indicador de guardado ya se mostraba bien (fila desfasada).
+> Fuera de alcance deliberado (L o choca con el SSO): dependencias con flechas + tabla lateral del Timeline,
+> invitados externos por página, bloque sincronizado, ecuaciones KaTeX y el resto de Fase 2 a demanda.
+> **Décima tanda 22-ago-2026 (peek + tabla fina):** modos de apertura side/center/página completa
+> (`view.config.openIn` + `openInOf`, selector «Abrir filas en»; página completa = `?r=` sobre `/p/[pageId]`),
+> peek redimensionable (360–900px, localStorage) con botón de expandir, Escape cierra menús (Popover) y panel,
+> Kanban abre ficha al pulsar la tarjeta, botón ABRIR en la celda del título, copiar y «Expandir» al pasar el
+> ratón por celdas de texto/URL/correo/tel, ellipsis también en URL/correo/tel, **envolver texto por columna**
+> (`wrapCols` + `wrapOf`, el ajuste por vista queda como default), **clic en la cabecera abre el menú completo**
+> (nombre editable, ordenar asc/desc, filtrar —abre el popover de la barra vía `FILTER_MENU_EVENT`—, ocultar,
+> ajustar texto, duplicar propiedad con valores, insertar izquierda/derecha) y **reordenar columnas arrastrando**
+> (`moveField`; `Field.order` ya era fraccional: sin migración). La REST gana `afterFieldId` en POST fields.
+> Toda evidencia cita `fichero:línea` del repo. Leyenda: ❌ falta · ⚠️ parcial · ✅ ok (puede diferir en detalle).
+> Severidad: **P0** = cualquier usuario lo nota a diario · **P1** = se nota al usarlo en serio · **P2** = nicho/pulido.
+> Esfuerzo: **S** < 1 día · **M** = días · **L** = semana(s).
+
+---
+
+## Resumen ejecutivo
+
+| # | Dimensión | Paridad estimada |
+|---|---|---|
+| 1 | Editor y tipos de bloque | **~62 %** |
+| 2 | Tipos de propiedad de BD | **~74 %** |
+| 3 | Vistas de BD | **~50 %** |
+| 4 | Filtros/orden **85 %** · Fórmulas/rollups/relaciones **~40 %** | **~60 %** |
+| 5 | Páginas, navegación, sidebar, búsqueda | **~72 %** |
+| 6 | Colaboración, compartir, permisos | **~62 %** |
+| 7 | Aspecto / estética / UX | **~72 %** |
+| 8 | Plantillas, import/export, API, PWA, atajos | **~58 %** |
+
+**Paridad global estimada: ~62 %.** El esqueleto está (8 vistas, 20 tipos de campo, tiempo real en docs,
+filtros al nivel de Notion), pero faltan interacciones que un usuario de Notion toca cada día
+(subir un archivo al editor, seleccionar varias filas, arrastrar en Timeline/Calendario) y dos motores
+enteros (Fórmulas 2.0 y permisos por página).
+
+### Los 10 huecos más importantes
+
+1. ~~**Subir imagen/vídeo/audio/archivo desde el editor**~~ — ✅ HECHO (`8f5c884`): `uploadFile` → `/api/upload` en editor y panel de fila.
+2. ~~**Bloque de código sin resaltado de sintaxis**~~ — ✅ HECHO (`dc00069`): shiki vía `@blocknote/code-block`, ~48 lenguajes.
+3. ~~**Selección múltiple de filas + acciones masivas**~~ — ✅ HECHO (`69b02b8`): checkbox por fila + borrar/editar propiedad en lote.
+4. ~~**Permisos por página**~~ — ✅ HECHO (`16350aa`): ACL con herencia impuesta en servidor; faltan solo invitados externos por página (P1).
+5. ~~**Las BD no son tiempo-real y las celdas son last-write-wins**~~ — ✅ HECHO por el camino corto (`01030f3`, `87af34f`): merge atómico por celda (campos distintos ya no se pisan; misma celda gana el último, como Notion) + los cambios de otros aparecen al momento. CRDT real solo si algún día hace falta.
+6. ~~**Fórmulas: 13 funciones vs ~70 de Notion Formula 2.0**~~ — ✅ HECHO (`4d2939b`): fechas y listas como valores, `current`/`index`, ~55 funciones, `prop("Relación")`. Queda P2: editor con autocompletado.
+7. ~~**Relación unidireccional + rollups a medias**~~ — ✅ HECHO: campo espejo con sincronía y limpieza al purgar (`512a9aa`) + las ~20 agregaciones (`9287c3d`). Queda P2: límite 1/∞ por relación.
+8. ~~**Timeline y Calendario de solo lectura**~~ — ✅ HECHO en lo gordo (`2ef0a92`): arrastrar/redimensionar/zoom/hora. Quedan dependencias, tabla lateral y vista semana (P1-P2).
+9. ~~**Modo oscuro roto en las etiquetas**~~ — ✅ HECHO (`56740cb`): 10 colores con variante clara/oscura (`--tag-*` en `globals.css`).
+10. ~~**Migración e intercambio pobres**~~ — ✅ CASI HECHO (`ff8b7d5`, `3af6270`, `5792695`): ZIP de Notion, tipos en CSV y API con paginación+filtros. Queda el export (subpáginas/PDF/HTML, backup) y CSV a BD existente, P1.
+
+---
+
+## 1. Editor y tipos de bloque (~62 %)
+
+| Área | Qué hace Notion | Estado | Evidencia | Sev. | Esf. |
+|---|---|---|---|---|---|
+| Subir imagen desde el bloque | Drag&drop o botón «Subir» además de URL | ✅ | `Editor.tsx:86,102` pasa `uploadFile: subirArchivo` (`8f5c884`) | — | — |
+| Subir vídeo/audio/archivo | Igual que imagen | ✅ | Ídem; también en `RecordPanel.tsx:71` | — | — |
+| Código: resaltado de sintaxis | Colores por lenguaje (~60 lenguajes) | ✅ | `mention.tsx:62` `createCodeBlockSpec(codeBlockOptions)` de `@blocknote/code-block` (`dc00069`) | — | — |
+| Código: selector de lenguaje y wrap | Dropdown + ajuste de línea | ✅ | Selector con ~48 lenguajes vía `codeBlockOptions` | — | — |
+| Ecuaciones LaTeX (bloque e inline) | KaTeX en `$$` y `/math` | ❌ | Cero referencias a katex/math en `src/components/editor/` | P2 | L |
+| Embeds: Figma / X / Maps / PDF / iframe | Bloque Embed genérico + previews específicas | ❌ | `src/lib/embed.ts:1-20` solo reconoce YouTube/Vimeo; el resto cae a tarjeta OpenGraph (`bookmarkBlock.tsx:48-60`) | P2 | M |
+| Bookmark con OpenGraph | Tarjeta con imagen/título/dominio | ✅ | `bookmarkBlock.tsx:33-84` + `linkPreview` con anti-SSRF | — | — |
+| Columnas: crear 2/3 desde `/` | También arrastrando un bloque al lado de otro | ⚠️ | `Editor.tsx:281-297` crea `columnList`; **no** hay drag-to-create-column | P1 | L |
+| Columnas: ancho ajustable arrastrando | Tirador entre columnas | ❌ | `globals.css:87-99` reparte con `flex: 1 1 0` fijo; `columnBlock.tsx:5-6` lo documenta | P1 | L |
+| Columnas: añadir columna a un layout ya creado | Botón + en el borde | ❌ | No hay UI; solo crear de cero desde `/` | P1 | M |
+| Bloque sincronizado | Contenido espejado en varias páginas | ❌ | No existe en `editorSchema` (`mention.tsx:57-68`) | P2 | L |
+| Bloque botón | Ejecuta acciones / inserta plantilla | ❌ | No existe | P2 | L |
+| Bloque breadcrumb | Ruta de ancestros en el cuerpo | ❌ | No existe | P2 | M |
+| Mención de fecha `@hoy`/`@fecha` | Inline, con recordatorio opcional | ❌ | `mention.tsx` solo define `mention` (@página) y `personMention` | P2 | M |
+| Menú de bloque (drag handle): Convertir en, Color, Duplicar, Copiar enlace, Comentar | Menú contextual completo por bloque | ⚠️ | Se usa el side menu por defecto de BlockNote sin personalizar; los bloques custom (callout/toc/bookmark/database) NO aparecen en «Convertir en» | P1 | M |
+| Colores de texto y fondo (9+9) | Desde el menú de formato y de bloque | ✅ | Verificado en BlockNote 0.53: `ColorStyleButton` en la toolbar y `BlockColorsItem` en el menú de bloque van de serie con `defaultStyleSpecs`; callout con 10 colores `--tag-*` (`calloutBlock.tsx:7-19`) | — | — |
+| Comentario anclado a un bloque | Además del comentario sobre selección | ❌ | Solo selección de texto (`Editor.tsx:88-89`, `FloatingComposerController`) | P2 | L |
+| Toggle heading / listas toggle / cita / divisor / tabla | Básicos | ✅ | `defaultBlockSpecs` de BlockNote 0.53 vía `mention.tsx:57-68` | — | — |
+| Tabla simple: merge de celdas, colores | Extras de la tabla | ⚠️ | La tabla de BlockNote; merge sin verificar, sin personalización | P2 | M |
+| Subpágina como bloque / enlace a página como bloque | `/page` crea subpágina en el sitio; link-to-page | ❌ | Solo `mention` inline; no hay bloque de página | P1 | M |
+| Export Markdown fiel | Callout/columnas/BD sobreviven al export | ⚠️ | `blocksToMarkdownLossy` (`Editor.tsx:197`); callout→blockquote y toc→ul OK (`calloutBlock.tsx:41-49`, `tocBlock.tsx:42-49`), pero `database` desaparece y `column` exporta `<div>` vacío (`columnBlock.tsx:22-31`) | P2 | M |
+| Estilo por página (Serif/Mono, texto pequeño) | Menú ⋯ de página | ❌ | No existe; fuentes solo globales | P2 | M |
+| Ancho completo | Toggle por página | ✅ | `Editor.tsx:34-49,170` | — | — |
+| Menú `/` en español + placeholder | Localizado | ✅ | Diccionario `es` + items custom (`Editor.tsx:250-337`) | — | — |
+| Imagen: caption, resize, alineación | Manipulación directa | ⚠️ | Props de BlockNote (`caption`, `previewWidth`); resize sin verificar en vivo | P2 | S |
+
+**Notas:** BlockNote 0.53 trae de serie bastante de lo que falta (resaltado con plugin, colores, resize);
+gran parte de esta dimensión es *activar* capacidades, no construirlas. Lo único estructuralmente caro:
+columnas interactivas, synced block y ecuaciones.
+
+---
+
+## 2. Tipos de propiedad de BD (~74 %)
+
+| Área | Qué hace Notion | Estado | Evidencia | Sev. | Esf. |
+|---|---|---|---|---|---|
+| Cobertura de tipos | 23 tipos | ⚠️ | 20 en `FIELD_TYPES` (`services/db.ts:24`); faltan **Botón**, **Lugar** y un **Título** real | P1 | — |
+| Tipo Título | Tipo especial; abre la página, no se borra | ⚠️ | El título es "el primer campo `text`" (`routers/db.ts:207,337`); flexible pero implícito | P2 | M |
+| Número: formatos | ~30 monedas, decimales configurables, %, barra **y anillo**, «mostrar número» | ⚠️ | 4 formatos (normal/€/%/barra) en `cellText.ts:65-82`; sin anillo ni más monedas | P2 | S |
+| Fecha: formato visible y hora 12/24 | Configurable (relativo, DD/MM/AAAA…) | ⚠️ | Formato fijo es-ES (`cellText.ts:51-62`); hora fija 24 h (`Cell.tsx:561-563`) | P2 | M |
+| Fecha: recordatorio en la celda | «Recordar 1 día antes» al poner la fecha | ⚠️ | El aviso existe pero centralizado: `notifications.checkDue` al abrir la app (`notifications.ts:50-122`), no configurable por celda | P2 | M |
+| Fecha: zona horaria | Selector TZ | ❌ | Sin config en `Field.config` | P2 | M |
+| Select/Status: colores de opción | 10 colores | ✅ | 10 en `Cell.tsx:216` COLOR_NAMES + variante dark (`56740cb`) | — | — |
+| Opciones: reordenar arrastrando, renombrar/recolorear desde la celda | Edición in-place | ❌ | Solo crear opción al vuelo (`Cell.tsx:263-280`); editar exige el editor de etiquetas del campo | P2 | M |
+| Persona | Varios, avatar, notifica | ✅ | `Cell.tsx:389-463`; sin notificación automática al asignar (solo menciones) | P2 | S |
+| Archivos | Varios, preview, descarga | ✅ | `Cell.tsx:468-534`, 8 MB máx.; sin renombrar | P2 | S |
+| Relación bidireccional (campo espejo) | «Mostrar en <BD destino>» | ✅ | `mirror` en addRelation + sincronía en updateCell (`services/relations.ts`, `512a9aa`) | — | — |
+| Relación: límite 1/∞, limpieza al borrar fila | Configurable y con cascada | ⚠️ | Limpieza al PURGAR hecha (`limpiaReferencias`); falta el límite 1/∞ | P2 | S |
+| Rollup: agregaciones | ~24 (median, range, earliest/latest, % vacío, checked…) | ✅ | ~20 en `lib/rollup.ts` (`9287c3d`), probadas en check | — | — |
+| Fórmula | ~70 funciones, tipos fecha/lista | ✅ | ~55 funciones con fechas/listas/`current` (`formula.ts`, `4d2939b`) | — | — |
+| Botón (propiedad) | Acciones: editar props, abrir página, webhook | ❌ | No existe | P1 | L |
+| Lugar (mapa) | Dirección + mapa + vista Mapa | ❌ | No existe | P2 | L |
+| Texto enriquecido en celdas | Negrita/enlaces/menciones dentro de una celda | ❌ | Celdas = string plano (`Cell.tsx:144-176`) | P2 | L |
+| Menú de columna: duplicar propiedad, insertar izq/dcha, ocultar | Menú completo | ✅ | Clic en la cabecera abre el menú completo: nombre, ordenar, filtrar, ocultar, wrap, congelar, tipo, duplicar (con valores, jsonb), insertar izq/dcha, borrar (`TableView.tsx` FieldMenu, tanda 10) | — | — |
+| Descripción de propiedad (ℹ) | Texto de ayuda por campo | ❌ | Sin campo `description` en `Field` (`schema.prisma`) | P2 | S |
+| Conversión de tipo | Convierte valores al cambiar tipo | ✅ | `services/db.ts:270-344`; multiselect divide por comas | — | — |
+| ID único clicable | El ID enlaza a la fila | ⚠️ | Se muestra con prefijo pero como texto plano (`Cell.tsx:45-51`) | P2 | S |
+
+---
+
+## 3. Vistas de BD (~50 %)
+
+| Área | Qué hace Notion | Estado | Evidencia | Sev. | Esf. |
+|---|---|---|---|---|---|
+| **Tabla** — reordenar columnas arrastrando | Drag del encabezado | ✅ | Cabecera arrastrable + `moveField` en el servicio (tanda 10) | — | — |
+| Tabla — selección múltiple + acciones masivas | Checkbox por fila, borrar/editar en lote | ✅ | `TableView.tsx:78-255` checkbox + barra de lote (`69b02b8`) | — | — |
+| Tabla — fila de cálculos, agrupar+subagrupar, ancho, congelar, envolver, reordenar filas | — | ✅ | `TableView.tsx:427-485`, `DbToolbar.tsx:287-347`, `lib/calc.ts` | — | — |
+| Tabla — abrir fila: modos peek lateral/central/completo | Selector side/center/full | ✅ | `view.config.openIn` + «Abrir filas en»; peek redimensionable y expandible; en las 6 vistas, Kanban incluido (tanda 10) | — | — |
+| Tabla — navegación ↑↓ entre filas abiertas | Anterior/siguiente en el panel | ✅ | Prop `nav` en `RecordPanel.tsx`, cableada en Tabla sobre el orden visible (`d36aabb`) | — | — |
+| **Kanban** — agrupar por select/status/person/checkbox | + fecha | ✅ | `KanbanView.tsx:51-83` | — | — |
+| Kanban — reordenar tarjetas DENTRO de una columna | Drag con orden manual | ❌ | `KanbanView.tsx:106-146` solo cambia de columna | P1 | M |
+| Kanban — añadir grupo/opción desde el tablero | «+ Añadir grupo» | ✅ | Crea la opción del select/estado in situ (`KanbanView.tsx`, `a00f570`) | — | — |
+| Kanban — ocultar columnas de grupo, agregados por columna, subagrupar | — | ❌ | Sin filtro de grupos ni sum/avg en cabecera | P2 | M |
+| **Timeline** — zoom (día/semana/mes/trimestre/año) | Selector de escala | ✅ | Mes/Trimestre/Año con bandas de mes (`2ef0a92`) | — | — |
+| Timeline — arrastrar para mover/redimensionar/crear | Interacción directa con barras | ✅ | Mover arrastrando + tirador de duración + línea de hoy (`2ef0a92`); crear arrastrando no | — | — |
+| Timeline — dependencias (flechas) + tabla lateral | Ambas | ❌ | No existen | P1 | L |
+| Timeline — hoy marcado + botón Hoy | — | ✅ | `TimelineView.tsx:91-93,138` | — | — |
+| **Calendario** — vista semana | Toggle mes/semana | ✅ | Toggle guardado en la vista (`bab6708`) | — | — |
+| Calendario — arrastrar evento para cambiar fecha; crear arrastrando | Drag&drop | ✅ | Arrastrar a otro día conserva hora y duración (`2ef0a92`); crear sigue con el + | — | — |
+| Calendario — multi-día, saltar a hoy | — | ✅ | `CalendarView.tsx:59-64,95` | — | — |
+| Calendario — hora del evento visible | «9:00 Reunión» | ✅ | Hora delante del título si la hay (`2ef0a92`) | — | — |
+| **Lista / Galería** — agrupar, tamaño tarjeta, preview | — | ✅ | `ListView.tsx:38-42`, `GalleryView.tsx:45-86` | — | — |
+| Galería — ajuste de imagen (fit/cover) | Configurable | ⚠️ | Sin config de object-fit (`GalleryView.tsx:76`) | P2 | S |
+| **Gráfica** — 5 tipos, apilado, filtra antes de agregar, buckets de fecha | — | ✅ | `ChartView.tsx:49-162`, `db.ts:916` (commits recientes) | — | — |
+| **Formulario** — compartir públicamente | URL pública tipo Notion Forms | ❌ | `FormView.tsx` solo interno | P1 | L |
+| Formulario — campos obligatorios, página de gracias personalizable | Validación + branding | ❌ | Sin `required`; «gracias» = toast 2,5 s (`FormView.tsx:20-34`) | P1 | M |
+| **Comunes** — crear/renombrar/duplicar/borrar vista | — | ✅ | `DbToolbar.tsx:69-91` | — | — |
+| Comunes — reordenar vistas arrastrando; vista por defecto | Drag de pestañas + default | ❌ | `Database.tsx:83,138-167` coge `views[0]`, pestañas no arrastrables | P1 | S-M |
+| Comunes — límite de carga configurable (25/50/100) | Por vista | ⚠️ | 80 fijo + scroll infinito (`TableView.tsx:100-111`) — funcionalmente cubierto | P2 | S |
+| Comunes — «Abrir como página completa» una BD embebida | Expandir | ✅ | Icono junto a las pestañas (`0c49c01`) | — | — |
+| Comunes — copiar enlace a la vista; descripción de BD; bloquear BD | — | ❌ | Sin URL por vista, sin description, `canEdit` solo por rol | P2 | S-M |
+
+---
+
+## 4. Filtros, orden, fórmulas, rollups, relaciones (filtros ~85 % · resto ~40 %)
+
+| Área | Qué hace Notion | Estado | Evidencia | Sev. | Esf. |
+|---|---|---|---|---|---|
+| Matriz de operadores por tipo | Texto/número/select/status(grupo)/multiselect/person(`me`)/files/checkbox/fecha completa | ✅ | `viewData.ts:186-259` (`opsFor`) — implementada en los commits recientes | — | — |
+| Anclas relativas en fecha (`{rel:"today"}`) | «es anterior a → Hoy» | ✅ | `viewData.ts:113-157`, UI `DbToolbar.tsx:662-681` | — | — |
+| Grupos anidados 3 niveles + chips con popover | Editor avanzado | ✅ | `DbToolbar.tsx:490-579` (depth<3), chips `DbToolbar.tsx:784-853` | — | — |
+| Filtrar por fórmula/rollup/relación | Fórmula según tipo de resultado; rollup any/every/none | ❌ | `opsFor` devuelve default para esos tipos; sin operadores polimórficos | P1 | M |
+| Filtro personal («solo para mí») | Toggle «Save for everyone» | ❌ | Todo filtro va a `view.config` compartida | P2 | L |
+| Orden multi-campo | + reordenar criterios | ✅ | `DbToolbar.tsx:156-219` | — | — |
+| **Fórmulas: funciones de fecha** | ~15 (`now`, `dateAdd`, `dateBetween`, `formatDate`…) | ✅ | 14: now/today/parseDate/dateAdd/dateSubtract/dateBetween/formatDate/year/month/date/day/hour/minute/timestamp (`4d2939b`) | — | — |
+| Fórmulas: funciones de lista | ~14 (`map`, `filter`, `sort`, `unique`…) | ✅ | map/filter/find/findIndex/some/every (con `current`/`index`), join/unique/sort/reverse/first/last/at/slice/includes/sum/mean | — | — |
+| Fórmulas: texto avanzado | `replace`, `test`, `split`, `substring`, `trim`, `format`, `toNumber`… | ✅ | Todas esas + replaceAll/startsWith/endsWith/empty | — | — |
+| Fórmulas: acceder a relaciones | `prop("Relación").map(…)` | ✅ | `prop("Relación")` = lista de títulos enlazados (props arbitrarias de la fila enlazada: vía rollup) | — | — |
+| Fórmulas: editor con autocompletado/resaltado | Editor rico con ayuda | ⚠️ | Textarea plana + botones de campo (`shared.tsx:131-171`) | P2 | M |
+| Rollup: 24 agregaciones | median/range/earliest/latest/%/checked… | ✅ | `lib/rollup.ts` (`9287c3d`) | — | — |
+| Relación bidireccional / limpieza / límite | — | ✅ | Espejo + limpieza hechos (`512a9aa`); límite 1/∞ P2 (ver dimensión 2) | — | — |
+| Motor único cliente+servidor | El mismo resultado en tabla, gráfica y API | ✅ | Cliente, `chartData` y `POST /query` de la API comparten `applyViewConfig` (`5792695`) | — | — |
+
+---
+
+## 5. Páginas, navegación, sidebar, búsqueda (~72 %)
+
+| Área | Qué hace Notion | Estado | Evidencia | Sev. | Esf. |
+|---|---|---|---|---|---|
+| Sidebar: secciones Favoritos/Recientes/árbol | + Compartido + Teamspaces | ⚠️ | `Sidebar.tsx:195-286`; sin sección «Compartido» separada ni teamspaces (workspaces cubren el caso familia) | P2 | M |
+| Árbol: drag&drop, + al pasar, menú contextual | Menú completo (Favorito, Copiar enlace, Renombrar, abrir en pestaña) | ✅ | Favorito y Copiar enlace añadidos (`055cc86`); renombrar se hace en la página (el título) | — | — |
+| Búsqueda Ctrl+K por título y contenido | + recientes al abrir + filtros (creador/fecha) | ⚠️ | Recientes al abrir ✅ (`3ff6c77`, y la sección del sidebar fuera, como Notion); faltan filtros | P2 | M |
+| Breadcrumb clicable | Truncado con «…» si es largo | ✅ | `p/[pageId]/page.tsx:97-140` | — | — |
+| Favoritos/Recientes reordenables | Drag | ❌ | Orden por `createdAt`/inserción | P2 | S |
+| Historial de versiones | + diff visual + para BD | ⚠️ | Snapshot/restaurar/autor OK (`pages.ts:309-359`, `VersionHistory.tsx:40-121`); sin diff, solo docs | P1 | M |
+| Papelera con jerarquía y restaurar | + «borrado por» | ✅ | `trash/page.tsx:16-163`; falta borrado-por | P2 | S |
+| Icono de página | Emoji **o imagen subida** | ⚠️ | Solo emoji (`PageIcon.tsx:5-97`) | P2 | S |
+| Portada: reposicionar + galería (Unsplash) | Crop/offset | ⚠️ | Gradientes/subir/URL OK (`PageCover.tsx:9-183`); sin reposicionar ni galería | P2 | M |
+| Home/Inicio con widgets | Recientes, tareas, eventos | ❌ | `(app)/page.tsx:7-23` redirige a la primera página; `/my-tasks` cubre parte | P2 | L |
+| Wiki (página verificada) | Verificación con caducidad | ❌ | No existe (nicho para familia) | P2 | L |
+| Duplicar página con copia profunda | — | ✅ | `pages.ts:448-474,575-681` con remapeo de IDs | — | — |
+| Copiar enlace privado (botón) | En menú y cabecera | ⚠️ | Solo URL pública en `SharePublish.tsx:77-93` | P2 | S |
+| Deep-links a bloque/heading (#anchor) | Copiar enlace al bloque | ❌ | Sin anchors; la ToC hace scroll interno pero no hay URLs de bloque | P1 | M-L |
+| Peek: abrir página en panel lateral | Ctrl+clic → peek | ❌ | Solo navegación completa (las filas de BD sí tienen `RecordPanel`) | P2 | M |
+| Atajos de navegación | Ctrl+P, Ctrl+[ ], Ctrl+Shift+L | ⚠️ | Solo Ctrl+K, Ctrl+\, Ctrl+Alt+N, ? (`AppShell.tsx:36-61`) | P2 | S |
+| Notificaciones por comentario/asignación | Además de menciones y vencimientos | ✅ | Tipos `comment` y `assign` con push y bandeja (`comments.ts`, `db.ts updateCell`, `598a9ee`) | — | — |
+| Multi-workspace con selector | — | ✅ | `Sidebar.tsx:469-536` | — | — |
+
+---
+
+## 6. Colaboración, compartir, permisos (~62 %)
+
+| Área | Qué hace Notion | Estado | Evidencia | Sev. | Esf. |
+|---|---|---|---|---|---|
+| Tiempo real en páginas doc | Yjs + persistencia + offline | ✅ | `collab/hocuspocus.ts:27-93`, `server.mjs`, `useCollaboration.ts:76-120` (y-indexeddb en :104); comprobado en producción 20-ago | — | — |
+| **Tiempo real en BD** | Tablas/propiedades/vistas sincronizan en vivo | ✅ | Señal por la sala Yjs de la página + invalidación (`useDbLive.ts`, `87af34f`); no es CRDT pero se ve al momento | — | — |
+| Conflictos en celdas | CRDT también en propiedades | ⚠️ | Merge atómico por campo en Postgres (`01030f3`): campos distintos nunca se pisan; la MISMA celda a la vez gana el último, como Notion | P2 | L |
+| Cursores + presencia | Nombre/color + avatares | ✅ | `Presence.tsx:12-53` | — | — |
+| Comentarios de página + inline con resolver | — | ✅ | `CommentsPanel.tsx`, `YjsThreadStore` (`useCollaboration.ts:111-116`) | — | — |
+| Respuestas anidadas + reacciones emoji | En cualquier comentario | ❌ | `Comment` sin `parentCommentId` ni reactions (schema) | P2 | M |
+| Editar comentario propio | Editar además de borrar | ✅ | `comments.edit` + lápiz inline (`7eb2fee`) | — | — |
+| @mención dentro de un comentario | Notifica | ❌ | El body del comentario es texto plano | P2 | M |
+| Comentarios en filas/celdas de BD | Discusión por registro | ❌ | `Comment` ancla solo a `Page` | P1 | M |
+| **Permisos por página** | Total/editar/comentar/ver + herencia + restaurar | ✅ | `Page.restricted` + `PagePermission`, `services/perms.ts`, impuesto en pages/db/comments/colaboración (`16350aa`); API v1 exenta (token de espacio) | — | — |
+| Invitados externos por página | Email con acceso a UNA página | ❌ | Solo invitación al workspace | P1 | L |
+| Grupos de miembros | Permisos por grupo | ❌ | Sin modelo | P2 | M |
+| Publicar: duplicar-como-plantilla, SEO, caducidad, contraseña | Opciones del share público | ⚠️ | `/s/[token]` solo on/off; resuelve BD embebidas (`s/[token]/page.tsx:54-61`) | P2 | M |
+| Subpáginas públicas navegables | El share incluye hijos | ❌ | Cada página se publica por separado | P2 | M |
+| Feed «Actualizaciones» por página + Editado por X hace Y | Actividad visible | ❌ | Solo versiones; sin `lastEditedBy` visible en cabecera | P2 | M |
+| Seguir página (watch) | Aviso de cambios | ❌ | Sin modelo de suscripción | P2 | M |
+| Push reales + diagnóstico | — | ✅ | `push.ts:39-71`, `api/health`, Ajustes→Estado (`settings/page.tsx:220-246`) | — | — |
+
+---
+
+## 7. Aspecto, estética, UX (~72 % estructural)
+
+*(La marca naranja y las fuentes Bricolage/Hanken/Plex Mono son intencionadas y NO cuentan como desviación.)*
+
+| Área | Qué hace Notion | Estado | Evidencia | Sev. | Esf. |
+|---|---|---|---|---|---|
+| **Pills de etiqueta en modo oscuro** | Cada color tiene variante dark legible | ✅ | `--tag-*` claro/oscuro en `globals.css:45-69`; texto `var(--tag-fg)` (`56740cb`) | — | — |
+| Colores de etiqueta | 10 | ✅ | `cellText.ts:86` OPTION_COLORS con 10 | — | — |
+| **Diálogos nativos** | Notion jamás usa `confirm()` | ✅ | Modal propio `Confirmar.tsx` (singleton con promesa) en los 8 sitios (`5da0b35`) | — | — |
+| Densidad de tabla | Filas ~32px, celdas 14px | ✅ | `py-1.5` (~32px de fila) en las celdas de `TableView.tsx` (`7db1359`) | — | — |
+| Ancho de contenido del editor | 708px centrado / full | ⚠️ | Editor sin max-width en escritorio (solo públicas `max-w-3xl`, `(app)/layout.tsx:32-33`) | P2 | S |
+| Sidebar redimensionable | Drag del borde | ✅ | 200–480px persistente en localStorage (`055cc86`) | — | — |
+| Sidebar peek al pasar el ratón (plegado) | Hover-reveal | ❌ | Plegado = solo botón (`AppShell.tsx:82-87`) | P2 | M |
+| Transiciones/micro-animaciones | Hover, apertura de popovers, colapsos suaves | ⚠️ | Solo `opacity .15s` en `.al-pasar` (`globals.css:199`) y el drawer móvil; popovers aparecen a saco | P2 | M |
+| Skeletons de carga | Shimmer en tablas/páginas | ❌ | Texto plano «Cargando…» (`Database.tsx:102`, `databaseBlock.tsx:11`) | P2 | M |
+| Tooltips con atajo | Estilizados, kbd a la derecha | ⚠️ | Solo `title=""` nativo; kbd solo en la ventana Atajos (`Shortcuts.tsx:107-112`) | P2 | M |
+| Menús: separadores, altura de item | Dividers + ~28px + kbd hints | ⚠️ | `Popover.tsx:92` bien (radius/sombra); faltan dividers | P2 | S |
+| Toast genérico con Deshacer | Sistema de toasts | ⚠️ | Solo el «Deshacer» de borrar fila (`TableView.tsx:567`), ad-hoc | P2 | M |
+| Modo oscuro base, scrollbars, focus, z-index, iconos lucide, headings responsive, táctil 40px | — | ✅ | `globals.css:20-77,232-260`; z-index ordenado | — | — |
+| Página pública /s/ con tema | — | ✅ | `PublicView.tsx:30-50` | — | — |
+| Drag&drop: ghost/indicadores | Línea de inserción + ghost | ⚠️ | Línea sí (`Sidebar.tsx:783-789`); sin ghost | P2 | S |
+| Indicador de guardado | «Guardando…/Guardado» visible | ✅ | Se muestra en la barra del editor (`Editor.tsx:188-194`; la fila estaba desfasada) | — | — |
+
+---
+
+## 8. Plantillas, import/export, API, PWA, atajos (~58 %)
+
+| Área | Qué hace Notion | Estado | Evidencia | Sev. | Esf. |
+|---|---|---|---|---|---|
+| Galería de plantillas | Miles + categorías + crear la tuya | ⚠️ | 6 fijas sin categorías (`lib/templates.ts:21-185`); no se puede guardar una página propia como plantilla | P2 | M |
+| Plantillas de fila + default | Marcar una como predeterminada | ⚠️ | Existen (`routers/db.ts:421-448`); sin default | P2 | S |
+| **Importar ZIP de export de Notion** | Migración completa | ✅ | `lib/importNotion.ts` en cliente (fflate): jerarquía, BDs, adjuntos y enlaces (`ff8b7d5`); omite los .md de filas de BD | — | — |
+| Importar MD / CSV | + frontmatter, tipos autodetectados, a BD existente | ⚠️ | MD y CSV con **tipos autodetectados** (`lib/csvTipos.ts`, `3af6270`); falta importar a BD existente (append/merge) | P2 | M |
+| Importar HTML / Word / Evernote / Trello | Soportados | ❌ | No existen | P2 | L |
+| Exportar página con subpáginas (ZIP) | Árbol completo + imágenes | ❌ | Solo la página actual a MD (`Editor.tsx:197`) | P1 | M |
+| Exportar PDF / HTML | Por página o árbol | ❌ | No existe | P2 | M |
+| Backup del workspace completo | Export total | ❌ | No hay endpoint | P1 | M |
+| API: CRUD de páginas/BD/campos/vistas/registros | — | ✅ | `src/app/api/v1/**`, `docs/api.md` al día | — | — |
+| **API: paginación** | Cursor + `page_size` | ✅ | `GET /databases/:id/records?limit&cursor` con `next_cursor`/`has_more` (`5d01eb3`, probado en check-api) | — | — |
+| API: filtros y sorts en la query | Body `filter`/`sorts` como Notion | ✅ | `POST /databases/:id/query` con `applyViewConfig` (`5792695`), en docs y check-api | — | — |
+| API: search endpoint + rate limit | — | ❌ | Search solo en tRPC; sin rate limit (`apiAuth.ts`) | P2 | M |
+| Webhooks firmados con reintentos | — | ✅ | `webhooks.ts`, backoff 1s/5s/25s | — | — |
+| PWA: manifest + SW + push | — | ✅ | `manifest.ts`, `public/sw.js:38-108` | — | — |
+| PWA: datos de BD offline | Notion cachea lo visitado | ⚠️ | Solo app-shell; docs offline vía y-indexeddb, BD no | P2 | L |
+| Atajos: cobertura | ~15+ (turn-into Ctrl+Shift+0-9, nav Ctrl+[ ], tema) | ⚠️ | 4 globales + los de BlockNote (`AppShell.tsx:36-61`) | P2 | S |
+| Markdown al escribir + `:emoji:` + `@fecha` | En vivo | ⚠️ | BlockNote cubre los básicos (#, -, [], >, ```); sin `:emoji:` ni `@fecha` | P2 | M |
+
+\* P0 relativo al objetivo declarado («paridad 1:1 y migrar desde Notion»); si nadie migra datos ni usa la API con BD grandes, tratar como P1.
+
+---
+
+## Plan de trabajo priorizado por fases
+
+Agrupado en bloques delegables (cada bloque es autocontenido y cabe en una sesión de trabajo o pocas).
+
+### FASE 0 — P0: lo que cualquier usuario nota a diario
+
+**Bloque 0.A — Editor esencial (S-M, el mejor ratio esfuerzo/impacto de toda la auditoría)**
+1. ~~Configurar `uploadFile` de BlockNote apuntando a `/api/upload`~~ ✅ (`8f5c884`).
+2. ~~Activar resaltado de sintaxis en el bloque de código~~ ✅ (`dc00069`).
+3. ~~Colores de texto y fondo~~ ✅ (verificados de serie en BlockNote; callout a 10 colores en `28d9f6e`).
+
+**Bloque 0.B — Tabla: filas en serio (M-L)**
+4. ~~Selección múltiple de filas con acciones masivas~~ ✅ (`69b02b8`; borrar en lote reversible + editar propiedad; duplicar en lote no incluido).
+5. ~~Densidad de fila ~32px~~ ✅ (`7db1359`).
+
+**Bloque 0.C — Modo oscuro y diálogos (S-M)**
+6. ~~Variante oscura de `OPTION_COLORS` + 10 colores~~ ✅ (`56740cb`).
+7. ~~Sustituir los 8 `confirm()` por un modal propio~~ ✅ (`5da0b35`, `Confirmar.tsx`).
+
+**Bloque 0.D — Permisos por página (L, el P0 caro)**
+8. ~~ACL por página con herencia, impuesta en servidor~~ ✅ (`16350aa`; el toggle Restringir es el «override» y quitarlo restaura la herencia).
+
+**Bloque 0.E — Datos dentro/fuera (M-L; P0 si el objetivo es migrar desde Notion)**
+9. ~~Importar el ZIP de export de Notion~~ ✅ (`ff8b7d5`, + tipos de CSV en `3af6270`).
+10. ~~Paginación por cursor en la API REST de registros~~ ✅ (`5d01eb3`, + filtros/orden en `5792695`).
+
+**→ FASE 0 COMPLETA (21-ago-2026).**
+
+### FASE 1 — P1: paridad al usarlo en serio
+
+**Bloque 1.A — Motor de datos (fórmulas/relaciones/rollups)**
+- ~~Fórmulas 2.0~~ ✅ (`4d2939b`); el editor con autocompletado queda como P2.
+- ~~Relación bidireccional (campo espejo) + limpieza de referencias~~ ✅ (`512a9aa`); el límite 1/∞ queda P2.
+- ~~Rollups: median, range, earliest/latest, %…~~ ✅ (`9287c3d`).
+- Filtrar por fórmula/rollup/relación (operadores según tipo de resultado; rollup any/every/none).
+
+**Bloque 1.B — Vistas interactivas**
+- ~~RecordPanel: modos peek lateral/central/pantalla completa + navegación anterior/siguiente~~ ✅ (tanda 10); quedan los comentarios de fila (necesita `Comment`→`Record` del bloque 1.D).
+- Timeline: zoom día/semana/mes/trimestre/año, arrastrar para mover/redimensionar/crear, tabla lateral; dependencias después.
+- Calendario: arrastrar eventos, crear arrastrando, hora visible, vista semana.
+- Kanban: reordenar dentro de la columna, añadir grupo desde el tablero, agregados por columna.
+- Comunes: ~~reordenar columnas de tabla arrastrando~~ ✅ (tanda 10), vista por defecto + reordenar pestañas de vista, ~~abrir BD embebida como página completa~~ ✅.
+- Formulario: campos obligatorios, URL pública, página de gracias configurable.
+
+**Bloque 1.C — BD en tiempo real (o mitigación)**
+- ~~Camino corto: señal de invalidación por el WebSocket de /collab + merge por celda~~ ✅ (`87af34f`, `01030f3`; el merge fue mejor que comparar `updatedAt`: jsonb atómico en Postgres, sin falsos conflictos).
+- Camino largo (paridad real): mover `Record.cells` a Yjs. Solo si el corto se queda corto en la práctica.
+
+**Bloque 1.D — Colaboración y páginas**
+- Comentarios: en filas de BD, editar el propio, notificar al comentar y al asignar persona.
+- Historial: diff visual entre versiones; «Editado por X hace Y» en cabecera.
+- Deep-links a bloque (#blockId con scroll; BlockNote expone IDs de bloque en el DOM).
+- Copiar enlace (privado) en el menú del árbol y en cabecera; renombrar desde el árbol.
+- Export: página con subpáginas a ZIP (MD + imágenes), backup del workspace.
+- API: `filter`/`sorts` en el body reutilizando `applyViewConfig`, endpoint search.
+- Sidebar redimensionable.
+- Editor: bloque «enlace a página»/subpágina desde `/`, menú de bloque con «Convertir en» incluyendo los bloques custom.
+
+### FASE 2 — P2: pulido y nicho (elegir a demanda)
+
+- **Editor:** ecuaciones KaTeX, bloque sincronizado, bloque botón, breadcrumb block, `@fecha`, embeds Figma/X/Maps/PDF/iframe genérico, ancho de columnas arrastrando y drag-to-create-column, comentarios por bloque, estilo por página (Serif/Mono/pequeño), export fiel de BD y columnas.
+- **BD:** tipo Botón (propiedad), Lugar + vista Mapa, texto enriquecido en celdas, descripción de propiedad, anillo en Número, monedas/decimales, zona horaria y formato de fecha, recordatorio por celda, reordenar/renombrar opciones in place, duplicar/insertar columna, ID clicable, subagrupar Kanban, agregados en Kanban, semana en Calendario si no cayó en Fase 1.
+- **Navegación:** Home con widgets, wiki/verificación, peek de páginas, filtros de búsqueda + recientes al abrir Ctrl+K, favoritos/recientes reordenables, icono-imagen, portada reposicionable + galería, «borrado por» en papelera, atajos restantes (Ctrl+Shift+L, Ctrl+[ ], turn-into), `:emoji:`.
+- **Colaboración:** reacciones + hilos anidados, @mención en comentarios, seguir página, feed de actualizaciones, grupos de miembros, publicación con contraseña/caducidad/duplicar-como-plantilla, subpáginas públicas navegables.
+- **UX:** skeletons, sistema de toasts con Deshacer genérico, tooltips estilizados con kbd, dividers en menús, micro-transiciones (popovers, colapsos), sidebar peek, ghost de drag, indicador de guardado visible, ancho 708px del editor, plantillas propias + categorías, PWA con datos de BD offline, rate limit en la API.
+
+---
+
+### Advertencias de fiabilidad de esta auditoría
+
+- Todo lo marcado con evidencia se leyó del código; aun así, lo que depende del comportamiento por defecto de BlockNote (colores en toolbar, resize de imagen, turn-into) conviene confirmarlo en el navegador antes de darlo por hecho o por roto.
+- Dos correcciones sobre informes intermedios, verificadas a mano: **NO** hay reordenar columnas arrastrando (el drag de `TableView.tsx` es ancho de columna y orden de filas) y los `confirm()` nativos son **8**, no 4.
+- `docs/notion-parity.md` sigue siendo fiable como inventario de lo hecho; este documento lo complementa con el detalle de lo que falta y su prioridad. Al cerrar cada bloque del plan, actualizar ambos.
