@@ -184,12 +184,42 @@ export function RecordPanel({
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
+  // Ancho del peek, arrastrando su borde izquierdo (solo ratón, como el tirador
+  // del sidebar); persiste en local: es ergonomía del dispositivo, no
+  // configuración compartida de la vista.
+  const [ancho, setAncho] = useState(576);
+  useEffect(() => {
+    const v = Number(localStorage.getItem("notiono.peek-width"));
+    if (v >= 360 && v <= 900) setAncho(v);
+  }, []);
+  const empezarArrastre = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const x0 = e.clientX;
+    const w0 = ancho;
+    const clamp = (n: number) => Math.min(900, Math.max(360, n));
+    const move = (ev: MouseEvent) => setAncho(clamp(w0 - (ev.clientX - x0)));
+    const up = (ev: MouseEvent) => {
+      window.removeEventListener("mousemove", move);
+      localStorage.setItem("notiono.peek-width", String(clamp(w0 - (ev.clientX - x0))));
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up, { once: true });
+  };
+
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/20" onClick={onClose}>
       <div
-        className="h-dvh w-full max-w-xl overflow-y-auto border-l border-[var(--border)] bg-[var(--background)] shadow-2xl"
+        className="relative h-dvh border-l border-[var(--border)] bg-[var(--background)] shadow-2xl"
+        style={{ width: ancho, maxWidth: "100vw" }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Tirador de ancho: cosa de ratón, escondido en táctil a propósito. */}
+        <span
+          onMouseDown={empezarArrastre}
+          className="absolute inset-y-0 left-0 z-10 hidden w-1.5 cursor-col-resize hover:bg-brand/40 md:block"
+          title="Arrastra para ajustar el ancho"
+        />
+        <div className="h-full overflow-y-auto">
         <div className="zona-segura-arriba flex items-center justify-between px-4 md:px-8">
           <button
             onClick={() => {
@@ -226,8 +256,9 @@ export function RecordPanel({
           </div>
         </div>
 
-        <div className="px-4 pb-10 pt-2 md:px-8">
-          <RecordCard pageId={pageId} collectionId={collectionId} record={record} fields={fields} onDeleted={onClose} />
+          <div className="px-4 pb-10 pt-2 md:px-8">
+            <RecordCard pageId={pageId} collectionId={collectionId} record={record} fields={fields} onDeleted={onClose} />
+          </div>
         </div>
       </div>
     </div>
