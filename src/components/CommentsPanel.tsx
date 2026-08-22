@@ -8,17 +8,29 @@ function when(d: Date) {
   return d.toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-/** Panel lateral derecho con el hilo de comentarios de una página. */
-export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: () => void }) {
+/**
+ * Hilo de comentarios: lista + caja de escribir. Sin `recordId` es el hilo de la
+ * página; con él, el de una fila de base de datos. `panel` activa el layout del
+ * panel lateral (lista con scroll propio y caja pegada abajo).
+ */
+export function CommentThread({
+  pageId,
+  recordId,
+  panel = false,
+}: {
+  pageId: string;
+  recordId?: string;
+  panel?: boolean;
+}) {
   const utils = trpc.useUtils();
   const { data: me } = trpc.auth.me.useQuery();
-  const { data: comments } = trpc.comments.list.useQuery({ pageId });
+  const { data: comments } = trpc.comments.list.useQuery({ pageId, recordId });
   const [body, setBody] = useState("");
   const canEdit = me?.wsRole !== "viewer";
   const canDelete = (authorId: string) =>
     canEdit && (authorId === me?.id || me?.role === "admin" || me?.wsRole === "owner");
 
-  const refresh = () => utils.comments.list.invalidate({ pageId });
+  const refresh = () => utils.comments.list.invalidate();
   const add = trpc.comments.add.useMutation({
     onSuccess: () => {
       setBody("");
@@ -38,21 +50,12 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
 
   const send = () => {
     const text = body.trim();
-    if (text && !add.isPending) add.mutate({ pageId, body: text });
+    if (text && !add.isPending) add.mutate({ pageId, recordId, body: text });
   };
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-40 flex w-80 flex-col border-l border-[var(--border)] bg-[var(--background)] shadow-xl md:static md:z-auto md:shadow-none">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-        <h2 className="flex items-center gap-2 font-display text-sm font-bold">
-          <MessageSquare size={16} /> Comentarios
-        </h2>
-        <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
-          <X size={16} />
-        </button>
-      </div>
-
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+    <>
+      <div className={panel ? "flex-1 space-y-3 overflow-y-auto px-4 py-3" : "space-y-3"}>
         {(comments ?? []).length === 0 && (
           <p className="text-sm text-[var(--muted)]">Todavía no hay comentarios.</p>
         )}
@@ -131,7 +134,7 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
       </div>
 
       {canEdit && (
-        <div className="border-t border-[var(--border)] p-3">
+        <div className={panel ? "border-t border-[var(--border)] p-3" : "mt-2"}>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -148,12 +151,29 @@ export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: ()
           <button
             onClick={send}
             disabled={!body.trim() || add.isPending}
-            className="mt-1 w-full rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            className={`mt-1 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 ${panel ? "w-full" : ""}`}
           >
             Enviar
           </button>
         </div>
       )}
+    </>
+  );
+}
+
+/** Panel lateral derecho con el hilo de comentarios de una página. */
+export function CommentsPanel({ pageId, onClose }: { pageId: string; onClose: () => void }) {
+  return (
+    <aside className="fixed inset-y-0 right-0 z-40 flex w-80 flex-col border-l border-[var(--border)] bg-[var(--background)] shadow-xl md:static md:z-auto md:shadow-none">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+        <h2 className="flex items-center gap-2 font-display text-sm font-bold">
+          <MessageSquare size={16} /> Comentarios
+        </h2>
+        <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)]" title="Cerrar">
+          <X size={16} />
+        </button>
+      </div>
+      <CommentThread pageId={pageId} panel />
     </aside>
   );
 }

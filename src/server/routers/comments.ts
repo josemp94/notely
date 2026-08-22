@@ -18,29 +18,40 @@ async function assertPage(
 }
 
 export const commentsRouter = router({
-  /** Comentarios de una página, del más antiguo al más nuevo, con su autor. */
+  /**
+   * Comentarios de una página (recordId ausente) o de una fila de BD, del más
+   * antiguo al más nuevo, con su autor. Los de fila NO salen en los de página.
+   */
   list: workspaceProcedure
-    .input(z.object({ pageId: z.string() }))
+    .input(z.object({ pageId: z.string(), recordId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       await assertPage(ctx, input.pageId);
       return ctx.db.comment.findMany({
-        where: { pageId: input.pageId },
+        where: { pageId: input.pageId, recordId: input.recordId ?? null },
         orderBy: { createdAt: "asc" },
         include: { author: { select: { id: true, name: true, email: true } } },
       });
     }),
 
   add: workspaceProcedure
-    .input(z.object({ pageId: z.string(), body: z.string().trim().min(1).max(4000) }))
+    .input(z.object({ pageId: z.string(), recordId: z.string().optional(), body: z.string().trim().min(1).max(4000) }))
     .mutation(async ({ ctx, input }) => {
       await assertPage(ctx, input.pageId, "comment");
+      // Un comentario de fila tiene que ser de una fila de ESA página.
+      if (input.recordId) {
+        const rec = await ctx.db.record.findFirst({
+          where: { id: input.recordId, collection: { pageId: input.pageId } },
+          select: { id: true },
+        });
+        if (!rec) throw new TRPCError({ code: "NOT_FOUND" });
+      }
       const comment = await ctx.db.comment.create({
-        data: { pageId: input.pageId, authorId: ctx.user.id, body: input.body },
+        data: { pageId: input.pageId, recordId: input.recordId ?? null, authorId: ctx.user.id, body: input.body },
       });
-      // Avisa a los demás participantes: quienes ya comentaron esta página.
+      // Avisa a los demás participantes: quienes ya comentaron este mismo hilo.
       // Anti-duplicados como en las menciones: una sin leer del mismo actor basta.
       const previos = await ctx.db.comment.findMany({
-        where: { pageId: input.pageId, authorId: { not: ctx.user.id } },
+        where: { pageId: input.pageId, recordId: input.recordId ?? null, authorId: { not: ctx.user.id } },
         select: { authorId: true },
         distinct: ["authorId"],
       });
@@ -66,7 +77,7 @@ export const commentsRouter = router({
           sendPush(authorId, {
             title: `${ctx.user.name || ctx.user.email} ha comentado en ${page?.title || "Sin título"}`,
             body: resumen,
-            url: `/p/${input.pageId}`,
+            url: input.recordId ? `/p/${input.pageId}?r=${input.recordId}` : `/p/${input.pageId}`,
           });
         }
       }

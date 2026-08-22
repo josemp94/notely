@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Maximize2, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Maximize2, MessageSquare, Trash2, X } from "lucide-react";
 import { es } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -15,6 +15,7 @@ import { Cell } from "./Cell";
 import { type FieldLite } from "@/lib/cellText";
 import { RelationCell } from "./RelationCell";
 import { AddFieldButton } from "./shared";
+import { CommentThread } from "@/components/CommentsPanel";
 
 type Rec = {
   id: string;
@@ -132,6 +133,14 @@ export function RecordCard({
             <span />
           </div>
         )}
+      </div>
+
+      {/* Comentarios de la fila, entre las propiedades y el cuerpo, como en Notion. */}
+      <div className="mt-5 border-t border-[var(--border)] pt-3">
+        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
+          <MessageSquare size={13} /> Comentarios
+        </div>
+        <CommentThread pageId={pageId} recordId={record.id} />
       </div>
 
       <div className="mt-6 border-t border-[var(--border)] pt-4">

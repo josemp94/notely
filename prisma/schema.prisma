@@ -128,6 +128,8 @@ model Comment {
   id        String   @id @default(cuid())
   pageId    String
   page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  recordId  String? // comentario de una fila de BD; NULL = comentario de la página
+  record    Record?  @relation(fields: [recordId], references: [id], onDelete: Cascade)
   authorId  String
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body      String
@@ -136,6 +138,7 @@ model Comment {
   updatedAt DateTime @updatedAt
 
   @@index([pageId])
+  @@index([recordId])
 }
 
 // ---- Bases de datos del usuario ----
@@ -174,6 +177,7 @@ model Record {
   seq          Int?       // ID incremental por colección (tipo de campo "id")
   archivedAt   DateTime? // borrado reversible: la fila desaparece de las vistas pero se puede deshacer
   order        String
+  comments     Comment[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
