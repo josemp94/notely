@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Maximize2, Trash2, X } from "lucide-react";
 import { es } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -159,6 +159,8 @@ export function RecordPanel({
   fields,
   onClose,
   nav,
+  mode = "side",
+  onExpand,
 }: {
   pageId: string;
   collectionId?: string;
@@ -167,6 +169,10 @@ export function RecordPanel({
   onClose: () => void;
   /** Navegación anterior/siguiente entre las filas de la vista; undefined = sin flecha. */
   nav?: { prev?: () => void; next?: () => void };
+  /** Peek lateral (por defecto) o modal centrado, como el «Open pages in» de Notion. */
+  mode?: "side" | "center";
+  /** Abrir la fila como página completa (botón de expandir en la cabecera). */
+  onExpand?: () => void;
 }) {
   const utils = trpc.useUtils();
   const saveTemplate = trpc.db.saveTemplate.useMutation({
@@ -206,20 +212,30 @@ export function RecordPanel({
     window.addEventListener("mouseup", up, { once: true });
   };
 
+  const centro = mode === "center";
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/20" onClick={onClose}>
+    <div
+      className={`fixed inset-0 z-40 flex bg-black/20 ${centro ? "items-center justify-center p-4" : "justify-end"}`}
+      onClick={onClose}
+    >
       <div
-        className="relative h-dvh border-l border-[var(--border)] bg-[var(--background)] shadow-2xl"
-        style={{ width: ancho, maxWidth: "100vw" }}
+        className={`relative bg-[var(--background)] shadow-2xl ${
+          centro
+            ? "w-full max-w-2xl rounded-xl border border-[var(--border)]"
+            : "h-dvh border-l border-[var(--border)]"
+        }`}
+        style={centro ? undefined : { width: ancho, maxWidth: "100vw" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Tirador de ancho: cosa de ratón, escondido en táctil a propósito. */}
-        <span
-          onMouseDown={empezarArrastre}
-          className="absolute inset-y-0 left-0 z-10 hidden w-1.5 cursor-col-resize hover:bg-brand/40 md:block"
-          title="Arrastra para ajustar el ancho"
-        />
-        <div className="h-full overflow-y-auto">
+        {!centro && (
+          <span
+            onMouseDown={empezarArrastre}
+            className="absolute inset-y-0 left-0 z-10 hidden w-1.5 cursor-col-resize hover:bg-brand/40 md:block"
+            title="Arrastra para ajustar el ancho"
+          />
+        )}
+        <div className={centro ? "max-h-[90dvh] overflow-y-auto rounded-xl" : "h-full overflow-y-auto"}>
         <div className="zona-segura-arriba flex items-center justify-between px-4 md:px-8">
           <button
             onClick={() => {
@@ -232,6 +248,15 @@ export function RecordPanel({
             Guardar como plantilla
           </button>
           <div className="flex items-center gap-1">
+            {onExpand && (
+              <button
+                onClick={onExpand}
+                className="toque-estrecho rounded p-1 text-[var(--muted)] hover:text-[var(--foreground)]"
+                title="Abrir como página completa"
+              >
+                <Maximize2 size={15} />
+              </button>
+            )}
             {nav && (
               <>
                 <button

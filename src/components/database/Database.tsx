@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Maximize2, Search, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Maximize2, Search, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { VIEW_MENU_EVENT, type ViewMenuDetail } from "@/lib/shortcuts";
 
@@ -13,7 +14,8 @@ function abrirMenuVista(e: { preventDefault: () => void; clientX: number; client
 }
 import { PageIcon } from "@/components/PageIcon";
 import { AddCoverButton, CoverBand } from "@/components/PageCover";
-import { applyViewConfig, type DbField, type DbRecord } from "@/lib/viewData";
+import { applyViewConfig, openInOf, type DbField, type DbRecord } from "@/lib/viewData";
+import { RecordCard } from "./RecordPanel";
 import { usePeople } from "./Cell";
 import { displayValue } from "@/lib/cellText";
 import { AddViewButton, DbToolbar, FilterChips, ViewIcon } from "./DbToolbar";
@@ -49,6 +51,8 @@ export function Database({
   onViewChange?: (viewId: string) => void;
 }) {
   const utils = trpc.useUtils();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: col, isLoading } = trpc.db.get.useQuery({ pageId });
   // Los cambios de otros aparecen al momento (señal por la sala Yjs de la página).
   useDbLive(pageId);
@@ -112,6 +116,34 @@ export function Database({
   const asAny = (r: unknown) => r as any;
   const hiddenIds: string[] = asAny(active.config)?.hiddenFields ?? [];
   const visibleFields = fields.filter((f) => !hiddenIds.includes(asAny(f).id));
+
+  // Cómo abre sus filas esta vista (lateral/centrado/página completa), como el
+  // «Open pages in» de Notion. «Página completa» = esta misma página con ?r=.
+  const openIn = openInOf(active.type, asAny(active.config));
+  const openFull = (recId: string) => router.push(`/p/${pageId}?r=${recId}`);
+
+  // Fila abierta como página completa (?r=<recordId>). Se busca en los registros
+  // sin filtrar: un filtro de la vista no debe romper el enlace a la fila.
+  const fullRec = !embedded ? rawRecords.find((r) => asAny(r).id === searchParams.get("r")) : undefined;
+  if (fullRec) {
+    return (
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-8">
+        <button
+          onClick={() => router.replace(`/p/${pageId}`)}
+          className="mb-4 flex items-center gap-1 text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+        >
+          <ArrowLeft size={14} /> {title || "Sin título"}
+        </button>
+        <RecordCard
+          pageId={pageId}
+          collectionId={canEdit ? col.id : undefined}
+          record={asAny(fullRec)}
+          fields={asAny(fields)}
+          onDeleted={() => router.replace(`/p/${pageId}`)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -251,9 +283,11 @@ export function Database({
           fields={asAny(visibleFields)}
           records={asAny(shownRecords)}
           view={active}
+          openIn={openIn}
+          openFull={openFull}
         />
       ) : active?.type === "timeline" ? (
-        <TimelineView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(shownRecords)} view={active} />
+        <TimelineView pageId={pageId} collectionId={col.id} fields={asAny(visibleFields)} records={asAny(shownRecords)} view={active} openIn={openIn} openFull={openFull} />
       ) : active?.type === "gallery" ? (
         <GalleryView
           pageId={pageId}
@@ -265,6 +299,8 @@ export function Database({
           colorFieldId={asAny(active.config)?.rowColorFieldId}
           groupByFieldId={asAny(active.config)?.groupByFieldId}
           colorRules={asAny(active.config)?.colorRules}
+          openIn={openIn}
+          openFull={openFull}
         />
       ) : active?.type === "list" ? (
         <ListView
@@ -273,6 +309,8 @@ export function Database({
           fields={asAny(visibleFields)}
           records={asAny(shownRecords)}
           groupByFieldId={asAny(active.config)?.groupByFieldId}
+          openIn={openIn}
+          openFull={openFull}
         />
       ) : active?.type === "form" ? (
         <FormView pageId={pageId} collectionId={col.id} fields={asAny(fields)} />
@@ -284,6 +322,8 @@ export function Database({
           records={asAny(shownRecords)}
           view={active}
           templates={asAny(col).templates ?? []}
+          openIn={openIn}
+          openFull={openFull}
         />
       )}
       </div>

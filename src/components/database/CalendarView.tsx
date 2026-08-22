@@ -27,12 +27,17 @@ export function CalendarView({
   fields,
   records,
   view,
+  openIn = "center",
+  openFull,
 }: {
   pageId: string;
   collectionId: string;
   fields: FieldLite[];
   records: Rec[];
   view: { id: string; config: unknown };
+  /** Cómo abrir la ficha (lateral/centrado/página completa). */
+  openIn?: "side" | "center" | "full";
+  openFull?: (recId: string) => void;
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
@@ -58,6 +63,7 @@ export function CalendarView({
   // Ancla de la vista semana: el lunes de la semana visible.
   const [weekStart, setWeekStart] = useState(() => lunesDe(today));
   const [openRec, setOpenRec] = useState<Rec | null>(null);
+  const abrir = (r: Rec) => (openIn === "full" ? openFull?.(r.id) : setOpenRec(r));
 
   // Registros indexados por día (YYYY-MM-DD).
   const byDay = useMemo(() => {
@@ -246,7 +252,7 @@ export function CalendarView({
                           draggable
                           onDragStart={() => setDragId(r.id)}
                           onDragEnd={() => setDragId(null)}
-                          onClick={() => setOpenRec(r)}
+                          onClick={() => abrir(r)}
                           className={`block w-full cursor-grab truncate rounded bg-[var(--border)]/30 px-1.5 py-0.5 text-left text-xs hover:bg-brand/10 active:cursor-grabbing ${
                             dragId === r.id ? "opacity-50" : ""
                           }`}
@@ -271,6 +277,8 @@ export function CalendarView({
           record={openRec}
           fields={fields}
           onClose={() => setOpenRec(null)}
+          mode={openIn === "center" ? "center" : "side"}
+          onExpand={openFull ? () => openFull(openRec.id) : undefined}
         />
       )}
     </div>

@@ -15,16 +15,22 @@ export function ListView({
   fields,
   records,
   groupByFieldId,
+  openIn = "side",
+  openFull,
 }: {
   pageId: string;
   collectionId: string;
   fields: FieldLite[];
   records: Rec[];
   groupByFieldId?: string;
+  /** Cómo abrir la ficha (lateral/centrado/página completa). */
+  openIn?: "side" | "center" | "full";
+  openFull?: (recId: string) => void;
 }) {
   const utils = trpc.useUtils();
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: () => utils.db.get.invalidate({ pageId }) });
   const [openRec, setOpenRec] = useState<Rec | null>(null);
+  const abrir = (r: Rec) => (openIn === "full" ? openFull?.(r.id) : setOpenRec(r));
   const people = usePeople();
 
   const titleField = fields.find((f) => f.type === "text") ?? fields[0];
@@ -54,7 +60,7 @@ export function ListView({
         {g.records.map((r) => (
           <li key={r.id}>
             <button
-              onClick={() => setOpenRec(r)}
+              onClick={() => abrir(r)}
               className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--border)]/30"
             >
               <FileText size={14} className="shrink-0 text-[var(--muted)]" />
@@ -88,7 +94,14 @@ export function ListView({
       </button>
 
       {openRec && (
-        <RecordPanel pageId={pageId} record={openRec} fields={fields} onClose={() => setOpenRec(null)} />
+        <RecordPanel
+          pageId={pageId}
+          record={openRec}
+          fields={fields}
+          onClose={() => setOpenRec(null)}
+          mode={openIn === "center" ? "center" : "side"}
+          onExpand={openFull ? () => openFull(openRec.id) : undefined}
+        />
       )}
     </div>
   );

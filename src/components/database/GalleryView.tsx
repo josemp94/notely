@@ -25,6 +25,8 @@ export function GalleryView({
   colorFieldId,
   groupByFieldId,
   colorRules,
+  openIn = "center",
+  openFull,
 }: {
   pageId: string;
   collectionId: string;
@@ -35,11 +37,15 @@ export function GalleryView({
   colorFieldId?: string;
   groupByFieldId?: string;
   colorRules?: ColorRule[];
+  /** Cómo abrir la ficha (lateral/centrado/página completa). */
+  openIn?: "side" | "center" | "full";
+  openFull?: (recId: string) => void;
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const [openRec, setOpenRec] = useState<Rec | null>(null);
+  const abrir = (r: Rec) => (openIn === "full" ? openFull?.(r.id) : setOpenRec(r));
   const people = usePeople();
   const colorField = fields.find((f) => f.id === colorFieldId);
   const groupField = fields.find((f) => f.id === groupByFieldId);
@@ -72,7 +78,7 @@ export function GalleryView({
         {g.records.map((r) => (
           <button
             key={r.id}
-            onClick={() => setOpenRec(r)}
+            onClick={() => abrir(r)}
             style={{ background: colorOf(r) }}
             className={`flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] ${size.card} text-left shadow-sm transition hover:border-brand hover:shadow-md`}
           >
@@ -118,6 +124,8 @@ export function GalleryView({
           record={openRec}
           fields={fields}
           onClose={() => setOpenRec(null)}
+          mode={openIn === "center" ? "center" : "side"}
+          onExpand={openFull ? () => openFull(openRec.id) : undefined}
         />
       )}
     </div>

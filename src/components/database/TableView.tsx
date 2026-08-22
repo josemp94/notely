@@ -35,6 +35,8 @@ export function TableView({
   records,
   view,
   templates = [],
+  openIn = "side",
+  openFull,
 }: {
   pageId: string;
   collectionId: string;
@@ -42,6 +44,9 @@ export function TableView({
   records: Rec[];
   view: { id: string; config: unknown };
   templates?: RowTemplate[];
+  /** Cómo abrir la ficha (lateral/centrado/página completa). */
+  openIn?: "side" | "center" | "full";
+  openFull?: (recId: string) => void;
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
@@ -78,6 +83,7 @@ export function TableView({
   const [dragRow, setDragRow] = useState<string | null>(null);
   const [dropRow, setDropRow] = useState<{ id: string; pos: "before" | "after" } | null>(null);
   const [openRec, setOpenRec] = useState<Rec | null>(null);
+  const abrir = (r: Rec) => (openIn === "full" ? openFull?.(r.id) : setOpenRec(r));
   // Selección múltiple de filas: checkbox por fila + barra de acciones en lote.
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -276,7 +282,7 @@ export function TableView({
           )}
           {!selected.size && (
             <button
-              onClick={() => setOpenRec(r)}
+              onClick={() => abrir(r)}
               className="text-[var(--muted)] al-pasar hover:text-[var(--foreground)]"
               title="Abrir ficha"
             >
@@ -682,6 +688,8 @@ export function TableView({
                 prev: i > 0 ? () => setOpenRec(rows[i - 1].rec) : undefined,
                 next: i >= 0 && i < rows.length - 1 ? () => setOpenRec(rows[i + 1].rec) : undefined,
               }}
+              mode={openIn === "center" ? "center" : "side"}
+              onExpand={openFull ? () => openFull(fresh.id) : undefined}
             />
           );
         })()}

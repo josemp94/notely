@@ -32,6 +32,18 @@ export function wrapOf(config: any, fieldId: string): boolean {
   return typeof porColumna === "boolean" ? porColumna : Boolean(config?.wrapText);
 }
 
+export type OpenIn = "side" | "center" | "full";
+
+/**
+ * Cómo abre sus filas una vista (`view.config.openIn`). Sin configurar, los
+ * defaults de Notion: Galería y Calendario al centro, el resto en el lateral.
+ */
+export function openInOf(viewType: string, config: any): OpenIn {
+  const v = config?.openIn;
+  if (v === "side" || v === "center" || v === "full") return v;
+  return viewType === "gallery" || viewType === "calendar" ? "center" : "side";
+}
+
 /** Nº de condiciones (hojas) de un árbol de filtros, para el contador de la UI. */
 export function countFilters(nodes: FilterNode[]): number {
   return nodes.reduce((acc, n) => acc + (isFilterGroup(n) ? countFilters(n.filters) : 1), 0);

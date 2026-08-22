@@ -15,6 +15,7 @@ import {
   isFilterGroup,
   type ColorRule,
   NO_VALUE_OPS,
+  openInOf,
   opsFor,
   type DbField,
   type Filter,
@@ -296,6 +297,21 @@ export function DbToolbar({
                 ))}
               </div>
             </div>
+            {/* Cómo se abre la ficha de una fila, como el «Open pages in» de Notion. */}
+            {["table", "kanban", "list", "gallery", "calendar", "timeline"].includes(view.type) && (
+              <label className="my-1 flex items-center justify-between gap-2 border-t border-[var(--border)] px-2 pt-2 text-sm">
+                <span>Abrir filas en</span>
+                <select
+                  value={openInOf(view.type, view.config)}
+                  onChange={(e) => saveConfig({ openIn: e.target.value })}
+                  className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-xs"
+                >
+                  <option value="side">Panel lateral</option>
+                  <option value="center">Centrado</option>
+                  <option value="full">Página completa</option>
+                </select>
+              </label>
+            )}
             {["table", "kanban", "list", "gallery"].includes(view.type) && (
               <div className="my-1 border-t border-[var(--border)] pt-1">
                 <div className="px-2 pb-1 text-[11px] font-medium text-[var(--muted)]">Agrupar</div>

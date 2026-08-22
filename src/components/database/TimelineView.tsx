@@ -35,12 +35,17 @@ export function TimelineView({
   fields,
   records,
   view,
+  openIn = "side",
+  openFull,
 }: {
   pageId: string;
   collectionId: string;
   fields: FieldLite[];
   records: Rec[];
   view: { id: string; config: unknown };
+  /** Cómo abrir la ficha (lateral/centrado/página completa). */
+  openIn?: "side" | "center" | "full";
+  openFull?: (recId: string) => void;
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
@@ -103,7 +108,7 @@ export function TimelineView({
       if (!rec) return;
       // Sin desplazamiento real: era un clic → abrir la ficha.
       if (!dias && Math.abs(d.dx) < 5) {
-        if (d.mode === "move") setOpenRec(rec);
+        if (d.mode === "move") (openIn === "full" ? openFull?.(rec.id) : setOpenRec(rec));
         return;
       }
       if (!dias) return;
@@ -285,7 +290,14 @@ export function TimelineView({
       </div>
 
       {openRec && (
-        <RecordPanel pageId={pageId} record={openRec} fields={fields} onClose={() => setOpenRec(null)} />
+        <RecordPanel
+          pageId={pageId}
+          record={openRec}
+          fields={fields}
+          onClose={() => setOpenRec(null)}
+          mode={openIn === "center" ? "center" : "side"}
+          onExpand={openFull ? () => openFull(openRec.id) : undefined}
+        />
       )}
     </div>
   );
