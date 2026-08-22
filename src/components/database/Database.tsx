@@ -273,6 +273,8 @@ export function Database({
           groupByFieldId={asAny(active.config)?.groupByFieldId}
           cardSize={asAny(active.config)?.cardSize}
           cardPreview={asAny(active.config)?.cardPreview}
+          openIn={openIn}
+          openFull={openFull}
         />
       ) : active?.type === "chart" ? (
         <ChartView pageId={pageId} view={active} fields={fields} />

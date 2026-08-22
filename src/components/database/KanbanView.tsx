@@ -4,6 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/trpc/react";
 import { OPTION_COLORS, optionsOf, type FieldLite, type Option } from "@/lib/cellText";
 import { usePeople } from "./Cell";
+import { RecordPanel } from "./RecordPanel";
 
 type Rec = { id: string; cells: Record<string, unknown>; order: string };
 
@@ -21,6 +22,8 @@ export function KanbanView({
   groupByFieldId,
   cardSize,
   cardPreview,
+  openIn = "side",
+  openFull,
 }: {
   pageId: string;
   collectionId: string;
@@ -29,6 +32,9 @@ export function KanbanView({
   groupByFieldId?: string;
   cardSize?: string;
   cardPreview?: string;
+  /** Cómo abrir la ficha (lateral/centrado/página completa). */
+  openIn?: "side" | "center" | "full";
+  openFull?: (recId: string) => void;
 }) {
   const utils = trpc.useUtils();
   const invalidate = () => utils.db.get.invalidate({ pageId });
@@ -36,6 +42,9 @@ export function KanbanView({
   const addRecord = trpc.db.addRecord.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const [dragId, setDragId] = useState<string | null>(null);
+  // El clic abre la ficha; el drag es HTML5 nativo y no dispara click tras arrastrar.
+  const [openRec, setOpenRec] = useState<Rec | null>(null);
+  const abrir = (r: Rec) => (openIn === "full" ? openFull?.(r.id) : setOpenRec(r));
   // «+ Añadir grupo»: crea una opción nueva del campo select/estado desde el tablero.
   const [groupName, setGroupName] = useState<string | null>(null);
   const people = usePeople();
@@ -147,7 +156,8 @@ export function KanbanView({
                     key={r.id}
                     draggable
                     onDragStart={() => setDragId(r.id)}
-                    className={`cursor-grab rounded-md border border-[var(--border)] bg-[var(--background)] ${size.card} shadow-sm active:cursor-grabbing`}
+                    onClick={() => abrir(r)}
+                    className={`cursor-grab rounded-md border border-[var(--border)] bg-[var(--background)] ${size.card} shadow-sm hover:bg-[var(--hover)] active:cursor-grabbing`}
                   >
                     {cardTitle(r)}
                     {preview && (
@@ -198,6 +208,22 @@ export function KanbanView({
           )}
         </div>
       )}
+
+      {openRec &&
+        (() => {
+          const fresh = records.find((r) => r.id === openRec.id) ?? openRec;
+          return (
+            <RecordPanel
+              pageId={pageId}
+              collectionId={collectionId}
+              record={fresh}
+              fields={fields}
+              onClose={() => setOpenRec(null)}
+              mode={openIn === "center" ? "center" : "side"}
+              onExpand={openFull ? () => openFull(fresh.id) : undefined}
+            />
+          );
+        })()}
     </div>
   );
 }
