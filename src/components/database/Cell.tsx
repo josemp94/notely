@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Check, Copy, Paperclip, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Expand, Paperclip, SlidersHorizontal, X } from "lucide-react";
 import { trpc } from "@/trpc/react";
 import { Popover } from "./Popover";
 import { dateValue, formatNumber, OPTION_COLORS, optionsOf, STATUS_GROUPS, type Attachment, type FieldLite, type Option } from "@/lib/cellText";
@@ -114,25 +114,7 @@ export function Cell({
 
   // url / email / phone: input con tipo adecuado + enlace clicable si hay valor
   if (field.type === "url" || field.type === "email" || field.type === "phone") {
-    const raw = value == null ? "" : String(value);
-    const href =
-      field.type === "email" ? `mailto:${raw}` : field.type === "phone" ? `tel:${raw}` : /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    return (
-      <div className="group/celda flex w-full items-center gap-1">
-        <input
-          type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : "url"}
-          defaultValue={raw}
-          onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
-          className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
-        />
-        {raw && <CopiarBtn value={raw} />}
-        {raw && (
-          <a href={href} target="_blank" rel="noreferrer" className="flex shrink-0 items-center px-1 text-brand hover:underline" title="Abrir">
-            <ArrowUpRight size={14} />
-          </a>
-        )}
-      </div>
-    );
+    return <LinkCell field={field} value={value} onCommit={onCommit} />;
   }
 
   if (field.type === "number") {
@@ -141,17 +123,132 @@ export function Cell({
 
   // text (no controlado; commit al salir)
   if (wrap) return <WrappedTextCell value={value} onCommit={onCommit} />;
+  return <TextCell value={value} onCommit={onCommit} />;
+}
+
+/** Celda de texto de una línea, con copiar y «Expandir» si el contenido no cabe. */
+function TextCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown) => void }) {
   const texto = value == null ? "" : String(value);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [desborda, setDesborda] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+
   return (
-    <div className="group/celda flex w-full items-center">
+    <div
+      ref={wrapRef}
+      className="group/celda flex w-full items-center"
+      // Medir solo al entrar con el ratón: cero coste en el render normal.
+      onMouseEnter={() => {
+        const el = inputRef.current;
+        setDesborda(!!el && el.scrollWidth > el.clientWidth + 1);
+      }}
+    >
       <input
+        ref={inputRef}
         type="text"
         defaultValue={texto}
         onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
         className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
       />
+      {desborda && <ExpandirBtn onClick={() => setAbierto(true)} />}
       {texto && <CopiarBtn value={texto} />}
+      {abierto && (
+        <ExpandePopover texto={texto} onCommit={onCommit} anchorRef={wrapRef} cerrar={() => setAbierto(false)} />
+      )}
     </div>
+  );
+}
+
+/** Celda URL / correo / teléfono: input nativo + copiar + abrir + expandir. */
+function LinkCell({ field, value, onCommit }: { field: FieldLite; value: unknown; onCommit: (v: unknown) => void }) {
+  const raw = value == null ? "" : String(value);
+  const href =
+    field.type === "email" ? `mailto:${raw}` : field.type === "phone" ? `tel:${raw}` : /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [desborda, setDesborda] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+
+  return (
+    <div
+      ref={wrapRef}
+      className="group/celda flex w-full items-center gap-1"
+      onMouseEnter={() => {
+        const el = inputRef.current;
+        setDesborda(!!el && el.scrollWidth > el.clientWidth + 1);
+      }}
+    >
+      <input
+        ref={inputRef}
+        type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : "url"}
+        defaultValue={raw}
+        onBlur={(e) => onCommit(e.target.value === "" ? null : e.target.value)}
+        className="min-w-0 flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
+      />
+      {desborda && <ExpandirBtn onClick={() => setAbierto(true)} />}
+      {raw && <CopiarBtn value={raw} />}
+      {raw && (
+        <a href={href} target="_blank" rel="noreferrer" className="flex shrink-0 items-center px-1 text-brand hover:underline" title="Abrir">
+          <ArrowUpRight size={14} />
+        </a>
+      )}
+      {abierto && (
+        <ExpandePopover texto={raw} onCommit={onCommit} anchorRef={wrapRef} cerrar={() => setAbierto(false)} />
+      )}
+    </div>
+  );
+}
+
+/** Botón «Expandir» (solo con hover, como el de copiar). */
+function ExpandirBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="shrink-0 rounded p-0.5 text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--foreground)] group-hover/celda:opacity-100"
+      title="Expandir"
+    >
+      <Expand size={13} />
+    </button>
+  );
+}
+
+/**
+ * Popup con el contenido completo de una celda que no cabe, editable. El commit
+ * va en el cierre (no en el blur del textarea: al cerrarse el popover por un clic
+ * fuera, el nodo se desmonta y su blur puede no llegar a dispararse).
+ */
+function ExpandePopover({
+  texto,
+  onCommit,
+  anchorRef,
+  cerrar,
+}: {
+  texto: string;
+  onCommit: (v: unknown) => void;
+  anchorRef: { readonly current: HTMLElement | null };
+  cerrar: () => void;
+}) {
+  const borrador = useRef<string | null>(null);
+  return (
+    <Popover
+      onClose={() => {
+        if (borrador.current !== null && borrador.current !== texto) {
+          onCommit(borrador.current === "" ? null : borrador.current);
+        }
+        cerrar();
+      }}
+      className="left-0 w-80 p-2"
+      anchorRef={anchorRef}
+    >
+      <textarea
+        autoFocus
+        rows={6}
+        defaultValue={texto}
+        onChange={(e) => (borrador.current = e.target.value)}
+        className="w-full resize-none rounded border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-brand"
+      />
+    </Popover>
   );
 }
 
