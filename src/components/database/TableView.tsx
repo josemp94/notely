@@ -60,6 +60,7 @@ export function TableView({
   const moveRecord = trpc.db.moveRecord.useMutation({ onSuccess: invalidate });
   const deleteTemplate = trpc.db.deleteTemplate.useMutation({ onSuccess: invalidate });
   const deleteField = trpc.db.deleteField.useMutation({ onSuccess: invalidate });
+  const duplicateField = trpc.db.duplicateField.useMutation({ onSuccess: invalidate });
   const updateField = trpc.db.updateField.useMutation({ onSuccess: invalidate });
   const setFieldType = trpc.db.setFieldType.useMutation({ onSuccess: invalidate });
   const updateView = trpc.db.updateView.useMutation({ onSuccess: invalidate });
@@ -456,6 +457,10 @@ export function TableView({
                         updateView.mutate({ id: view.id, config: { ...cfg, hiddenFields: [...hidden, f.id] } });
                       setMenuField(null);
                     }}
+                    onDuplicate={() => {
+                      duplicateField.mutate({ id: f.id });
+                      setMenuField(null);
+                    }}
                     onConfig={(config) => updateField.mutate({ id: f.id, config: { ...(f.config as object), ...config } })}
                     onType={async (type) => {
                       if (await confirmar(`Cambiar «${f.name}» a ${FIELD_LABELS[type] ?? type}. Los valores se convertirán y lo que no se pueda convertir se perderá. ¿Seguir?`, "Cambiar")) {
@@ -791,6 +796,7 @@ function FieldMenu({
   onSort,
   onFilter,
   onHide,
+  onDuplicate,
   onConfig,
   onType,
   onDelete,
@@ -805,6 +811,7 @@ function FieldMenu({
   onSort: (dir: "asc" | "desc") => void;
   onFilter: () => void;
   onHide: () => void;
+  onDuplicate: () => void;
   onConfig: (config: Record<string, unknown>) => void;
   onType: (type: ConvertibleType) => void;
   onDelete: () => void;
@@ -932,6 +939,9 @@ function FieldMenu({
         </>
       )}
 
+      <button onClick={onDuplicate} className={item}>
+        <Copy size={14} /> Duplicar propiedad
+      </button>
       <button onClick={onDelete} className={`${item} text-red-500`}>
         <Trash2 size={14} /> Borrar columna
       </button>

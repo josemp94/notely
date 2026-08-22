@@ -12,7 +12,7 @@
  */
 import type { Prisma } from "@prisma/client";
 import { db as defaultDb } from "@/lib/db";
-import { rankAtEnd } from "@/lib/fractional";
+import { rankAtEnd, rankBetween } from "@/lib/fractional";
 import { dispatchWebhooks } from "@/server/webhooks";
 import { cellToText } from "./cells";
 
@@ -254,6 +254,37 @@ export async function updateField(
       ...(input.config !== undefined ? { config: input.config as Prisma.InputJsonValue } : {}),
     },
   });
+}
+
+/**
+ * Duplica una columna con su configuración y sus valores, pegada a la original.
+ * Si era la mitad de una relación bidireccional, la copia queda como relación
+ * normal: dos campos sincronizando contra el mismo espejo se pisarían.
+ */
+export async function duplicateField(scope: Scope, input: { id: string }) {
+  const src = await assertField(scope, input.id);
+  const { mirrorFieldId: _fuera, ...config } = (src.config ?? {}) as Record<string, unknown>;
+  const next = await scope.db.field.findFirst({
+    where: { collectionId: src.collectionId, order: { gt: src.order } },
+    orderBy: { order: "asc" },
+    select: { order: true },
+  });
+  const copia = await scope.db.field.create({
+    data: {
+      collectionId: src.collectionId,
+      name: `${src.name} (copia)`,
+      type: src.type,
+      order: rankBetween(src.order, next?.order ?? null),
+      config: config as Prisma.InputJsonValue,
+    },
+  });
+  // Los valores, en una sola sentencia (también en filas archivadas: al restaurarlas
+  // deben venir completas). rollup/formula no guardan celda, así que no copian nada.
+  await scope.db.$executeRaw`
+    UPDATE "Record" SET cells = cells || jsonb_build_object(${copia.id}::text, cells -> ${src.id}::text)
+    WHERE "collectionId" = ${src.collectionId} AND cells ? ${src.id}::text
+  `;
+  return copia;
 }
 
 export async function deleteField(scope: Scope, input: { id: string }) {

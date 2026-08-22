@@ -324,6 +324,13 @@ export const dbRouter = router({
       return conTRPC(dbService.deleteField(scopeOf(ctx), input));
     }),
 
+  duplicateField: workspaceProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await exigeCampo(ctx, input.id);
+      return conTRPC(dbService.duplicateField(scopeOf(ctx), input));
+    }),
+
   addRecord: workspaceProcedure
     .input(z.object({ collectionId: z.string(), cells: z.record(z.string(), z.any()).optional() }))
     .mutation(async ({ ctx, input }) => {
