@@ -308,7 +308,7 @@ function TagCell({ field, value, onCommit }: { field: FieldLite; value: unknown;
         )}
       </button>
       {open && (
-        <Popover onClose={() => setOpen(false)} className="left-0 w-56 p-2">
+        <Popover onClose={() => setOpen(false)} className="left-0 w-56 p-2" anchorRef={ref}>
           <input
             autoFocus
             value={q}
@@ -434,7 +434,7 @@ function PersonCell({ value, onCommit }: { value: unknown; onCommit: (v: unknown
         )}
       </button>
       {open && (
-        <Popover onClose={() => setOpen(false)} className="left-0 w-60 p-2">
+        <Popover onClose={() => setOpen(false)} className="left-0 w-60 p-2" anchorRef={ref}>
           <input
             autoFocus
             value={q}

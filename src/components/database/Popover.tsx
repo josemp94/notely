@@ -20,12 +20,21 @@ export function Popover({
   onClose,
   className = "right-0 w-80 p-3",
   at,
+  anchorRef,
 }: {
   children: React.ReactNode;
   onClose: () => void;
   className?: string;
   /** Punto exacto donde abrirlo (un clic derecho). Si no, cuelga de su botón. */
   at?: { x: number; y: number };
+  /**
+   * Elemento del que colgar el menú, pasado a mano. Es más fiable que deducirlo
+   * por `parentElement` del ancla: ese `<span>` oculto podía no tener padre
+   * resuelto en el instante del cálculo (montaje con portal), `colocar()` hacía
+   * return y el panel se quedaba en la esquina (-9999). Con una ref al contenedor
+   * de la celda —siempre montado mientras el menú está abierto— no falla.
+   */
+  anchorRef?: { readonly current: HTMLElement | null };
 }) {
   const ancla = useRef<HTMLSpanElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -36,9 +45,11 @@ export function Popover({
     const colocar = () => {
       const caja = panel.current?.getBoundingClientRect();
       // Abierto en un punto (clic derecho): la caja es ese punto, sin tamaño.
+      // Si no, del ancla explícita (fiable) o, en su defecto, del padre del marcador.
+      const anclaEl = anchorRef?.current ?? ancla.current?.parentElement;
       const boton = at
         ? ({ left: at.x, right: at.x, top: at.y, bottom: at.y } as DOMRect)
-        : ancla.current?.parentElement?.getBoundingClientRect();
+        : anclaEl?.getBoundingClientRect();
       if (!boton) return;
       const ancho = caja?.width || 320;
       const alto = caja?.height || 240;
@@ -64,7 +75,7 @@ export function Popover({
       window.removeEventListener("scroll", colocar, true);
       window.removeEventListener("resize", colocar);
     };
-  }, [porLaDerecha, at]);
+  }, [porLaDerecha, at, anchorRef]);
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
